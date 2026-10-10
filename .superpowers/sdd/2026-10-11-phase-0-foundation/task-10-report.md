@@ -59,3 +59,19 @@ uv run pytest app/backend/tests/ci/test_openapi_baseline.py \
 uv run ruff format --check app/backend/tests/ci/test_openapi_baseline.py         # passed
 uv run ruff check app/backend/tests/ci/test_openapi_baseline.py                  # passed
 ```
+
+## Fix Round 3: Validate the Base Revision
+
+- The baseline helper now verifies `BASE_REF^{commit}` with `git cat-file -e`
+  before inspecting the artifact path. An invalid or unfetched `origin/main`
+  reference is an explicit failure, not a first-artifact exception.
+- A missing artifact is accepted only after that commit check succeeds; an
+  unexpected `git show` failure still stops the script under `set -e`.
+- Added a regression test for an unknown base ref alongside the established
+  baseline and absent-artifact cases.
+
+Verification:
+
+```text
+uv run pytest app/backend/tests/ci/test_openapi_baseline.py -v  # 3 passed
+```

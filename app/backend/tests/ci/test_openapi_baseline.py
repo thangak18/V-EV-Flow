@@ -58,3 +58,20 @@ def test_baseline_helper_allows_initial_openapi_artifact(tmp_path: Path) -> None
     assert not baseline.exists()
     assert output.read_text(encoding="utf-8") == "present=false\n"
     assert "first committed OpenAPI artifact" in result.stdout
+
+
+def test_baseline_helper_rejects_an_unknown_base_ref(tmp_path: Path) -> None:
+    repo = _repository(tmp_path, include_openapi=False)
+    output = repo / "github-output.txt"
+    result = subprocess.run(
+        ["bash", str(SCRIPT), "missing-base", str(repo / ".openapi-main.yaml")],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "GITHUB_OUTPUT": str(output)},
+    )
+
+    assert result.returncode != 0
+    assert "does not resolve to a commit" in result.stderr
+    assert not output.exists()
