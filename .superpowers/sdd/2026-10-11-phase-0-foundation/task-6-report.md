@@ -15,3 +15,15 @@ Verification:
 - `uv run pytest -q` — 28 passed
 - `uv run ruff check app/backend/api app/backend/tests/api` — clean
 - `uv run pyright app/backend/api` — 0 errors
+
+Round 1 follow-up moved recommendation orchestration, idempotency caching, candidate
+construction, and ranking behind the composition-root `RecommendationFacade`; the
+HTTP handler now delegates only. It also declares OpenAPI domain-error responses and
+extends API coverage for idempotency conflicts, reset, backend selection, and error
+metadata.
+
+Follow-up verification:
+
+- `uv run pytest -q` — 31 passed
+- `uv run ruff check app/backend/api app/backend/tests/api` — clean
+- `uv run pyright app/backend/api app/backend/tests/api` — 0 errors
