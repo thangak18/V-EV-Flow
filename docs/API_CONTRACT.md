@@ -1,6 +1,6 @@
 # API contract v0 — mục tiêu triển khai
 
-Phase 0 provides a running FastAPI mock for the routes below via `uv run uvicorn app.backend.api.main:create_app --factory`; verify `/api/health`. Pydantic contracts in `app/backend/contracts` generate `openapi.yaml`; examples remain mock/simulated and are not production accuracy claims. Prefix is `/api`; table paths are relative. Time is `+07:00`, probability 0–1, coordinates object `{lat,lng}`. Model/data/scenario versions must accompany results for reproducibility. The full CI handoff still awaits import-linter passing after domain package completion; see the [handoff runbook](runbooks/phase-0-handoff.md).
+Phase 0 provides a running FastAPI mock for the routes below via `uv run uvicorn app.backend.api.main:create_app --factory`; verify `/api/health`. Pydantic contracts in `app/backend/contracts` generate `openapi.yaml`; examples remain mock/simulated and are not production accuracy claims. Prefix is `/api`; table paths are relative. Time is `+07:00`, probability 0–1, coordinates object `{lat,lng}`. Model/data/scenario versions must accompany results for reproducibility. The handoff runbook records the verified green CI gate.
 
 | Method | Path | Ưu tiên | Chức năng |
 | --- | --- | --- | --- |

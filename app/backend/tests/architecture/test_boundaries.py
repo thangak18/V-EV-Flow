@@ -23,7 +23,7 @@ def _string_value(node: ast.expr) -> str | None:
     return None
 
 
-def _imported_modules(tree: ast.AST) -> set[str]:
+def _imported_modules(tree: ast.AST, package: str | None = None) -> set[str]:
     modules: set[str] = set()
     import_module_names = {"import_module"}
     for node in ast.walk(tree):
@@ -40,6 +40,19 @@ def _imported_modules(tree: ast.AST) -> set[str]:
                     for alias in node.names
                     if alias.name == "import_module"
                 )
+            imported = node.module
+            if node.level and package:
+                base = package.split(".")[: -node.level]
+                imported = ".".join(base + [node.module])
+            if imported.startswith("app.backend.modules"):
+                modules.add(imported)
+                modules.update(f"{imported}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level and package:
+            base = package.split(".")[: -node.level]
+            imported = ".".join(base + ([node.module] if node.module else []))
+            if imported.startswith("app.backend.modules"):
+                modules.add(imported)
+                modules.update(f"{imported}.{alias.name}" for alias in node.names)
         elif (
             isinstance(node, ast.Call)
             and (
@@ -115,12 +128,16 @@ def test_import_parser_resolves_direct_and_dynamic_imports(source: str) -> None:
     [
         ("from app.backend.modules.prediction._internal import model", "prediction"),
         ("from app.backend.modules.station_data import generator", "prediction"),
+        ("from ..station_data import generator", "prediction"),
+        ("from app.backend.modules import station_data", "prediction"),
     ],
 )
 def test_domain_import_parser_rejects_private_and_cross_domain_imports(
     source: str, source_domain: str
 ) -> None:
-    modules = _imported_modules(ast.parse(source))
+    modules = _imported_modules(
+        ast.parse(source), package=f"app.backend.modules.{source_domain}.fixture"
+    )
     assert _private_or_cross_domain_imports(modules, source_domain)
 
 

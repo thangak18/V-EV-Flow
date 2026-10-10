@@ -20,7 +20,7 @@ Prepare local configuration with:
 cp .env.example .env
 ```
 
-Never commit the resulting `.env`. Canonical checks are `make setup`, `make lint`, `make test`, `make contract-check`, `make smoke`, and `make ci`; `make setup` also installs Chromium for Playwright. The current `make ci` reaches Ruff/Pyright and then awaits the `app/backend/modules` package for import-linter; do not handoff until a fresh run exits 0 with clean status.
+Never commit the resulting `.env`. Canonical checks are `make setup`, `make lint`, `make test`, `make contract-check`, `make smoke`, and `make ci`; `make setup` also installs Chromium for Playwright. Handoff requires a fresh `make ci` exit 0 with clean status.
 
 ## Coding Style & Naming Conventions
 
