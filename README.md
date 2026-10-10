@@ -74,7 +74,7 @@ make smoke
 make ci
 ```
 
-`make setup`, contract checks, backend/frontend tests, smoke, Ruff, and Pyright have been verified in this checkout. The full `make ci` gate is not green yet: `uv run lint-imports` currently reports `Module 'app.backend.modules' does not exist` because that package is created by the next foundation/domain task. Do not merge Foundation or create owner branches until rerunning `make ci` after package creation produces exit code 0 and a clean `git status --short`; record that output in the handoff runbook.
+`make setup`, contract checks, backend/frontend tests, smoke, Ruff, Pyright, import-linter, and security audits have been verified in this checkout. `make ci` exits 0; Redocly emits seven non-fatal warnings for the current contract. Do not merge Foundation or create owner branches without recording a fresh `make ci` result and clean `git status --short` in the handoff runbook.
 
 Mock backend và frontend có thể chạy độc lập để kiểm tra vertical slice:
 

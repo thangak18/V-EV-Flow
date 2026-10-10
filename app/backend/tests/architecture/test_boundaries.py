@@ -69,6 +69,24 @@ def _forbidden_modules(modules: set[str]) -> list[str]:
     )
 
 
+def _private_or_cross_domain_imports(
+    modules: set[str], source_domain: str | None = None
+) -> list[str]:
+    domains = ("station_data", "simulation", "prediction", "recommendation")
+    violations: list[str] = []
+    for module in modules:
+        parts = module.split(".")
+        if len(parts) < 4 or parts[:3] != ["app", "backend", "modules"]:
+            continue
+        if parts[3] not in domains:
+            continue
+        if any(part.startswith("_") for part in parts[4:]):
+            violations.append(module)
+        if source_domain is not None and parts[3] != source_domain:
+            violations.append(module)
+    return sorted(set(violations))
+
+
 def test_contracts_do_not_import_application_modules() -> None:
     for path in Path("app/backend/contracts").rglob("*.py"):
         modules = _imported_modules(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
@@ -90,3 +108,27 @@ def test_contracts_do_not_import_application_modules() -> None:
 def test_import_parser_resolves_direct_and_dynamic_imports(source: str) -> None:
     modules = _imported_modules(ast.parse(source))
     assert _forbidden_modules(modules)
+
+
+@pytest.mark.parametrize(
+    "source,source_domain",
+    [
+        ("from app.backend.modules.prediction._internal import model", "prediction"),
+        ("from app.backend.modules.station_data import generator", "prediction"),
+    ],
+)
+def test_domain_import_parser_rejects_private_and_cross_domain_imports(
+    source: str, source_domain: str
+) -> None:
+    modules = _imported_modules(ast.parse(source))
+    assert _private_or_cross_domain_imports(modules, source_domain)
+
+
+def test_domain_files_have_no_private_or_cross_domain_imports() -> None:
+    for path in Path("app/backend/modules").rglob("*.py"):
+        modules = _imported_modules(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
+        source_domain = path.parts[path.parts.index("modules") + 1]
+        violations = _private_or_cross_domain_imports(modules, source_domain)
+        assert not violations, (
+            f"{path} imports private/cross-domain modules: {', '.join(violations)}"
+        )

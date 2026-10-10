@@ -11,7 +11,7 @@ def test_mock_mode_needs_no_external_secret() -> None:
 
 
 def test_cors_origins_default_is_local_frontend() -> None:
-    assert Settings().cors_origins == ["http://localhost:5173"]
+    assert Settings().cors_origins == ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
 def test_cors_origins_accepts_csv_environment_value(monkeypatch) -> None:

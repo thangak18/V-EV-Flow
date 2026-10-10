@@ -28,4 +28,3 @@ Describe fixture, synthetic, or approved external data used (and confirm no secr
 ## UI evidence
 
 For UI changes, attach screenshots or a short recording. Write “Not applicable” otherwise.
-

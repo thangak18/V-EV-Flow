@@ -40,6 +40,14 @@ def test_cors_uses_configured_origins() -> None:
     assert response.headers["access-control-allow-origin"] == "https://demo.example"
 
 
+def test_cors_rejects_unconfigured_origin() -> None:
+    response = TestClient(create_app()).options(
+        "/api/health",
+        headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"},
+    )
+    assert "access-control-allow-origin" not in response.headers
+
+
 def test_unknown_station_is_404() -> None:
     response = TestClient(create_app()).post(
         "/api/predict",

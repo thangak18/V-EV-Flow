@@ -33,15 +33,7 @@ make ci
 git status --short
 ```
 
-`make setup` installs the frozen Python/frontend dependencies and the Chromium browser used by Playwright smoke tests. `make ci` runs `make lint`, `make test`, `make contract-check`, `make smoke`, and security checks. The handoff gate is exit code 0 for every command and no output from `git status --short`; that is a merge condition, not a claim about this intermediate checkout. In the current checkout, `make ci` passes Ruff format/check and Pyright, then stops at `uv run lint-imports` with `Module 'app.backend.modules' does not exist`. The package is pending creation in the next foundation/domain task. Rerun the exact command below after that package exists and attach the complete green output to the Foundation PR:
-
-```text
-make ci
-...
-uv run lint-imports
-Module 'app.backend.modules' does not exist.
-make: *** [Makefile:16: lint] Error 1
-```
+`make setup` installs the frozen Python/frontend dependencies and the Chromium browser used by Playwright smoke tests. `make ci` runs `make lint`, `make test`, `make contract-check`, `make smoke`, and security checks. The handoff gate is exit code 0 for every command and no output from `git status --short`; the current checkout meets that gate. Redocly emits seven non-fatal contract warnings; attach the complete green output to the Foundation PR.
 
 The repository must also retain no obsolete runtime roots:
 

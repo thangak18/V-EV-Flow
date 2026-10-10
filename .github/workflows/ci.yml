@@ -152,7 +152,7 @@ jobs:
           cache: npm
           cache-dependency-path: app/frontend/package-lock.json
       - run: uv sync --frozen
-      - run: uv run detect-secrets scan --baseline .secrets.baseline
+      - run: git ls-files -z | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline
       - run: uv run pip-audit
       - run: npm --prefix app/frontend ci
       - run: npm --prefix app/frontend audit --audit-level=high

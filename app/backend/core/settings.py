@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     demo_seed: int = 42
     min_arrival_soc_pct: float = 10.0
     cors_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:5173"]
+        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
     goong_rest_api_key: str | None = Field(default=None, repr=False)
 

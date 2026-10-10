@@ -32,7 +32,7 @@ smoke:
 	npm --prefix app/frontend run test:e2e
 
 security:
-	baseline=$$(mktemp); trap 'rm -f "$$baseline"' EXIT; cp .secrets.baseline "$$baseline"; uv run detect-secrets scan --baseline "$$baseline"
+	git ls-files -z | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline
 	uv run pip-audit
 	npm --prefix app/frontend audit --audit-level=high
 
