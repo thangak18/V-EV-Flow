@@ -5,6 +5,7 @@ from pydantic import Field, field_validator
 from .common import Coordinate, StrictModel
 from .enums import DataType, Scenario
 from .prediction import _aware
+from .stations import StationStatus
 
 
 class Vehicle(StrictModel):
@@ -65,7 +66,7 @@ class PressureStation(StrictModel):
 
 class PressureResponse(StrictModel):
     time: datetime
-    scenario: str
+    scenario: Scenario
     stations: tuple[PressureStation, ...]
     contract_version: str = "0.1.0"
 
@@ -84,15 +85,22 @@ class RouteRequest(StrictModel):
 class RouteResult(StrictModel):
     distance_km: float = Field(ge=0)
     duration_minutes: float = Field(ge=0)
-    geometry: object | None = None
+    geometry: tuple[Coordinate, ...] | None = None
     source: str = Field(min_length=1)
 
 
 class StatusWindow(StrictModel):
     station_id: str = Field(min_length=1)
     observed_at: datetime
-    lags: tuple[int, ...]
-    statuses: tuple[object, ...]
+    lags: tuple[int, ...] = Field(min_length=1)
+    statuses: tuple[StationStatus, ...]
+
+    @field_validator("lags")
+    @classmethod
+    def valid_lags(cls, value: tuple[int, ...]) -> tuple[int, ...]:
+        if any(lag < 0 for lag in value):
+            raise ValueError("lags must be nonnegative")
+        return value
 
     _observed_aware = field_validator("observed_at")(classmethod(lambda cls, v: _aware(v)))
 
