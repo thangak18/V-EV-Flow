@@ -1,0 +1,30 @@
+seed: 42
+step_minutes: 5
+scenarios:
+  normal:
+    start: "2026-10-13T00:00:00+07:00"
+    end: "2026-10-13T23:55:00+07:00"
+    arrival_multiplier: 1.0
+    holiday_multiplier: 1.0
+    charging_minutes: [20, 45]
+    fault_probability: 0.01
+    repair_probability: 0.10
+    suggestion_compliance: 0.70
+  holiday_30_4:
+    start: "2026-04-30T00:00:00+07:00"
+    end: "2026-04-30T23:55:00+07:00"
+    arrival_multiplier: 1.25
+    holiday_multiplier: 1.30
+    charging_minutes: [20, 45]
+    fault_probability: 0.01
+    repair_probability: 0.10
+    suggestion_compliance: 0.70
+  tet:
+    start: "2027-02-06T00:00:00+07:00"
+    end: "2027-02-06T23:55:00+07:00"
+    arrival_multiplier: 1.40
+    holiday_multiplier: 1.50
+    charging_minutes: [20, 45]
+    fault_probability: 0.01
+    repair_probability: 0.10
+    suggestion_compliance: 0.70
