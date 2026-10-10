@@ -41,9 +41,17 @@ Mitigation: concrete monitoring or compensating control
 The exception is removed or renewed with fresh evidence before its expiry;
 expired exceptions fail review and cannot be used to bypass `security`.
 
+## OpenAPI first-release baseline
+
+`contract-check` always regenerates and lints OpenAPI, regenerates frontend
+types, and rejects drift. If `origin/main` predates the first committed
+`app/backend/contracts/openapi.yaml`, CI logs the artifact-introduction case
+and skips only the oasdiff breaking comparison because no historical API exists.
+The next contract change materializes the now-committed `main` artifact and
+must pass the normal oasdiff breaking check.
+
 ## Release gate
 
 The release workflow is manual or `demo-v*` tag driven. It packages only the
 frontend demo artifact after `make ci` passes, identifies it with
 `GITHUB_SHA`, and never reads production credentials or deploys externally.
-

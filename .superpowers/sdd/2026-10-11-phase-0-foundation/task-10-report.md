@@ -38,3 +38,24 @@ also reports that `app.backend.modules` does not exist because that directory
 has no `__init__.py`. These files are outside Task 10 scope and were not
 modified in this task. Consequently, the aggregate `make ci` command stops at
 its `make lint` prerequisite with the same pre-existing formatting failure.
+
+## Fix Round 2: First OpenAPI Artifact
+
+- Added `.github/scripts/prepare-openapi-baseline.sh`. It materializes
+  `origin/main`'s OpenAPI file and sets `present=true` when a baseline exists.
+  When `main` predates the artifact, it removes any stale output, sets
+  `present=false`, and emits an explicit first-artifact notice.
+- `contract-check` runs oasdiff only when that output is `true`; generation,
+  linting, frontend type generation, and drift detection remain unconditional.
+- Added isolated Git-repository tests covering both the established-baseline
+  and first-artifact branches, and documented the limited exception in the
+  branch-protection runbook.
+
+Verification:
+
+```text
+uv run pytest app/backend/tests/ci/test_openapi_baseline.py \
+  app/backend/tests/architecture app/backend/tests/contracts/test_openapi.py -q  # 14 passed
+uv run ruff format --check app/backend/tests/ci/test_openapi_baseline.py         # passed
+uv run ruff check app/backend/tests/ci/test_openapi_baseline.py                  # passed
+```

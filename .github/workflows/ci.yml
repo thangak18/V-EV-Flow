@@ -74,8 +74,10 @@ jobs:
       - run: npm --prefix app/frontend run generate:api
       - run: git diff --exit-code -- app/backend/contracts/openapi.yaml app/frontend/src/types/api.generated.ts
       - name: Materialize main's OpenAPI baseline
-        run: git show origin/main:app/backend/contracts/openapi.yaml > .openapi-main.yaml
+        id: openapi-baseline
+        run: bash .github/scripts/prepare-openapi-baseline.sh origin/main .openapi-main.yaml
       - name: Check OpenAPI compatibility against main
+        if: steps.openapi-baseline.outputs.present == 'true'
         uses: oasdiff/oasdiff-action/breaking@v0.0.18
         with:
           base: .openapi-main.yaml
