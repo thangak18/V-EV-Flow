@@ -2,7 +2,7 @@
 
 Dự báo và điều phối nhu cầu sạc xe điện trên hành lang cao tốc. Dự án hackathon của nhóm 4 người, hướng đến một lớp ứng dụng thông minh có thể tích hợp vào VETC Trạm sạc / Vmap sau giai đoạn demo.
 
-**Trạng thái: repo sơ khai gồm tài liệu và bộ specification cho modular monolith. Chưa có backend, model, simulator hoặc giao diện chạy được.** Các API, màn hình và lệnh trong tài liệu là mục tiêu triển khai; số ví dụ không phải kết quả đo.
+**Trạng thái: Phase 0 foundation đã có backend/frontend mock vertical slice, contracts, OpenAPI sinh tự động và CI gates.** Các model, simulator, dữ liệu đối tác và màn hình bản demo đầy đủ vẫn là phạm vi các nhánh owner sau handoff; số ví dụ không phải kết quả đo.
 
 ## Quyết định đã chốt
 
@@ -27,6 +27,7 @@ Dự báo và điều phối nhu cầu sạc xe điện trên hành lang cao t�
 | [Hai giao diện](docs/UI_SPEC.md) | Driver/Operator, bố cục và thứ tự dựng |
 | [Demo và checklist](docs/DEMO.md) | Demo 20% pin, 100 xe, dự phòng và việc hỏi mentor |
 | [Làm việc chung](CONTRIBUTING.md) | Nhánh, PR, integration và quy tắc repo |
+| [Phase 0 handoff](docs/runbooks/phase-0-handoff.md) | Đọc theo thứ tự, gates, OpenAPI và tạo nhánh owner |
 
 ## Cấu trúc
 
@@ -48,7 +49,7 @@ V-EV-Flow/
 └── docs/        # Kiến trúc, contract, specs và kế hoạch
 ```
 
-`app/` hiện chỉ chứa `SPEC.md`, chưa phải code đã triển khai. Phase 0 sẽ tạo Pydantic contracts, OpenAPI, dependency injection, mock vertical slice và CI trước khi bốn nhánh bắt đầu. Xem [master design](docs/superpowers/specs/2026-10-11-parallel-development-design.md) và [Phase 0 spec](docs/superpowers/specs/2026-10-11-phase-0-foundation-spec.md).
+`app/` chứa foundation code và specs. Phase 0 đã tạo Pydantic contracts, OpenAPI, dependency injection, mock vertical slice và CI trước khi bốn nhánh bắt đầu. Xem [master design](docs/superpowers/specs/2026-10-11-parallel-development-design.md), [Phase 0 spec](docs/superpowers/specs/2026-10-11-phase-0-foundation-spec.md) và [handoff runbook](docs/runbooks/phase-0-handoff.md).
 
 ## Bắt đầu cùng nhóm
 
@@ -58,6 +59,28 @@ cd V-EV-Flow
 cp .env.example .env
 ```
 
-Repo private nên thành viên cần được cấp quyền trước khi clone. Chưa có bước chạy ứng dụng. Một foundation agent phải triển khai và merge Phase 0 trước; sau đó Bảo/Thắng/Kiên/Tú tạo nhánh từ cùng merge commit. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế trong tài liệu module.
+Repo private nên thành viên cần được cấp quyền trước khi clone. Foundation agent phải được review và merge trước; sau đó Bảo/Thắng/Kiên/Tú tạo nhánh từ đúng merge commit được ghi trong runbook. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế trong tài liệu module.
+
+## Lệnh đã xác minh
+
+Chạy từ root repo sau khi đã cài `uv` và Node/npm. `make setup` đồng bộ lockfile; các gate còn lại là lệnh canonical dùng trong PR và CI:
+
+```bash
+make setup
+make lint
+make test
+make contract-check
+make smoke
+make ci
+```
+
+Mock backend và frontend có thể chạy độc lập để kiểm tra vertical slice:
+
+```bash
+uv run uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port 8000
+npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173
+```
+
+Backend health check là `http://127.0.0.1:8000/api/health`; frontend mở `http://127.0.0.1:5173/`. Không ghi lệnh khác như lệnh canonical cho Phase 0.
 
 Proposal và kế hoạch mới do nhóm có sẵn được giữ nguyên ở root. Kế hoạch 7 ngày ban đầu được lưu tại [docs/reference](docs/reference/README.md). Khi có khác biệt, dùng bộ tài liệu triển khai hiện tại ở README này; lịch BTC và dữ liệu đối tác vẫn cần nhóm xác nhận.
