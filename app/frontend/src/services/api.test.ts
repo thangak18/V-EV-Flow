@@ -15,6 +15,27 @@ test("listStations returns the typed payload", async () => {
   expect((await client.listStations()).data_type).toBe("mock");
 });
 
+test("listStations forwards an abort signal to the fetch boundary", async () => {
+  const fetcher = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    headers: new Headers({ "content-type": "application/json" }),
+    text: async () =>
+      JSON.stringify({ stations: [], data_type: "mock", source_notes: [] }),
+  });
+  const controller = new AbortController();
+  const client = new ApiClient("http://test/api", fetcher as typeof fetch);
+
+  await client.listStations(controller.signal);
+
+  expect(fetcher).toHaveBeenCalledWith("http://test/api/stations", {
+    method: undefined,
+    headers: undefined,
+    body: undefined,
+    signal: controller.signal,
+  });
+});
+
 test("request rejects a non-JSON success response", async () => {
   const fetcher = vi.fn().mockResolvedValue({
     ok: true,

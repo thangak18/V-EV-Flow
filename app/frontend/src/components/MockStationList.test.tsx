@@ -116,4 +116,26 @@ describe("MockStationList", () => {
     expect(await within(view.container).findByText("S002")).toBeInTheDocument();
     expect(within(view.container).queryByText("S001")).not.toBeInTheDocument();
   });
+
+  test("aborts the active request on unmount and ignores its later rejection", async () => {
+    let rejectRequest: ((reason?: unknown) => void) | undefined;
+    let signal: AbortSignal | undefined;
+    const client = {
+      listStations: vi.fn((requestSignal?: AbortSignal) => {
+        signal = requestSignal;
+        return new Promise<never>((_, reject) => {
+          rejectRequest = reject;
+        });
+      }),
+    };
+    const view = render(<MockStationList client={client} />);
+
+    view.unmount();
+    expect(signal?.aborted).toBe(true);
+    rejectRequest?.(new Error("Late request failure"));
+    await Promise.resolve();
+
+    expect(view.container).toBeEmptyDOMElement();
+    expect(screen.queryByText("Late request failure")).not.toBeInTheDocument();
+  });
 });
