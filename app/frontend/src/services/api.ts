@@ -17,12 +17,20 @@ type JsonResponse<TOperation extends keyof operations> =
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
-    public readonly body: unknown,
+    public readonly code: string,
+    message: string,
+    public readonly details: unknown,
   ) {
-    super(`API request failed with status ${status}`);
+    super(message);
     this.name = "ApiError";
   }
 }
+
+type ApiErrorBody = {
+  code: string;
+  message: string;
+  details: unknown;
+};
 
 export class ApiClient {
   private readonly baseUrl: string;
@@ -81,14 +89,67 @@ export class ApiClient {
       body:
         options.body === undefined ? undefined : JSON.stringify(options.body),
     });
-    const body: unknown = await response.json();
+    const body = await this.readBody(response);
 
     if (!response.ok) {
-      throw new ApiError(response.status, body);
+      const error = this.normalizeError(response.status, body);
+      throw new ApiError(
+        error.status,
+        error.code,
+        error.message,
+        error.details,
+      );
     }
 
-    return body as T;
+    if (!body.isJson) {
+      throw new ApiError(
+        response.status,
+        "invalid_response",
+        "Response body was not valid JSON",
+        body.value,
+      );
+    }
+
+    return body.value as T;
   }
+
+  private async readBody(
+    response: Pick<Response, "headers" | "text">,
+  ): Promise<{ isJson: boolean; value: unknown }> {
+    const text = await response.text();
+    if (text.length === 0) {
+      return { isJson: false, value: null };
+    }
+
+    try {
+      return { isJson: true, value: JSON.parse(text) as unknown };
+    } catch {
+      return { isJson: false, value: text };
+    }
+  }
+
+  private normalizeError(
+    status: number,
+    body: { isJson: boolean; value: unknown },
+  ): ApiErrorBody & { status: number } {
+    const value = body.isJson && isRecord(body.value) ? body.value : {};
+    const fallbackMessage =
+      typeof body.value === "string" && body.value.length > 0
+        ? body.value
+        : `Request failed with status ${status}`;
+
+    return {
+      status,
+      code: typeof value.code === "string" ? value.code : "http_error",
+      message:
+        typeof value.message === "string" ? value.message : fallbackMessage,
+      details: "details" in value ? value.details : null,
+    };
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export type Station = components["schemas"]["Station"];
