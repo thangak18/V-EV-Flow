@@ -21,3 +21,10 @@ def test_goong_mode_requires_rest_key() -> None:
 def test_get_settings_is_cached() -> None:
     get_settings.cache_clear()
     assert get_settings() is get_settings()
+
+
+def test_goong_rest_api_key_is_redacted_from_repr() -> None:
+    settings = Settings(goong_rest_api_key="super-secret")
+    rendered = repr(settings)
+    assert "super-secret" not in rendered
+    assert "goong_rest_api_key" not in rendered

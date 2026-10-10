@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BackendKind = Literal["mock", "file", "real"]
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     model_dir: Path = Path("app/backend/modules/prediction/artifacts")
     demo_seed: int = 42
     min_arrival_soc_pct: float = 10.0
-    goong_rest_api_key: str | None = None
+    goong_rest_api_key: str | None = Field(default=None, repr=False)
 
     @model_validator(mode="after")
     def validate_selected_backends(self) -> "Settings":

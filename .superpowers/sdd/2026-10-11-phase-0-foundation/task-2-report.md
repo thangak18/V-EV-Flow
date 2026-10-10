@@ -25,3 +25,12 @@
 ## Concerns
 
 - The brief's exact pytest command does not place the repository root on `sys.path` in this environment; all focused and full-suite checks pass with `PYTHONPATH=.`.
+
+## Review fixes
+
+- Added `pythonpath = ["."]` to the canonical pytest configuration, so the exact brief command works from the repository root.
+- Marked `goong_rest_api_key` with `repr=False` and added a regression test ensuring neither the secret nor field name appears in `Settings` repr output.
+- `uv run pytest app/backend/tests/core/test_settings.py -v` — 4 passed.
+- `uv run ruff check app/backend/core app/backend/tests/core/test_settings.py` — All checks passed.
+- `uv run pyright app/backend/core app/backend/tests/core/test_settings.py` — 0 errors, 0 warnings, 0 informations.
+- `uv run pytest app/backend/tests -q` — 5 passed.
