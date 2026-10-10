@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from app.backend.contracts.common import Coordinate
@@ -41,6 +42,30 @@ def test_fixture_stations_validate_and_response_round_trips() -> None:
     response = StationListResponse(stations=stations, data_type=DataType.MIXED,
                                    source_notes=["Synthetic phase0 fixture"])
     assert StationListResponse.model_validate_json(response.model_dump_json()) == response
+
+
+def test_committed_station_response_example_validates() -> None:
+    root = Path(__file__).parents[3]
+    payload = json.loads((root / "backend/contracts/examples/stations.response.json").read_text())
+    response = StationListResponse.model_validate(payload)
+    assert [station.station_id for station in response.stations] == ["S001", "S002"]
+
+
+def test_scenarios_are_explicit_and_deterministic() -> None:
+    root = Path(__file__).parents[3]
+    payload = yaml.safe_load(
+        (root / "backend/modules/station_data/fixtures/scenarios.yaml").read_text()
+    )
+    assert payload["seed"] == 42
+    assert payload["step_minutes"] == 5
+    assert set(payload["scenarios"]) == {item.value for item in Scenario}
+    for scenario in payload["scenarios"].values():
+        coefficients = scenario["demand_arrival_coefficients"]
+        assert coefficients["by_hour"]
+        assert coefficients["by_day"]
+        assert coefficients["by_station_type"]
+        assert scenario["source"]
+        assert scenario["assumptions"]
 
 
 def test_enums_are_stable() -> None:
