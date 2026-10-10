@@ -1,0 +1,26 @@
+{
+  "request_id": "demo-001",
+  "primary": {
+    "station_id": "S012",
+    "eta": "2026-10-13T16:40:00+07:00",
+    "distance_km": 15,
+    "detour_km": 5,
+    "arrival_soc_pct": 15.5,
+    "p_available": 0.85
+  },
+  "backup": {
+    "station_id": "S015",
+    "eta": "2026-10-13T16:55:00+07:00",
+    "distance_km": 25,
+    "detour_km": 7.5,
+    "arrival_soc_pct": 12.5,
+    "p_available": 0.60
+  },
+  "plan_p": 0.94,
+  "plan_p_assumption": "independent_stations",
+  "reasons": ["Đủ pin để tới trạm chính và tiếp tục tới dự phòng nếu cần"],
+  "time_shift": null,
+  "model_version": "example-v1",
+  "allocation_method": "ranking_penalty",
+  "data_type": "simulated"
+}

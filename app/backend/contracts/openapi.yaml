@@ -1,0 +1,779 @@
+components:
+  schemas:
+    Coordinate:
+      additionalProperties: false
+      properties:
+        lat:
+          maximum: 90.0
+          minimum: -90.0
+          title: Lat
+          type: number
+        lng:
+          maximum: 180.0
+          minimum: -180.0
+          title: Lng
+          type: number
+      required:
+      - lat
+      - lng
+      title: Coordinate
+      type: object
+    DataType:
+      enum:
+      - mock
+      - simulated
+      - real
+      - mixed
+      title: DataType
+      type: string
+    ErrorResponse:
+      additionalProperties: false
+      properties:
+        code:
+          title: Code
+          type: string
+        details:
+          anyOf:
+          - {}
+          - type: 'null'
+          title: Details
+        message:
+          title: Message
+          type: string
+      required:
+      - code
+      - message
+      title: ErrorResponse
+      type: object
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          title: Detail
+          type: array
+      title: HTTPValidationError
+      type: object
+    Plan:
+      additionalProperties: false
+      properties:
+        arrival_soc_pct:
+          maximum: 100.0
+          minimum: 0.0
+          title: Arrival Soc Pct
+          type: number
+        detour_km:
+          minimum: 0.0
+          title: Detour Km
+          type: number
+        distance_km:
+          minimum: 0.0
+          title: Distance Km
+          type: number
+        eta:
+          format: date-time
+          title: Eta
+          type: string
+        p_available:
+          maximum: 1.0
+          minimum: 0.0
+          title: P Available
+          type: number
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+      required:
+      - station_id
+      - eta
+      - distance_km
+      - detour_km
+      - arrival_soc_pct
+      - p_available
+      title: Plan
+      type: object
+    PredictRequest:
+      additionalProperties: false
+      properties:
+        connector_type:
+          minLength: 1
+          title: Connector Type
+          type: string
+        eta:
+          format: date-time
+          title: Eta
+          type: string
+        observed_at:
+          format: date-time
+          title: Observed At
+          type: string
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+      required:
+      - station_id
+      - observed_at
+      - eta
+      - connector_type
+      - scenario
+      title: PredictRequest
+      type: object
+    PredictionResult:
+      additionalProperties: false
+      properties:
+        contract_version:
+          default: 0.1.0
+          title: Contract Version
+          type: string
+        data_type:
+          $ref: '#/components/schemas/DataType'
+        eta:
+          format: date-time
+          title: Eta
+          type: string
+        explanation_method:
+          minLength: 1
+          title: Explanation Method
+          type: string
+        model_version:
+          minLength: 1
+          title: Model Version
+          type: string
+        p_available:
+          maximum: 1.0
+          minimum: 0.0
+          title: P Available
+          type: number
+        reasons:
+          items:
+            type: string
+          title: Reasons
+          type: array
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+      required:
+      - station_id
+      - eta
+      - p_available
+      - reasons
+      - explanation_method
+      - model_version
+      - data_type
+      title: PredictionResult
+      type: object
+    PressureResponse:
+      additionalProperties: false
+      properties:
+        contract_version:
+          default: 0.1.0
+          title: Contract Version
+          type: string
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        stations:
+          items:
+            $ref: '#/components/schemas/PressureStation'
+          title: Stations
+          type: array
+        time:
+          format: date-time
+          title: Time
+          type: string
+      required:
+      - time
+      - scenario
+      - stations
+      title: PressureResponse
+      type: object
+    PressureStation:
+      additionalProperties: false
+      properties:
+        data_type:
+          $ref: '#/components/schemas/DataType'
+        p_available:
+          maximum: 1.0
+          minimum: 0.0
+          title: P Available
+          type: number
+        pressure_score:
+          maximum: 1.0
+          minimum: 0.0
+          title: Pressure Score
+          type: number
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+      required:
+      - station_id
+      - p_available
+      - pressure_score
+      - data_type
+      title: PressureStation
+      type: object
+    RecommendationRequest:
+      additionalProperties: false
+      properties:
+        depart_time:
+          format: date-time
+          title: Depart Time
+          type: string
+        destination:
+          $ref: '#/components/schemas/Coordinate'
+        observed_at:
+          format: date-time
+          title: Observed At
+          type: string
+        origin:
+          $ref: '#/components/schemas/Coordinate'
+        request_id:
+          minLength: 1
+          title: Request Id
+          type: string
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        vehicle:
+          $ref: '#/components/schemas/Vehicle'
+      required:
+      - request_id
+      - origin
+      - destination
+      - observed_at
+      - depart_time
+      - scenario
+      - vehicle
+      title: RecommendationRequest
+      type: object
+    RecommendationResult:
+      additionalProperties: false
+      properties:
+        allocation_method:
+          minLength: 1
+          title: Allocation Method
+          type: string
+        backup:
+          anyOf:
+          - $ref: '#/components/schemas/Plan'
+          - type: 'null'
+        contract_version:
+          default: 0.1.0
+          title: Contract Version
+          type: string
+        data_type:
+          $ref: '#/components/schemas/DataType'
+        model_version:
+          minLength: 1
+          title: Model Version
+          type: string
+        plan_p:
+          anyOf:
+          - maximum: 1.0
+            minimum: 0.0
+            type: number
+          - type: 'null'
+          title: Plan P
+        plan_p_assumption:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Plan P Assumption
+        primary:
+          anyOf:
+          - $ref: '#/components/schemas/Plan'
+          - type: 'null'
+        reasons:
+          items:
+            type: string
+          title: Reasons
+          type: array
+        request_id:
+          minLength: 1
+          title: Request Id
+          type: string
+        time_shift:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Time Shift
+      required:
+      - request_id
+      - primary
+      - backup
+      - reasons
+      - model_version
+      - allocation_method
+      - data_type
+      title: RecommendationResult
+      type: object
+    ResetRequest:
+      additionalProperties: false
+      properties:
+        contract_version:
+          default: 0.1.0
+          title: Contract Version
+          type: string
+      title: ResetRequest
+      type: object
+    ResetResponse:
+      additionalProperties: false
+      properties:
+        contract_version:
+          default: 0.1.0
+          title: Contract Version
+          type: string
+        reset:
+          title: Reset
+          type: boolean
+      required:
+      - reset
+      title: ResetResponse
+      type: object
+    Scenario:
+      enum:
+      - normal
+      - holiday_30_4
+      - tet
+      title: Scenario
+      type: string
+    SimulationMetrics:
+      additionalProperties: false
+      properties:
+        failed_count:
+          minimum: 0.0
+          title: Failed Count
+          type: integer
+        mean_detour_km:
+          minimum: 0.0
+          title: Mean Detour Km
+          type: number
+        mean_wait_minutes:
+          minimum: 0.0
+          title: Mean Wait Minutes
+          type: number
+        success_rate:
+          maximum: 1.0
+          minimum: 0.0
+          title: Success Rate
+          type: number
+        vehicle_count:
+          minimum: 0.0
+          title: Vehicle Count
+          type: integer
+      required:
+      - success_rate
+      - mean_detour_km
+      - mean_wait_minutes
+      - failed_count
+      - vehicle_count
+      title: SimulationMetrics
+      type: object
+    SimulationRequest:
+      additionalProperties: false
+      properties:
+        contract_version:
+          default: 0.1.0
+          title: Contract Version
+          type: string
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        seed:
+          title: Seed
+          type: integer
+        strategy:
+          $ref: '#/components/schemas/Strategy'
+        vehicle_count:
+          exclusiveMinimum: 0.0
+          title: Vehicle Count
+          type: integer
+      required:
+      - scenario
+      - seed
+      - vehicle_count
+      - strategy
+      title: SimulationRequest
+      type: object
+    SimulationResult:
+      additionalProperties: false
+      properties:
+        contract_version:
+          default: 0.1.0
+          title: Contract Version
+          type: string
+        fixture_hash:
+          pattern: ^[0-9a-f]{64}$
+          title: Fixture Hash
+          type: string
+        metrics:
+          $ref: '#/components/schemas/SimulationMetrics'
+        model_version:
+          minLength: 1
+          title: Model Version
+          type: string
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        seed:
+          title: Seed
+          type: integer
+        strategy:
+          $ref: '#/components/schemas/Strategy'
+      required:
+      - scenario
+      - seed
+      - strategy
+      - model_version
+      - metrics
+      - fixture_hash
+      title: SimulationResult
+      type: object
+    Station:
+      additionalProperties: false
+      properties:
+        assumptions:
+          items:
+            type: string
+          title: Assumptions
+          type: array
+        connector_types:
+          items:
+            type: string
+          minItems: 1
+          title: Connector Types
+          type: array
+        lat:
+          maximum: 90.0
+          minimum: -90.0
+          title: Lat
+          type: number
+        lng:
+          maximum: 180.0
+          minimum: -180.0
+          title: Lng
+          type: number
+        n_ports:
+          minimum: 1.0
+          title: N Ports
+          type: integer
+        name:
+          minLength: 1
+          title: Name
+          type: string
+        network:
+          minLength: 1
+          title: Network
+          type: string
+        power_kw:
+          exclusiveMinimum: 0.0
+          title: Power Kw
+          type: number
+        source:
+          minLength: 1
+          title: Source
+          type: string
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+        station_type:
+          minLength: 1
+          title: Station Type
+          type: string
+      required:
+      - station_id
+      - name
+      - lat
+      - lng
+      - n_ports
+      - power_kw
+      - connector_types
+      - network
+      - station_type
+      - source
+      - assumptions
+      title: Station
+      type: object
+    StationListResponse:
+      additionalProperties: false
+      properties:
+        data_type:
+          $ref: '#/components/schemas/DataType'
+        source_notes:
+          items:
+            type: string
+          title: Source Notes
+          type: array
+        stations:
+          items:
+            $ref: '#/components/schemas/Station'
+          title: Stations
+          type: array
+      required:
+      - stations
+      - data_type
+      - source_notes
+      title: StationListResponse
+      type: object
+    Strategy:
+      enum:
+      - nearest
+      - currently_available
+      - ai_allocation
+      title: Strategy
+      type: string
+    ValidationError:
+      properties:
+        ctx:
+          title: Context
+          type: object
+        input:
+          title: Input
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          title: Location
+          type: array
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+      type: object
+    Vehicle:
+      additionalProperties: false
+      properties:
+        battery_kwh:
+          exclusiveMinimum: 0.0
+          title: Battery Kwh
+          type: number
+        connector_type:
+          minLength: 1
+          title: Connector Type
+          type: string
+        consumption_kwh_per_km:
+          exclusiveMinimum: 0.0
+          title: Consumption Kwh Per Km
+          type: number
+        soc_pct:
+          maximum: 100.0
+          minimum: 0.0
+          title: Soc Pct
+          type: number
+      required:
+      - soc_pct
+      - battery_kwh
+      - consumption_kwh_per_km
+      - connector_type
+      title: Vehicle
+      type: object
+info:
+  title: V-EV Flow API
+  version: 0.1.0
+openapi: 3.1.0
+paths:
+  /api/health:
+    get:
+      operationId: health
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  type: string
+                title: Response Health
+                type: object
+          description: Successful Response
+      summary: Health
+  /api/predict:
+    post:
+      operationId: predictAvailability
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionResult'
+          description: Successful Response
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      summary: Predict
+  /api/pressure:
+    get:
+      operationId: getPressure
+      parameters:
+      - in: query
+        name: scenario
+        required: true
+        schema:
+          $ref: '#/components/schemas/Scenario'
+      - in: query
+        name: time
+        required: true
+        schema:
+          format: date-time
+          title: Time
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PressureResponse'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Pressure
+  /api/ready:
+    get:
+      operationId: ready
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                title: Response Ready
+                type: object
+          description: Successful Response
+      summary: Ready
+  /api/recommend:
+    post:
+      operationId: recommendStation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationResult'
+          description: Successful Response
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      summary: Recommend
+  /api/reset:
+    post:
+      operationId: resetDemo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetResponse'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Reset
+  /api/simulate:
+    post:
+      operationId: simulate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResult'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Simulate
+  /api/stations:
+    get:
+      operationId: listStations
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StationListResponse'
+          description: Successful Response
+      summary: List Stations
+  /api/whatif:
+    post:
+      operationId: whatIf
+      responses:
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Successful Response
+      summary: Whatif

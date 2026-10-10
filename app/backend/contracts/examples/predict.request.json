@@ -1,0 +1,7 @@
+{
+  "station_id": "S012",
+  "observed_at": "2026-10-13T16:00:00+07:00",
+  "eta": "2026-10-13T16:40:00+07:00",
+  "connector_type": "CCS2",
+  "scenario": "normal"
+}
