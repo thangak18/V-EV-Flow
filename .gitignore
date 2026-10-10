@@ -1,0 +1,32 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+.DS_Store
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+# Frontend
+node_modules/
+dist/
+coverage/
+# Generated artifacts and partner data (keep README files)
+data/generated/*
+!data/generated/README.md
+data/cache/*
+!data/cache/README.md
+data/results/*
+!data/results/README.md
+data/private/*
+!data/private/README.md
+ml/artifacts/*
+!ml/artifacts/README.md
+*.parquet
+*.joblib
+*.pkl
+*.log
