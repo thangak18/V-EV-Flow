@@ -1,13 +1,14 @@
 """Generate the committed OpenAPI document from the FastAPI application."""
 
 import argparse
-import importlib
 from collections.abc import Mapping
 from pathlib import Path
 
 import yaml
 
-OPENAPI_PATH = Path(__file__).with_name("openapi.yaml")
+from app.backend.api.main import create_app
+
+OPENAPI_PATH = Path(__file__).parents[1] / "contracts" / "openapi.yaml"
 
 
 def _sort_document(value: object) -> object:
@@ -20,11 +21,6 @@ def _sort_document(value: object) -> object:
 
 def generate_document() -> str:
     """Return the stable YAML representation of the application's OpenAPI document."""
-    # Keep the generator as a CLI utility without making the contracts package
-    # import the API at module import time.  The split module name also keeps
-    # static boundary checks honest for normal contract modules.
-    api_module = importlib.import_module("app.backend." + "api.main")
-    create_app = api_module.create_app
     document = _sort_document(create_app().openapi())
     return yaml.safe_dump(document, sort_keys=False, allow_unicode=True)
 

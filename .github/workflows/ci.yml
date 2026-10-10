@@ -69,16 +69,18 @@ jobs:
           node-version: "22"
       - run: uv sync --frozen
       - run: npm --prefix app/frontend ci
-      - run: uv run python -m app.backend.contracts.generate_openapi --check
+      - run: uv run python -m app.backend.api.generate_openapi --check
       - run: npm --prefix app/frontend run lint:openapi
       - run: npm --prefix app/frontend run generate:api
       - run: git diff --exit-code -- app/backend/contracts/openapi.yaml app/frontend/src/types/api.generated.ts
+      - name: Materialize main's OpenAPI baseline
+        run: git show origin/main:app/backend/contracts/openapi.yaml > .openapi-main.yaml
       - name: Check OpenAPI compatibility against main
-        uses: oasdiff/oasdiff-action@v0.0.18
+        uses: oasdiff/oasdiff-action/breaking@v0.0.18
         with:
-          base: origin/main:app/backend/contracts/openapi.yaml
+          base: .openapi-main.yaml
           revision: app/backend/contracts/openapi.yaml
-          fail-on: ERR
+          fail-on-diff: "true"
 
   frontend-quality:
     name: frontend-quality

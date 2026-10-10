@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from app.backend.contracts.generate_openapi import generate_document
+from app.backend.api.generate_openapi import generate_document
 from app.backend.contracts.prediction import PredictionResult, PredictRequest
 from app.backend.contracts.recommendation import RecommendationRequest, RecommendationResult
 

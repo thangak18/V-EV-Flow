@@ -33,6 +33,7 @@ jobs:
           cache-dependency-path: app/frontend/package-lock.json
       - run: uv sync --frozen
       - run: npm --prefix app/frontend ci
+      - run: npm --prefix app/frontend exec playwright install --with-deps chromium
       - run: make ci
         env:
           DATA_BACKEND: mock
@@ -48,4 +49,3 @@ jobs:
             v-ev-flow-demo-${{ github.sha }}.tar.gz
             v-ev-flow-demo-${{ github.sha }}.sha256
           if-no-files-found: error
-

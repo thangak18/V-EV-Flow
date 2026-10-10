@@ -22,7 +22,7 @@ test:
 	npm --prefix app/frontend run test:coverage
 
 contract-check:
-	uv run python -m app.backend.contracts.generate_openapi --check
+	uv run python -m app.backend.api.generate_openapi --check
 	npm --prefix app/frontend run lint:openapi
 	npm --prefix app/frontend run generate:api
 	git diff --exit-code -- app/backend/contracts/openapi.yaml app/frontend/src/types/api.generated.ts
