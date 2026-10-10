@@ -115,7 +115,7 @@ Backup distance/ETA/SOC theo nhánh origin → primary → backup nếu primary 
 }
 ```
 
-`strategy`: `nearest`, `currently_available`, `ai_allocation`. Response gồm scenario/seed/strategy/model_version và `metrics`: success_rate, mean_detour_km, mean_wait_minutes, failed_count, vehicle_count. D gọi ba lần với cùng fixtures/config/seed để dựng bảng; C có thể gọi trực tiếp runner của A trong process cho demo nhỏ. Tách state khỏi Driver. Dữ liệu kết quả tính thật bằng runner, không hard-code số thắng baseline.
+`strategy`: `nearest`, `currently_available`, `ai_allocation`. Response gồm scenario/seed/strategy/model_version, `fixture_hash` (SHA-256 của bộ fixture đầu vào), và `metrics`: success_rate, mean_detour_km, mean_wait_minutes, failed_count, vehicle_count. D gọi ba lần với cùng fixtures/config/seed để dựng bảng; C có thể gọi trực tiếp runner của A trong process cho demo nhỏ. Tách state khỏi Driver. Dữ liệu kết quả tính thật bằng runner, không hard-code số thắng baseline.
 
 ## POST /whatif — P1
 
