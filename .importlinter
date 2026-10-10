@@ -1,0 +1,20 @@
+[importlinter]
+root_package = app
+
+[importlinter:contract:contracts-independent]
+name = Contracts do not depend on application modules
+type = forbidden
+source_modules =
+    app.backend.contracts
+forbidden_modules =
+    app.backend.api
+    app.backend.infrastructure
+    app.backend.modules
+
+[importlinter:contract:domain-independent-of-api]
+name = Domain modules do not depend on API
+type = forbidden
+source_modules =
+    app.backend.modules
+forbidden_modules =
+    app.backend.api

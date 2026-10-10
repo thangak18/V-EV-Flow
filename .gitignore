@@ -10,6 +10,8 @@ __pycache__/
 venv/
 .pytest_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 *.egg-info/
 .worktrees/
 # Frontend
