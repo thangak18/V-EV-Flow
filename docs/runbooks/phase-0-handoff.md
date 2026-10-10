@@ -18,10 +18,10 @@ The foundation owns shared contracts, generated OpenAPI/types, dependency inject
 | --- | --- | --- | --- |
 | Bảo | `feat/data-simulator` | `app/backend/modules/station_data`, `app/backend/modules/simulation` | [A](../superpowers/plans/2026-10-11-a-bao-data-simulation.md) |
 | Thắng | `feat/ml-predict` | `app/backend/modules/prediction` | [B](../superpowers/plans/2026-10-11-b-thang-ml-prediction.md) |
-| Kiên | `feat/recommend-api` | `app/backend/modules/recommendation`, approved API composition changes | [C](../superpowers/plans/2026-10-11-c-kien-backend-recommendation.md) |
+| Kiên | `feat/recommend-api` | `app/backend/modules/recommendation`, `app/backend/infrastructure/**`, `app/backend/api/dependencies.py`, and the scoped route files/tests listed in plan C | [C](../superpowers/plans/2026-10-11-c-kien-backend-recommendation.md) |
 | Tú | `feat/web-map` | `app/frontend/src` and frontend tests/e2e | [D](../superpowers/plans/2026-10-11-d-tu-frontend-map.md) |
 
-Feature branches must not edit `app/backend/contracts`, `app/backend/contracts/openapi.yaml`, `app/frontend/src/types/api.generated.ts`, Make targets, lockfiles, CI, or another owner's path. Submit a separate reviewed contract/tooling PR when an interface must change.
+Feature branches must not edit `app/backend/contracts`, `app/backend/contracts/openapi.yaml`, `app/frontend/src/types/api.generated.ts`, Make targets, lockfiles, CI, or another owner's path. Kiên's route/dependency edits are limited to the files explicitly listed in plan C. Submit a separate reviewed contract/tooling PR when an interface must change.
 
 ## Fresh-checkout verification
 

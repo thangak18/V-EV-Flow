@@ -40,4 +40,3 @@ class PredictionResult(StrictModel):
     contract_version: str = "0.1.0"
 
     _eta_aware = field_validator("eta")(classmethod(lambda cls, v: _aware(v)))
-
