@@ -1,0 +1,51 @@
+name: Release demo artifact
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "demo-v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: package-demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+      - run: uv sync --frozen
+      - run: npm --prefix app/frontend ci
+      - run: make ci
+        env:
+          DATA_BACKEND: mock
+          PREDICTOR_BACKEND: fake
+          ROUTE_BACKEND: fake
+      - run: npm --prefix app/frontend run build
+      - name: Package frontend with commit identity
+        run: tar -czf "v-ev-flow-demo-${GITHUB_SHA}.tar.gz" -C app/frontend dist && sha256sum "v-ev-flow-demo-${GITHUB_SHA}.tar.gz" > "v-ev-flow-demo-${GITHUB_SHA}.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v-ev-flow-demo-${{ github.sha }}
+          path: |
+            v-ev-flow-demo-${{ github.sha }}.tar.gz
+            v-ev-flow-demo-${{ github.sha }}.sha256
+          if-no-files-found: error
+
