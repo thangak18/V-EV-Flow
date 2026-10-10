@@ -6,7 +6,12 @@ from pydantic import ValidationError
 from app.backend.contracts.enums import DataType, Scenario
 from app.backend.contracts.prediction import PredictionResult, PredictRequest
 from app.backend.contracts.recommendation import PressureResponse, StatusWindow
-from app.backend.contracts.simulation import ScenarioConfig, SimulationMetrics
+from app.backend.contracts.simulation import (
+    DataManifest,
+    ScenarioConfig,
+    SimulationMetrics,
+    SimulationResult,
+)
 
 
 def test_prediction_probability_is_bounded() -> None:
@@ -48,3 +53,19 @@ def test_scenario_config_and_metrics_cross_field_checks() -> None:
     with pytest.raises(ValidationError):
         SimulationMetrics(success_rate=0.5, mean_detour_km=1, mean_wait_minutes=1,
                           failed_count=2, vehicle_count=1)
+
+
+def test_fixture_hash_must_be_lowercase_sha256() -> None:
+    valid_hash = "a" * 64
+    result = SimulationResult.model_validate({
+        "scenario": "normal", "seed": 1, "strategy": "nearest", "model_version": "v1",
+        "metrics": {"success_rate": 1, "mean_detour_km": 0, "mean_wait_minutes": 0,
+                    "failed_count": 0, "vehicle_count": 1}, "fixture_hash": valid_hash,
+    })
+    assert result.fixture_hash == valid_hash
+    with pytest.raises(ValidationError):
+        DataManifest.model_validate({
+            "fixture_hash": "A" * 64, "data_version": "v1", "scenario": "normal",
+            "seed": 1, "counts": {}, "generated_at": "2026-10-13T16:00:00+07:00",
+            "data_type": "simulated",
+        })

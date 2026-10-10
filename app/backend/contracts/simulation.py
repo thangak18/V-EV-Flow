@@ -1,10 +1,13 @@
 from datetime import datetime
+from typing import Annotated
 
 from pydantic import Field, field_validator, model_validator
 
 from .common import StrictModel
 from .enums import DataType, Scenario, Strategy
 from .recommendation import Vehicle, _aware
+
+FixtureHash = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 
 
 class ScenarioConfig(StrictModel):
@@ -70,7 +73,7 @@ class SimulationResult(StrictModel):
     strategy: Strategy
     model_version: str = Field(min_length=1)
     metrics: SimulationMetrics
-    fixture_hash: str = Field(min_length=1)
+    fixture_hash: FixtureHash
     contract_version: str = "0.1.0"
 
 
@@ -93,7 +96,7 @@ class FixtureBundle(StrictModel):
 
 
 class DataManifest(StrictModel):
-    fixture_hash: str = Field(min_length=1)
+    fixture_hash: FixtureHash
     contract_version: str = "0.1.0"
     data_version: str = Field(min_length=1)
     scenario: Scenario
