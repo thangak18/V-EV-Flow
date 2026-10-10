@@ -25,7 +25,7 @@ Chỉ số: tỷ lệ có cổng ngay lúc đến, km đi vòng, thời gian ch�
 ## Components dự kiến
 
 ```text
-web/src/
+app/frontend/src/
   components/MapView.jsx
   components/StationCard.jsx
   components/ProbabilityBadge.jsx

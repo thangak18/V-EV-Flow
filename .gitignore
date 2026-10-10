@@ -15,17 +15,12 @@ venv/
 node_modules/
 dist/
 coverage/
-# Generated artifacts and partner data (keep README files)
-data/generated/*
-!data/generated/README.md
-data/cache/*
-!data/cache/README.md
-data/results/*
-!data/results/README.md
-data/private/*
-!data/private/README.md
-ml/artifacts/*
-!ml/artifacts/README.md
+# Generated artifacts and partner data
+app/backend/modules/station_data/generated/*
+app/backend/modules/station_data/private/*
+app/backend/modules/simulation/results/*
+app/backend/modules/prediction/artifacts/*
+app/backend/infrastructure/cache/*
 *.parquet
 *.joblib
 *.pkl

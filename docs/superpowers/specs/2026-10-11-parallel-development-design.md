@@ -44,7 +44,7 @@ Microservices are rejected for the hackathon because independent deployment, net
 └── Makefile
 ```
 
-The current root `api/`, `sim/`, `ml/`, `web/`, and `data/` directories are initial placeholders, not a second runtime layout. Phase 0 moves their useful guidance into the matching `app/` specs and removes the empty duplicate structure. Proposal documents remain at the repository root.
+The original root `api/`, `sim/`, `ml/`, `web/`, and `data/` placeholders were removed after their guidance moved into the matching `app/` specs. They must not be recreated as a second runtime layout. Proposal documents remain at the repository root.
 
 ## Ownership and Module Boundaries
 

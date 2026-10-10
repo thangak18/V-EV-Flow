@@ -10,7 +10,7 @@ A dedicated foundation agent may implement the work. Kiên acts as integrator be
 
 ## Required Deliverables
 
-- Replace the duplicate root module placeholders with the approved `app/backend` and `app/frontend` modular-monolith layout.
+- Confirm the obsolete root module placeholders remain absent and build only in the approved `app/backend` and `app/frontend` modular-monolith layout.
 - Add scoped `AGENTS.md` instructions that point agents to the existing module `SPEC.md` files without duplicating them.
 - Add Python 3.11 project metadata, frozen dependency lock, Node package/lock files, formatter/linter/test configuration, and canonical Make targets.
 - Implement strict shared Pydantic DTOs, enums, errors, and ports matching the approved data/API contracts.

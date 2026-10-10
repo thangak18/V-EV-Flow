@@ -2,7 +2,7 @@
 
 Dự báo và điều phối nhu cầu sạc xe điện trên hành lang cao tốc. Dự án hackathon của nhóm 4 người, hướng đến một lớp ứng dụng thông minh có thể tích hợp vào VETC Trạm sạc / Vmap sau giai đoạn demo.
 
-**Trạng thái: repo sơ khai gồm tài liệu và khung thư mục. Chưa có backend, model, simulator hoặc giao diện chạy được.** Các API, màn hình và lệnh trong tài liệu là mục tiêu triển khai; số ví dụ không phải kết quả đo.
+**Trạng thái: repo sơ khai gồm tài liệu và bộ specification cho modular monolith. Chưa có backend, model, simulator hoặc giao diện chạy được.** Các API, màn hình và lệnh trong tài liệu là mục tiêu triển khai; số ví dụ không phải kết quả đo.
 
 ## Quyết định đã chốt
 
@@ -36,15 +36,19 @@ V-EV-Flow/
 ├── TEAM_WORK_PLAN.md
 ├── CONTRIBUTING.md
 ├── .env.example
-├── data/        # Trạm, trạng thái, kịch bản, xe và cache
-├── sim/         # Simulator và bộ chạy 100 xe — A
-├── ml/          # Feature, train, inference, evaluation — B
-├── api/         # FastAPI, Goong client, recommend/allocation — C
-├── web/         # React + Vite, Driver/Operator — D
-└── docs/        # Các hợp đồng và bản kế hoạch tham chiếu
+├── .github/     # Specification cho CI/CD và chính sách PR
+├── app/
+│   ├── backend/
+│   │   ├── contracts/       # DTO, ports và OpenAPI dùng chung
+│   │   ├── modules/         # Station data, simulation, prediction, recommendation
+│   │   ├── infrastructure/  # Adapter mock/file/real và routing
+│   │   └── api/             # FastAPI và composition root
+│   └── frontend/            # React + Vite Driver/Operator
+├── deploy/      # Specification đóng gói demo
+└── docs/        # Kiến trúc, contract, specs và kế hoạch
 ```
 
-`schemas.py` dùng chung Pydantic sẽ được C tạo ở root khi chốt hợp đồng ngày đầu; các file README trong từng module hướng dẫn đầu ra dự kiến. Đây là khung thư mục, chưa phải cấu trúc code đã triển khai.
+`app/` hiện chỉ chứa `SPEC.md`, chưa phải code đã triển khai. Phase 0 sẽ tạo Pydantic contracts, OpenAPI, dependency injection, mock vertical slice và CI trước khi bốn nhánh bắt đầu. Xem [master design](docs/superpowers/specs/2026-10-11-parallel-development-design.md) và [Phase 0 spec](docs/superpowers/specs/2026-10-11-phase-0-foundation-spec.md).
 
 ## Bắt đầu cùng nhóm
 
@@ -54,6 +58,6 @@ cd V-EV-Flow
 cp .env.example .env
 ```
 
-Repo private nên thành viên cần được cấp quyền trước khi clone. Không có bước chạy ứng dụng ở commit đầu này. Ngày đầu chốt schema/API, A+B tạo dữ liệu v0, C dựng mock API, D dùng mock để dựng bản đồ. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế vào README module.
+Repo private nên thành viên cần được cấp quyền trước khi clone. Chưa có bước chạy ứng dụng. Một foundation agent phải triển khai và merge Phase 0 trước; sau đó Bảo/Thắng/Kiên/Tú tạo nhánh từ cùng merge commit. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế trong tài liệu module.
 
 Proposal và kế hoạch mới do nhóm có sẵn được giữ nguyên ở root. Kế hoạch 7 ngày ban đầu được lưu tại [docs/reference](docs/reference/README.md). Khi có khác biệt, dùng bộ tài liệu triển khai hiện tại ở README này; lịch BTC và dữ liệu đối tác vẫn cần nhóm xác nhận.

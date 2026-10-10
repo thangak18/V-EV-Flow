@@ -1,6 +1,6 @@
 # API contract v0 — mục tiêu triển khai
 
-**Chưa có endpoint chạy ở commit này.** C hiện thực Pydantic ở `schemas.py`, FastAPI và mock responses từ tài liệu này. Prefix dự kiến `/api`; bảng dưới ghi đường dẫn tương đối. Thời gian `+07:00`, xác suất 0–1, tọa độ object `{lat,lng}`. Model/data/scenario version cần theo kết quả để tái lập.
+**Chưa có endpoint chạy ở commit này.** Phase 0 hiện thực Pydantic trong `app/backend/contracts`, sinh `openapi.yaml`, tạo FastAPI mock và examples từ tài liệu này. Prefix dự kiến `/api`; bảng dưới ghi đường dẫn tương đối. Thời gian `+07:00`, xác suất 0–1, tọa độ object `{lat,lng}`. Model/data/scenario version cần theo kết quả để tái lập.
 
 | Method | Path | Ưu tiên | Chức năng |
 | --- | --- | --- | --- |
