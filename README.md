@@ -61,7 +61,7 @@ cp .env.example .env
 
 Repo private nên thành viên cần được cấp quyền trước khi clone. Foundation agent phải được review và merge trước; sau đó Bảo/Thắng/Kiên/Tú tạo nhánh từ đúng merge commit được ghi trong runbook. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế trong tài liệu module.
 
-## Lệnh đã xác minh
+## Lệnh canonical và trạng thái xác minh
 
 Chạy từ root repo sau khi đã cài `uv` và Node/npm. `make setup` đồng bộ lockfile; các gate còn lại là lệnh canonical dùng trong PR và CI:
 
@@ -73,6 +73,8 @@ make contract-check
 make smoke
 make ci
 ```
+
+`make setup`, contract checks, backend/frontend tests, smoke, Ruff, and Pyright have been verified in this checkout. The full `make ci` gate is not green yet: `uv run lint-imports` currently reports `Module 'app.backend.modules' does not exist` because that package is created by the next foundation/domain task. Do not merge Foundation or create owner branches until rerunning `make ci` after package creation produces exit code 0 and a clean `git status --short`; record that output in the handoff runbook.
 
 Mock backend và frontend có thể chạy độc lập để kiểm tra vertical slice:
 

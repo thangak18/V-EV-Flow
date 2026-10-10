@@ -33,7 +33,17 @@ make ci
 git status --short
 ```
 
-`make setup` installs the frozen Python and frontend dependencies. `make ci` runs `make lint`, `make test`, `make contract-check`, `make smoke`, and security checks. The expected result is exit code 0 for every command and no output from `git status --short`. The repository must also retain no obsolete runtime roots:
+`make setup` installs the frozen Python and frontend dependencies. `make ci` runs `make lint`, `make test`, `make contract-check`, `make smoke`, and security checks. The handoff gate is exit code 0 for every command and no output from `git status --short`; that is a merge condition, not a claim about this intermediate checkout. In the current checkout, `make ci` passes Ruff format/check and Pyright, then stops at `uv run lint-imports` with `Module 'app.backend.modules' does not exist`. The package is pending creation in the next foundation/domain task. Rerun the exact command below after that package exists and attach the complete green output to the Foundation PR:
+
+```text
+make ci
+...
+uv run lint-imports
+Module 'app.backend.modules' does not exist.
+make: *** [Makefile:16: lint] Error 1
+```
+
+The repository must also retain no obsolete runtime roots:
 
 ```bash
 test ! -e api && test ! -e sim && test ! -e ml && test ! -e web && test ! -e data
