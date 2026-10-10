@@ -27,3 +27,9 @@ Follow-up verification:
 - `uv run pytest -q` — 31 passed
 - `uv run ruff check app/backend/api app/backend/tests/api` — clean
 - `uv run pyright app/backend/api app/backend/tests/api` — 0 errors
+
+Round 2 removes Phase 0 ranking/allocation from the recommendation flow. The endpoint
+now returns an explicitly labelled mock placeholder with no selected plans. The
+in-memory store uses a shared lock for reads, writes, reset, and atomic creation.
+
+Verification: `uv run pytest -q` (31 passed), Ruff clean, Pyright 0 errors.

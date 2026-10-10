@@ -13,8 +13,12 @@ def recommendation_payload(request_id: str = "demo-001") -> dict[str, object]:
         "observed_at": "2026-10-13T16:00:00+07:00",
         "depart_time": "2026-10-13T16:00:00+07:00",
         "scenario": "normal",
-        "vehicle": {"soc_pct": 20, "battery_kwh": 60,
-                    "consumption_kwh_per_km": 0.18, "connector_type": "CCS2"},
+        "vehicle": {
+            "soc_pct": 20,
+            "battery_kwh": 60,
+            "consumption_kwh_per_km": 0.18,
+            "connector_type": "CCS2",
+        },
     }
 
 
@@ -25,11 +29,16 @@ def test_station_endpoint_labels_mock_data() -> None:
 
 
 def test_unknown_station_is_404() -> None:
-    response = TestClient(create_app()).post("/api/predict", json={
-        "station_id": "UNKNOWN", "observed_at": "2026-10-13T16:00:00+07:00",
-        "eta": "2026-10-13T16:40:00+07:00", "connector_type": "CCS2",
-        "scenario": "normal"
-    })
+    response = TestClient(create_app()).post(
+        "/api/predict",
+        json={
+            "station_id": "UNKNOWN",
+            "observed_at": "2026-10-13T16:00:00+07:00",
+            "eta": "2026-10-13T16:40:00+07:00",
+            "connector_type": "CCS2",
+            "scenario": "normal",
+        },
+    )
     assert response.status_code == 404
     assert response.json()["code"] == "STATION_NOT_FOUND"
 
@@ -56,7 +65,10 @@ def test_invalid_prediction_is_422() -> None:
 
 def test_recommendation_conflict_reset_and_success() -> None:
     client = TestClient(create_app())
-    assert client.post("/api/recommend", json=recommendation_payload()).status_code == 200
+    result = client.post("/api/recommend", json=recommendation_payload())
+    assert result.status_code == 200
+    assert result.json()["primary"] is None
+    assert result.json()["allocation_method"] == "phase0_placeholder"
     changed = recommendation_payload()
     changed["scenario"] = "tet"
     assert client.post("/api/recommend", json=changed).status_code == 409
