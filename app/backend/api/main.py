@@ -14,7 +14,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.container = container
     app.add_exception_handler(DomainError, domain_error_handler)
     app.add_middleware(
-        CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+        CORSMiddleware,
+        allow_origins=selected.cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     from app.backend.api.routes.prediction import router as prediction_router

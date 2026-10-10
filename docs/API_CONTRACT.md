@@ -1,6 +1,6 @@
 # API contract v0 — mục tiêu triển khai
 
-**Chưa có endpoint chạy ở commit này.** Phase 0 hiện thực Pydantic trong `app/backend/contracts`, sinh `openapi.yaml`, tạo FastAPI mock và examples từ tài liệu này. Prefix dự kiến `/api`; bảng dưới ghi đường dẫn tương đối. Thời gian `+07:00`, xác suất 0–1, tọa độ object `{lat,lng}`. Model/data/scenario version cần theo kết quả để tái lập.
+Phase 0 provides a running FastAPI mock for the routes below via `uv run uvicorn app.backend.api.main:create_app --factory`; verify `/api/health`. Pydantic contracts in `app/backend/contracts` generate `openapi.yaml`; examples remain mock/simulated and are not production accuracy claims. Prefix is `/api`; table paths are relative. Time is `+07:00`, probability 0–1, coordinates object `{lat,lng}`. Model/data/scenario versions must accompany results for reproducibility. The full CI handoff still awaits import-linter passing after domain package completion; see the [handoff runbook](runbooks/phase-0-handoff.md).
 
 | Method | Path | Ưu tiên | Chức năng |
 | --- | --- | --- | --- |

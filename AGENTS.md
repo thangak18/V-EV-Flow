@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-V-EV Flow is currently a specification-first scaffold; no application code or dependency manifests exist yet. All future runtime source belongs under `app/`:
+V-EV Flow is a specification-first scaffold with a Phase 0 mock vertical slice and frozen dependency manifests. All runtime source belongs under `app/`:
 
 - `app/backend/contracts/`: shared DTOs, ports, errors, and generated OpenAPI.
 - `app/backend/modules/`: station data/simulation (Bảo), prediction (Thắng), and recommendation (Kiên).
@@ -14,13 +14,13 @@ Read `README.md`, `app/SPEC.md`, the nearest module `SPEC.md`, and the relevant 
 
 ## Build, Test, and Development Commands
 
-The initial commit has no runnable build or test commands. Prepare local configuration with:
+Prepare local configuration with:
 
 ```bash
 cp .env.example .env
 ```
 
-Never commit the resulting `.env`. Phase 0 must establish frozen lockfiles and canonical Make targets before feature branches begin. Document commands as runnable only after verification.
+Never commit the resulting `.env`. Canonical checks are `make setup`, `make lint`, `make test`, `make contract-check`, `make smoke`, and `make ci`; `make setup` also installs Chromium for Playwright. The current `make ci` reaches Ruff/Pyright and then awaits the `app/backend/modules` package for import-linter; do not handoff until a fresh run exits 0 with clean status.
 
 ## Coding Style & Naming Conventions
 
@@ -28,7 +28,7 @@ Use Python 3.11+ in the backend: four-space indentation, type hints, `snake_case
 
 ## Testing Guidelines
 
-No test framework is installed yet. Phase 0 will add contract, architecture, unit, integration, and smoke tests with a 75% aggregate coverage gate. Test adapter conformance, simulator seeds, temporal ML splits, API failures, and frontend loading/error/empty states. PRs record exact commands and results.
+Phase 0 provides contract, architecture, unit, integration, and smoke tests with a 75% aggregate coverage gate. Test adapter conformance, simulator seeds, temporal ML splits, API failures, and frontend loading/error/empty states. PRs record exact commands and results.
 
 ## Commit & Pull Request Guidelines
 

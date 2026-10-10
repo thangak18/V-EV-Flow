@@ -3,6 +3,7 @@
 setup:
 	uv sync --frozen
 	npm --prefix app/frontend ci
+	npm --prefix app/frontend exec playwright install chromium
 
 format:
 	uv run ruff format app
@@ -31,7 +32,7 @@ smoke:
 	npm --prefix app/frontend run test:e2e
 
 security:
-	uv run detect-secrets scan --baseline .secrets.baseline
+	baseline=$$(mktemp); trap 'rm -f "$$baseline"' EXIT; cp .secrets.baseline "$$baseline"; uv run detect-secrets scan --baseline "$$baseline"
 	uv run pip-audit
 	npm --prefix app/frontend audit --audit-level=high
 

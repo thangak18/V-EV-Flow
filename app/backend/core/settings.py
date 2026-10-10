@@ -2,10 +2,10 @@
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BackendKind = Literal["mock", "file", "real"]
 PredictorKind = Literal["fake", "model"]
@@ -24,7 +24,17 @@ class Settings(BaseSettings):
     model_dir: Path = Path("app/backend/modules/prediction/artifacts")
     demo_seed: int = 42
     min_arrival_soc_pct: float = 10.0
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:5173"]
+    )
     goong_rest_api_key: str | None = Field(default=None, repr=False)
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
 
     @model_validator(mode="after")
     def validate_selected_backends(self) -> "Settings":

@@ -28,6 +28,18 @@ def test_station_endpoint_labels_mock_data() -> None:
     assert response.json()["data_type"] == "mock"
 
 
+def test_cors_uses_configured_origins() -> None:
+    settings = Settings(cors_origins=["https://demo.example"])
+    response = TestClient(create_app(settings)).options(
+        "/api/health",
+        headers={
+            "Origin": "https://demo.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert response.headers["access-control-allow-origin"] == "https://demo.example"
+
+
 def test_unknown_station_is_404() -> None:
     response = TestClient(create_app()).post(
         "/api/predict",

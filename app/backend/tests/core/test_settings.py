@@ -10,6 +10,15 @@ def test_mock_mode_needs_no_external_secret() -> None:
     assert settings.demo_seed == 42
 
 
+def test_cors_origins_default_is_local_frontend() -> None:
+    assert Settings().cors_origins == ["http://localhost:5173"]
+
+
+def test_cors_origins_accepts_csv_environment_value(monkeypatch) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", "https://demo.example, https://ops.example ")
+    assert Settings().cors_origins == ["https://demo.example", "https://ops.example"]
+
+
 def test_goong_mode_requires_rest_key() -> None:
     try:
         Settings(route_backend="goong", goong_rest_api_key=None)
