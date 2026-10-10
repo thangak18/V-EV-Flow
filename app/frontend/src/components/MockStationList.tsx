@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ApiClient, Station } from "../services/api";
 
@@ -9,14 +9,17 @@ export function MockStationList({ client }: Props) {
   const [status, setStatus] = useState<Status>("loading");
   const [stations, setStations] = useState<Station[]>([]);
   const [error, setError] = useState("Unable to load stations.");
+  const controllerRef = useRef<AbortController | null>(null);
 
   const loadStations = useCallback(() => {
+    controllerRef.current?.abort();
     const controller = new AbortController();
+    controllerRef.current = controller;
     setStatus("loading");
     setError("Unable to load stations.");
 
     client
-      .listStations()
+      .listStations(controller.signal)
       .then((response) => {
         if (controller.signal.aborted) return;
         setStations(response.stations);
@@ -33,9 +36,15 @@ export function MockStationList({ client }: Props) {
     return () => controller.abort();
   }, [client]);
 
-  // The request is the external synchronization this effect owns.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => loadStations(), [loadStations]);
+  useEffect(() => {
+    // The request is the external synchronization this effect owns.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadStations();
+    return () => {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+    };
+  }, [loadStations]);
 
   return (
     <section className="station-panel" aria-labelledby="station-list-title">

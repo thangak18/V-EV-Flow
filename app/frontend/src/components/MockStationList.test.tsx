@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
 import type { Station } from "../services/api";
@@ -62,5 +68,52 @@ describe("MockStationList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText("S001")).toBeInTheDocument());
     expect(client.listStations).toHaveBeenCalledTimes(2);
+  });
+
+  test("aborts an old request before a replacement can update the list", async () => {
+    let resolveFirst:
+      | ((value: {
+          stations: Station[];
+          data_type: "mock";
+          source_notes: string[];
+        }) => void)
+      | undefined;
+    let firstSignal: AbortSignal | undefined;
+    const firstClient = {
+      listStations: vi.fn((signal?: AbortSignal) => {
+        firstSignal = signal;
+        return new Promise<{
+          stations: Station[];
+          data_type: "mock";
+          source_notes: string[];
+        }>((resolve) => {
+          resolveFirst = resolve;
+        });
+      }),
+    };
+    const replacementStation = {
+      ...station,
+      station_id: "S002",
+      name: "New station",
+    };
+    const replacementClient = {
+      listStations: vi.fn().mockResolvedValue({
+        stations: [replacementStation],
+        data_type: "mock",
+        source_notes: [],
+      }),
+    };
+    const view = render(<MockStationList client={firstClient} />);
+
+    view.rerender(<MockStationList client={replacementClient} />);
+    expect(firstSignal?.aborted).toBe(true);
+    resolveFirst?.({
+      stations: [station],
+      data_type: "mock",
+      source_notes: [],
+    });
+
+    expect(await within(view.container).findByText("S002")).toBeInTheDocument();
+    expect(within(view.container).queryByText("S001")).not.toBeInTheDocument();
   });
 });

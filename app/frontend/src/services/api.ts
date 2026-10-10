@@ -42,8 +42,8 @@ export class ApiClient {
     this.baseUrl = baseUrl.replace(/\/$/, "");
   }
 
-  listStations(): Promise<JsonResponse<"listStations">> {
-    return this.request("/stations");
+  listStations(signal?: AbortSignal): Promise<JsonResponse<"listStations">> {
+    return this.request("/stations", { signal });
   }
 
   predict(
@@ -78,7 +78,7 @@ export class ApiClient {
 
   private async request<T>(
     path: string,
-    options: { method?: "POST"; body?: unknown } = {},
+    options: { method?: "POST"; body?: unknown; signal?: AbortSignal } = {},
   ): Promise<T> {
     const response = await this.fetcher(`${this.baseUrl}${path}`, {
       method: options.method,
@@ -88,6 +88,7 @@ export class ApiClient {
           : { "Content-Type": "application/json" },
       body:
         options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: options.signal,
     });
     const body = await this.readBody(response);
 
