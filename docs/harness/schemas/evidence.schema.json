@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "V-EV Flow locally sealed verification evidence v2 (self-reported)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "issue",
+    "issue_hash",
+    "check",
+    "ac_ids",
+    "result",
+    "argv",
+    "cwd",
+    "started_at",
+    "finished_at",
+    "exit_code",
+    "identity",
+    "tool",
+    "environment",
+    "log_path",
+    "log_sha256",
+    "integrity"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "issue": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "issue_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "check": {
+      "enum": [
+        "setup",
+        "lint",
+        "test",
+        "build",
+        "contract-check",
+        "smoke",
+        "security",
+        "harness-check",
+        "ci",
+        "backend-lint",
+        "backend-test-suite",
+        "frontend-lint",
+        "frontend-test-suite",
+        "backend-test",
+        "frontend-test",
+        "e2e-test"
+      ]
+    },
+    "ac_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^AC-[0-9]{2,}$"
+      },
+      "uniqueItems": true
+    },
+    "result": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "BLOCKED",
+        "NOT RUN"
+      ]
+    },
+    "argv": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "cwd": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "finished_at": {
+      "type": "string"
+    },
+    "exit_code": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "identity": {
+      "type": "object",
+      "required": [
+        "head",
+        "base",
+        "branch",
+        "dirty_sha256",
+        "clean"
+      ],
+      "properties": {
+        "head": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "base": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "dirty_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "clean": {
+          "type": "boolean"
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "surface"
+      ]
+    },
+    "environment": {
+      "type": "object"
+    },
+    "log_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "log_sha256": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "value"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "hmac-sha256"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

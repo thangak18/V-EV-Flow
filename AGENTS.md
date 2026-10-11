@@ -1,37 +1,25 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+V-EV Flow is a specification-first modular monolith with a Phase 0 mock vertical slice and frozen dependencies. Runtime source, fixtures, and product tests belong under `app/`; automation belongs under `.github/`, deployment under `deploy/`, and durable specifications under `docs/`.
 
-V-EV Flow is a specification-first scaffold with a Phase 0 mock vertical slice and frozen dependency manifests. All runtime source belongs under `app/`:
+## Read before editing
 
-- `app/backend/contracts/`: shared DTOs, ports, errors, and generated OpenAPI.
-- `app/backend/modules/`: station data/simulation (Bảo), prediction (Thắng), and recommendation (Kiên).
-- `app/backend/infrastructure/` and `app/backend/api/`: replaceable adapters, FastAPI, and dependency composition (Kiên).
-- `app/frontend/`: React + Vite Driver and Operator interfaces (Tú).
-- `.github/`, `deploy/`, and `docs/`: automation, demo packaging, specifications, and plans.
+Read `README.md`, `app/SPEC.md`, every `AGENTS.md` applying to the paths you will change, the nearest module `SPEC.md`, and the assigned owner plan. Starting at the root does not guarantee that subtree instructions have been loaded. Shared interfaces are `app/backend/contracts`, generated OpenAPI/types, `docs/DATA_CONTRACT.md`, and `docs/API_CONTRACT.md`.
 
-Read `README.md`, `app/SPEC.md`, the nearest module `SPEC.md`, and the relevant implementation plan. Treat `app/backend/contracts`, generated OpenAPI, `docs/DATA_CONTRACT.md`, and `docs/API_CONTRACT.md` as shared interfaces.
+For issue work, read [harness workflow](docs/harness/workflow.md). [Harness policy](docs/harness/policy.json) is the single source for owner paths, branch names, protected files, Foundation origin, and gates. Do not duplicate or weaken it in tool adapters. Codex and Claude use the same workflow; personal plugins are optional. [Run one issue](docs/harness/RUN_AN_ISSUE.md) gives the human walkthrough; [.agents/README.md](.agents/README.md) identifies canonical skill, role and hook sources. Never hand-edit generated tool assets.
 
-## Build, Test, and Development Commands
+## Build and verification
 
-Prepare local configuration with:
+Copy `.env.example` to `.env` locally; never commit `.env`. Install frozen dependencies with `make setup`. Makefile defines checks: `lint`, `test`, `build`, `contract-check`, `smoke`, `security`, `harness-check`, and aggregate `ci`. The harness `verify --issue N` selects scoped Make gates for intermediate feedback; `verify --issue N --full` records fresh `make ci`. Record executed commands, results, tested HEAD/base and logs; use `NOT RUN` or `BLOCKED` for checks without successful execution. A completed handoff requires fresh `make ci` exit 0 on a clean revision; a partial checkpoint must be labeled partial.
 
-```bash
-cp .env.example .env
-```
+## Style and boundaries
 
-Never commit the resulting `.env`. Canonical checks are `make setup`, `make lint`, `make test`, `make contract-check`, `make smoke`, and `make ci`; `make setup` also installs Chromium for Playwright. Handoff requires a fresh `make ci` exit 0 with clean status.
+Python 3.11+: four spaces, type hints, `snake_case` functions/modules, `PascalCase` classes. Frontend: two spaces, `PascalCase` components, `useCamelCase` hooks. Modules import shared contracts rather than another module's internals. Do not hand-edit generated OpenAPI or TypeScript types. Test meaningful success/failure behavior, adapter conformance, seeds, temporal splits, API failures, and UI loading/error/empty states; preserve the 75% aggregate coverage gate.
 
-## Coding Style & Naming Conventions
+## Collaboration and review
 
-Use Python 3.11+ in the backend: four-space indentation, type hints, `snake_case` functions/modules, and `PascalCase` classes. Frontend uses two-space indentation, `PascalCase` components, and `useCamelCase` hooks. Modules import shared contracts, not another module's internals. Do not hand-edit generated OpenAPI or TypeScript types.
+Keep four owner branches: `feat/data-simulator`, `feat/ml-predict`, `feat/recommend-api`, `feat/web-map`, originating at the accepted Foundation SHA in policy. One issue and one writer per lane at a time. Harness bootstrap uses `codex/harness-bootstrap`; subsequent tooling/contract work uses policy branches and separate PRs. Integrate prerequisites from `main` by merge; do not force-push or reset another person's work.
 
-## Testing Guidelines
+Use concise imperative commit subjects and small PRs. Include owner, AC evidence, scope, contract impact, data origin, limitations, rollback, and screenshots for UI. Contract changes update models, examples, generated artifacts, tests, and docs in one separate reviewed PR. Humans assign issues, start sessions, independently review, and decide merge; never fabricate approval. Never commit credentials, partner data, generated histories, caches, model binaries, or local `.harness/` logs.
 
-Phase 0 provides contract, architecture, unit, integration, and smoke tests with a 75% aggregate coverage gate. Test adapter conformance, simulator seeds, temporal ML splits, API failures, and frontend loading/error/empty states. PRs record exact commands and results.
-
-## Commit & Pull Request Guidelines
-
-Use concise, imperative commit subjects. Only create `feat/data-simulator`, `feat/ml-predict`, `feat/recommend-api`, and `feat/web-map` from the green Phase 0 merge commit.
-
-Keep PRs small. Include owner, scope, contract impact, verification, data origin, limitations, rollback, and UI screenshots. Contract changes use a separate PR and update models, examples, OpenAPI, generated frontend types, tests, and docs together. Never commit partner data, API keys, generated histories, caches, or model binaries.
+Canonical skills route to the shared workflow. Start/ship require a human request for a specific assigned issue. Review/QA roles are read-only and advisory; agent verdicts do not count as human approval. Hooks provide context and a supplementary heuristic guard; unavailable hooks or named roles use the documented CLI/prompt fallback and never replace scope, evidence or CI gates.

@@ -1,13 +1,23 @@
 # Làm việc chung
 
-- `main` là bản tích hợp. Chỉ tạo bốn nhánh sau khi Phase 0 Foundation đã xanh và merge: Bảo `feat/data-simulator`, Thắng `feat/ml-predict`, Kiên `feat/recommend-api`, Tú `feat/web-map`.
-- Task ghi owner, đầu ra, dependency và tiêu chí done; PR nhỏ có thay đổi, cách chạy/kiểm tra, giới hạn. Gộp cuối ngày khi demo chung chạy.
-- A↔B review dữ liệu/nhãn/evaluation; C↔D review contract/UI. C làm integrator, cả nhóm hỗ trợ sửa lỗi.
-- Thay contract phải qua PR riêng, cập nhật `app/backend/contracts`, OpenAPI sinh tự động, examples/tests, `docs/DATA_CONTRACT.md`, `docs/API_CONTRACT.md` và thông báo trước khi sửa consumer.
-- Họp 15 phút mỗi sáng, chốt tính năng tối 14/10. Ý tưởng mới chuyển backlog.
-- Không commit `.env`, key, cache thật, model binary/lịch sử sinh lớn; dữ liệu đối tác cần rõ quyền dùng. Chỉ đưa sample nhỏ có nguồn và nhãn giả định.
-- Phase 0 đã khóa runtime/dependency versions, lockfiles và lệnh chuẩn. Chỉ dùng các lệnh sau trong PR: `make setup`, `make lint`, `make test`, `make contract-check`, `make smoke`, và `make ci`.
-- Mock start commands đã xác minh tại local: `uv run uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port 8000` và `npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173`. Backend có `/api/health`; frontend chạy tại `/`.
-- OpenAPI là artifact sinh: sửa Pydantic/FastAPI contracts trong PR contract, chạy `make contract-check`, rồi commit `app/backend/contracts/openapi.yaml` cùng `app/frontend/src/types/api.generated.ts` nếu thay đổi. Không hand-edit hai file sinh.
-- PR Foundation phải đính kèm output đầy đủ của `make ci`, bằng chứng OpenAPI/type generation, ảnh mock UI, limitations và checklist branch protection. Không tạo nhánh owner trước khi PR xanh, được approve và merge; xem [runbook handoff](docs/runbooks/phase-0-handoff.md).
-- Mỗi agent đọc `app/SPEC.md` và `SPEC.md` gần module nhất. Khi hoàn thành, cập nhật tài liệu module bằng lệnh thực đã chạy; không ghi việc dự kiến như chức năng đã hoàn thành.
+Đọc [harness workflow](docs/harness/workflow.md) khi nhận issue. [Policy](docs/harness/policy.json) quản lý đường dẫn, nhánh và gate; issue quản lý mục tiêu/AC/dependency; handoff quản lý checkpoint; PR/CI giữ bằng chứng trên revision cuối.
+
+[Run one issue](docs/harness/RUN_AN_ISSUE.md) hướng dẫn Codex/Claude theo từng bước.
+Canonical skills, read-only roles và hooks nằm trong `.agents/`; chỉ assigned
+tooling task sửa source rồi chạy `python3 .github/scripts/harness.py sync` và
+`sync --check`. Generated `.claude`/`.codex` assets không sửa tay. Stage skills
+không tự giao issue/tạo nhánh/merge; `project-init` chỉ onboarding.
+
+- `main` là bản tích hợp; giữ bốn nhánh owner theo policy. Chỉ mở lane sau khi reviewer độc lập chấp nhận Foundation snapshot trong [runbook](docs/runbooks/phase-0-handoff.md). Một issue và một người ghi mỗi lane; integrator điều phối các lane cùng lúc.
+- A↔B review dữ liệu/nhãn/evaluation; C↔D review API/UI. Kiên là integrator dự kiến; phải xác nhận GitHub handles thực trước khi ghi approval.
+- Harness bootstrap và tooling/contract dùng nhánh riêng theo policy. Shared contract changes cập nhật DTO, examples, OpenAPI/types, tests/docs và consumer impact cùng một PR; dependency updates là tooling prerequisite, không nằm trong feature PR.
+- Sau squash merge, owner merge `main` để tích hợp prerequisites; không force-push hoặc tự reset thay đổi người khác.
+- Dùng `make setup` để cài frozen locks, các gate Makefile để kiểm chứng. `make ci` phải chạy mới trên commit sạch trước handoff hoàn tất. Ghi `PASS`, `FAIL`, `BLOCKED`, `NOT RUN` trung thực, cùng HEAD/base/lệnh/log.
+- `harness.py verify --issue N` chọn scoped Make checks cho feedback; `--full` ghi fresh `make ci`. Mỗi AC vẫn cần assertion/artifact, scoped PASS không thay final gate. Optional review/QA roles dùng canonical prompt fallback nếu runtime thiếu role; agent verdict không thay non-author human review.
+- Generate OpenAPI bằng `uv run python -m app.backend.api.generate_openapi`, types bằng `npm --prefix app/frontend run generate:api` trong contract PR. `make contract-check` kiểm tra OpenAPI bằng `--check` và drift; không dùng nó thay lệnh sinh OpenAPI.
+- Commit code + checkpoint trước gate cuối, đưa kết quả gate cuối vào PR/ignored evidence; không commit log rồi giả sử bằng chứng còn đúng cho SHA mới.
+- Review và merge thủ công trong pilot: CI xanh trên đúng head, base hiện tại, ít nhất một non-author approval, conversations resolved, scope/AC evidence đầy đủ. [Protection runbook](docs/runbooks/branch-protection.md) ghi rõ trạng thái cưỡng chế thực tế.
+- Không commit `.env`, key, cache thật, model binary/lịch sử lớn, dữ liệu đối tác hoặc `.harness/`; fixture nhỏ cần nguồn và nhãn giả định.
+- Giới hạn sửa cùng một lỗi và checkpoint theo workflow; hết quota không tự chuyển sang API trả phí. Cập nhật docs bằng hành vi và lệnh đã chạy, ghi rõ limitations.
+
+Lịch nhóm: họp 15 phút mỗi sáng; chốt tính năng tối 14/10/2026, ý tưởng mới chuyển backlog. Lịch BTC cần nhóm xác nhận.
