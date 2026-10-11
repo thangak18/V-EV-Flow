@@ -4,16 +4,16 @@
 
 | Lớp | Lựa chọn | Ghi chú |
 | --- | --- | --- |
-| Python | 3.11+ | Chọn cùng một minor version cho A/B/C; dependencies sẽ khóa khi khởi tạo code |
+| Python | 3.11+ | Chọn cùng một minor version cho A/B/C; CI dùng Python 3.11; runtime/dev dependencies đã khóa trong `uv.lock` |
 | Simulator | NumPy, pandas | Bước 5 phút; SimPy chỉ bổ sung nếu thực sự cần |
 | ML | LightGBM, scikit-learn, joblib | Isotonic hoặc Platt trên calibration split riêng; SHAP P1 |
 | API | FastAPI, Pydantic | Contracts ở `app/backend/contracts`; OpenAPI sinh tự động làm HTTP contract cho frontend |
 | HTTP | Client Goong riêng | Cache ra file, timeout, lỗi/fallback rõ; kiểm tra chính sách cache/credit với mentor |
 | Dữ liệu | JSON/CSV, Parquet, YAML | Cần pyarrow cho Parquet, PyYAML cho scenarios; không database server |
-| Web | React + Vite + Goong Maps JS | D xác nhận SDK/tên gói/cách tích hợp theo docs chính thức khi cài |
+| Web | React + Vite + Goong Maps JS | React/Vite đã khóa; map SDK mới cần xác minh và tooling prerequisite riêng |
 | Demo | Chạy laptop | Docker Compose tùy chọn sau P0; video dự phòng |
 
-Bảng này là quyết định thiết kế, chưa có lockfile/dependencies hoặc SDK đã cài ở commit sơ khai.
+Foundation hiện có mock backend/frontend và frozen `uv.lock`/npm lockfile. Simulator, model và Goong adapter hoàn chỉnh vẫn là kế hoạch; kiểm tra dependency thực trong manifests, không suy ra SDK đã tích hợp từ bảng thiết kế.
 
 Backend dùng modular monolith trong `app/backend`: các module domain chỉ giao tiếp qua contracts/ports, infrastructure cung cấp adapter và `api` là composition root. Frontend nằm ở `app/frontend` và chỉ dùng OpenAPI đã commit. Xem design mới trong `docs/superpowers/specs`.
 
@@ -50,4 +50,4 @@ Local API/model/simulator có thể chạy offline; bản đồ, tiles và route
 
 ## Môi trường
 
-`.env.example` chỉ là mẫu, chưa có code đọc biến. Sau khi thêm code, cập nhật lệnh cài/chạy đã kiểm tra vào tài liệu module. Không đưa key, lịch sử sinh lớn, model binary hoặc dữ liệu đối tác vào Git ngoài phạm vi được phép chia sẻ.
+Backend `app/backend/core/settings.py` đọc `.env` với defaults/validation; frontend đọc Vite variables tại build/dev từ environment hoặc `app/frontend/.env` (root `.env` không tự nạp vào Vite). Backend fake/mock là baseline; file/model/Goong capability không được coi là hoàn tất chỉ vì settings có lựa chọn. `.env.example` giữ cấu hình tương ứng; cập nhật lệnh thực đã chạy trong tài liệu module. Không đưa key, lịch sử sinh lớn, model binary hoặc dữ liệu đối tác vào Git ngoài phạm vi được phép chia sẻ.

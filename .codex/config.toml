@@ -1,0 +1,7 @@
+# Shared lifecycle hooks only. Trust remains a personal decision.
+[features]
+hooks = true
+
+# Keep review/QA usage bounded; custom profiles inherit the member's model.
+[agents]
+max_concurrent_threads_per_session = 1

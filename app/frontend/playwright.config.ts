@@ -5,8 +5,8 @@ export default defineConfig({
   fullyParallel: true,
   use: { baseURL: "http://127.0.0.1:4173", trace: "on-first-retry" },
   webServer: [
-    { command: "cd ../.. && uv run uvicorn app.backend.api.main:create_app --factory --port 8000", url: "http://127.0.0.1:8000/api/health", reuseExistingServer: true, timeout: 120_000 },
-    { command: "npm run dev -- --host 127.0.0.1 --port 4173", url: "http://127.0.0.1:4173", reuseExistingServer: true, timeout: 120_000 },
+    { command: "cd ../.. && uv run uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port 8000", url: "http://127.0.0.1:8000/api/health", reuseExistingServer: false, timeout: 120_000 },
+    { command: "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort", url: "http://127.0.0.1:4173", reuseExistingServer: false, timeout: 120_000 },
   ],
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });
