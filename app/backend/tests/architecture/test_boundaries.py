@@ -42,13 +42,13 @@ def _imported_modules(tree: ast.AST, package: str | None = None) -> set[str]:
                 )
             imported = node.module
             if node.level and package:
-                base = package.split(".")[: -node.level]
+                base = _relative_import_base(package, node.level)
                 imported = ".".join(base + [node.module])
             if imported.startswith("app.backend.modules"):
                 modules.add(imported)
                 modules.update(f"{imported}.{alias.name}" for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.level and package:
-            base = package.split(".")[: -node.level]
+            base = _relative_import_base(package, node.level)
             imported = ".".join(base + ([node.module] if node.module else []))
             if imported.startswith("app.backend.modules"):
                 modules.add(imported)
@@ -71,6 +71,20 @@ def _imported_modules(tree: ast.AST, package: str | None = None) -> set[str]:
             if module is not None:
                 modules.add(module)
     return modules
+
+
+def _relative_import_base(package: str, level: int) -> list[str]:
+    return package.split(".")[: len(package.split(".")) - (level - 1)]
+
+
+def _package_for_module_file(path: Path) -> str:
+    relative = path.relative_to("app").with_suffix("")
+    parts = ["app", *relative.parts]
+    if parts[-1] != "__init__":
+        parts.pop()
+    else:
+        parts.pop()
+    return ".".join(parts)
 
 
 def _forbidden_modules(modules: set[str]) -> list[str]:
@@ -129,21 +143,37 @@ def test_import_parser_resolves_direct_and_dynamic_imports(source: str) -> None:
         ("from app.backend.modules.prediction._internal import model", "prediction"),
         ("from app.backend.modules.station_data import generator", "prediction"),
         ("from ..station_data import generator", "prediction"),
+        ("from ._internal import model", "prediction"),
         ("from app.backend.modules import station_data", "prediction"),
     ],
 )
 def test_domain_import_parser_rejects_private_and_cross_domain_imports(
     source: str, source_domain: str
 ) -> None:
-    modules = _imported_modules(
-        ast.parse(source), package=f"app.backend.modules.{source_domain}.fixture"
-    )
+    modules = _imported_modules(ast.parse(source), package=f"app.backend.modules.{source_domain}")
     assert _private_or_cross_domain_imports(modules, source_domain)
+
+
+def test_module_file_package_context_resolves_relative_imports() -> None:
+    package = _package_for_module_file(Path("app/backend/modules/prediction/service.py"))
+    modules = _imported_modules(
+        ast.parse("from ..station_data import generator\nfrom ._internal import model"),
+        package=package,
+    )
+    assert _private_or_cross_domain_imports(modules, "prediction") == [
+        "app.backend.modules.prediction._internal",
+        "app.backend.modules.prediction._internal.model",
+        "app.backend.modules.station_data",
+        "app.backend.modules.station_data.generator",
+    ]
 
 
 def test_domain_files_have_no_private_or_cross_domain_imports() -> None:
     for path in Path("app/backend/modules").rglob("*.py"):
-        modules = _imported_modules(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
+        modules = _imported_modules(
+            ast.parse(path.read_text(encoding="utf-8"), filename=str(path)),
+            package=_package_for_module_file(path),
+        )
         source_domain = path.parts[path.parts.index("modules") + 1]
         violations = _private_or_cross_domain_imports(modules, source_domain)
         assert not violations, (
