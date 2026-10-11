@@ -146,10 +146,13 @@ export function DriverForm({
         <label>
           Demo time (+07:00)
           <input
+            className="input-datetime"
             type="text"
             value={demoTime}
             onChange={(event) => setDemoTime(event.target.value)}
             aria-invalid={timeInvalid}
+            autoComplete="off"
+            spellCheck={false}
           />
         </label>
       </fieldset>

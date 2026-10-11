@@ -42,10 +42,13 @@ export function ScenarioSelector({
       <label>
         Time (+07:00)
         <input
+          className="input-datetime"
           type="text"
           value={time}
           onChange={(event) => onTimeChange(event.target.value)}
           aria-invalid={timeInvalid}
+          autoComplete="off"
+          spellCheck={false}
         />
       </label>
       {timeInvalid ? (
