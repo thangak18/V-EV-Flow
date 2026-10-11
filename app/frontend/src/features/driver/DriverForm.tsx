@@ -7,6 +7,7 @@ import {
   DEFAULT_DEMO_TIME,
   type CorridorPresetId,
 } from "./corridorPresets";
+import { isNumericDraft, parseLocaleNumber } from "./numberField";
 
 type Props = {
   pending: boolean;
@@ -22,15 +23,24 @@ function samePayload(
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function onDraftNumberChange(
+  setter: (value: string) => void,
+): (event: React.ChangeEvent<HTMLInputElement>) => void {
+  return (event) => {
+    const next = event.target.value;
+    if (isNumericDraft(next)) setter(next);
+  };
+}
+
 export function DriverForm({
   pending,
   presetId,
   onPresetChange,
   onSubmit,
 }: Props) {
-  const [socPct, setSocPct] = useState(20);
-  const [batteryKwh, setBatteryKwh] = useState(60);
-  const [consumption, setConsumption] = useState(0.18);
+  const [socPct, setSocPct] = useState("20");
+  const [batteryKwh, setBatteryKwh] = useState("60");
+  const [consumption, setConsumption] = useState("0.18");
   const [connector, setConnector] = useState("CCS2");
   const [scenario, setScenario] = useState<Scenario>("normal");
   const [demoTime, setDemoTime] = useState(DEFAULT_DEMO_TIME);
@@ -40,21 +50,44 @@ export function DriverForm({
     "request_id"
   > | null>(null);
 
+  const parsedSoc = parseLocaleNumber(socPct);
+  const parsedBattery = parseLocaleNumber(batteryKwh);
+  const parsedConsumption = parseLocaleNumber(consumption);
+
   const timeInvalid = !isTimezoneAwareIso(demoTime);
+  const socInvalid = parsedSoc === null || parsedSoc < 0 || parsedSoc > 100;
+  const batteryInvalid = parsedBattery === null || parsedBattery <= 0;
+  const consumptionInvalid =
+    parsedConsumption === null || parsedConsumption <= 0;
+  const connectorInvalid = connector.trim().length === 0;
+
   const invalid = useMemo(() => {
     return (
       timeInvalid ||
-      socPct < 0 ||
-      socPct > 100 ||
-      batteryKwh <= 0 ||
-      consumption <= 0 ||
-      connector.trim().length === 0
+      socInvalid ||
+      batteryInvalid ||
+      consumptionInvalid ||
+      connectorInvalid
     );
-  }, [timeInvalid, socPct, batteryKwh, consumption, connector]);
+  }, [
+    timeInvalid,
+    socInvalid,
+    batteryInvalid,
+    consumptionInvalid,
+    connectorInvalid,
+  ]);
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (pending || invalid) return;
+    if (
+      pending ||
+      invalid ||
+      parsedSoc === null ||
+      parsedBattery === null ||
+      parsedConsumption === null
+    ) {
+      return;
+    }
 
     const preset = CORRIDOR_PRESETS[presetId];
     const payload: Omit<RecommendationRequest, "request_id"> = {
@@ -64,9 +97,9 @@ export function DriverForm({
       depart_time: demoTime,
       scenario,
       vehicle: {
-        soc_pct: socPct,
-        battery_kwh: batteryKwh,
-        consumption_kwh_per_km: consumption,
+        soc_pct: parsedSoc,
+        battery_kwh: parsedBattery,
+        consumption_kwh_per_km: parsedConsumption,
         connector_type: connector,
       },
     };
@@ -126,31 +159,31 @@ export function DriverForm({
         <label>
           SOC %
           <input
-            type="number"
-            min={0}
-            max={100}
+            type="text"
+            inputMode="decimal"
             value={socPct}
-            onChange={(event) => setSocPct(Number(event.target.value))}
+            onChange={onDraftNumberChange(setSocPct)}
+            aria-invalid={socInvalid}
           />
         </label>
         <label>
           Battery kWh
           <input
-            type="number"
-            min={1}
-            step={1}
+            type="text"
+            inputMode="decimal"
             value={batteryKwh}
-            onChange={(event) => setBatteryKwh(Number(event.target.value))}
+            onChange={onDraftNumberChange(setBatteryKwh)}
+            aria-invalid={batteryInvalid}
           />
         </label>
         <label>
           Consumption kWh/km
           <input
-            type="number"
-            min={0.01}
-            step={0.01}
+            type="text"
+            inputMode="decimal"
             value={consumption}
-            onChange={(event) => setConsumption(Number(event.target.value))}
+            onChange={onDraftNumberChange(setConsumption)}
+            aria-invalid={consumptionInvalid}
           />
         </label>
         <label>
@@ -159,6 +192,7 @@ export function DriverForm({
             type="text"
             value={connector}
             onChange={(event) => setConnector(event.target.value)}
+            aria-invalid={connectorInvalid}
           />
         </label>
       </fieldset>
@@ -167,7 +201,7 @@ export function DriverForm({
         <p className="field-error" role="alert">
           {timeInvalid
             ? "Demo time must be ISO-8601 with timezone (e.g. 2026-10-13T16:00:00+07:00)."
-            : "Check SOC (0–100), battery > 0, consumption > 0, and connector."}
+            : "Check SOC (0–100), battery > 0, consumption > 0, and connector. Empty numeric fields are not allowed."}
         </p>
       ) : null}
 
