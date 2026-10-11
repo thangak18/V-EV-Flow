@@ -166,3 +166,63 @@ models preserve probability predictions and calibration. Joblib uses pickle:
 only load files from a trusted producer; the manifest's hash detects
 corruption but is not a signature/authenticity guarantee. Model binaries
 remain Git-ignored. Do not commit them or simulated/generated histories.
+
+## P0 Runtime Predictor and CLI
+
+`public.load_predictor(model_dir, status_repository, station_repository,
+status_data_type=DataType.SIMULATED)` binds the shared repository ports to a
+calibrated `ModelPredictor`. Status provenance must be explicitly supplied for
+non-mock sources because contract v0 `StatusWindow` has no provenance field.
+Different training/status data types produce `mixed`. Reasons give rule-based
+context and identify sources; they do not claim per-sample SHAP explanations.
+
+The status repository must accept `lags=(0, 15, 30, 60)` and return the exact
+current snapshot plus available historical snapshots for the requested station
+and scenario. Missing past lags use persisted training medians. Missing current,
+future/unrequested snapshots, scenario mismatches, unsupported connectors,
+mixed-connector aggregate counts and changed station capacity/power/type are
+rejected. Request times use +07:00; observation and positive horizon align to
+five-minute buckets, with horizon bounded by the model split configuration.
+The existing Phase 0 mock repository omits lag 0 by default, so its caller must
+request that lag explicitly. API composition remains Kiên's responsibility.
+
+Run the CLI from the repository root (paths below refer to caller-provided
+local files; no generated histories or binaries are committed):
+
+```bash
+uv run python -m app.backend.modules.prediction.cli train \
+  --stations /path/stations.json --status /path/status.parquet \
+  --artifact-dir app/backend/modules/prediction/artifacts/demo \
+  --train-end '2026-10-12T09:00:00+07:00' \
+  --calibration-end '2026-10-12T19:00:00+07:00' \
+  --horizons 15,30,60 --source bao-simulator --data-type simulated \
+  --data-version simulator-v1 --seed 42
+
+uv run python -m app.backend.modules.prediction.cli evaluate \
+  --stations /path/stations.json --status /path/later-holdout.parquet \
+  --model-dir app/backend/modules/prediction/artifacts/demo \
+  --horizons 15,30,60 --source separate-simulator --data-type simulated --seed 91
+
+uv run python -m app.backend.modules.prediction.cli predict \
+  --stations /path/stations.json --status /path/status.parquet \
+  --model-dir app/backend/modules/prediction/artifacts/demo \
+  --station-id S001 --observed-at '2026-10-13T00:00:00+07:00' \
+  --eta '2026-10-13T00:30:00+07:00' --connector-type CCS2 \
+  --scenario normal --status-data-type simulated
+```
+
+Station input is a JSON array; histories accept canonical CSV or Parquet.
+Training cutoffs are explicit rather than inferred from machine time. Seed
+controls LightGBM; it does not generate or resample caller histories. The
+manifest fixture digest hashes actual station/history bytes with length framing.
+Commands emit JSON on stdout; invalid inputs/artifacts return exit code 2 and
+JSON errors on stderr. Train reports four-way test metrics, split counts/ranges
+and artifact path; evaluate reports separate holdout metrics without refitting.
+CLI evaluation requires a later timeline beyond the original test observations
+and horizons no larger than the training maximum. Use `evaluate_holdout` directly
+for deliberately controlled alternate-seed experiments on other timelines.
+Synthetic CLI smoke tests demonstrate workflow correctness, not road accuracy.
+
+Verification: `uv run pytest app/backend/modules/prediction -q` and
+`PYTEST_ADDOPTS='app/backend/modules/prediction/tests' make ci` include domain
+unit tests alongside the foundation checks without changing shared tooling.
