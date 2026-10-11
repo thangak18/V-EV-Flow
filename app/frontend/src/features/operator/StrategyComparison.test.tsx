@@ -13,7 +13,7 @@ const rows: StrategyRow[] = [
       seed: 42,
       strategy: "nearest",
       model_version: "fake-sim-v1",
-      fixture_hash: "abcdef0123456789",
+      fixture_hash: "phase0-fixture-hash",
       contract_version: "0.1.0",
       metrics: {
         success_rate: 0.9,
@@ -37,7 +37,7 @@ const rows: StrategyRow[] = [
       seed: 42,
       strategy: "ai_allocation",
       model_version: "fake-sim-v1",
-      fixture_hash: "abcdef0123456789",
+      fixture_hash: "phase0-fixture-hash",
       contract_version: "0.1.0",
       metrics: {
         success_rate: 0.92,

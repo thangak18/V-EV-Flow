@@ -19,7 +19,7 @@ describe("useSimulationComparison", () => {
           seed: 42,
           strategy: body.strategy,
           model_version: "fake-sim-v1",
-          fixture_hash: "hashhashhash",
+          fixture_hash: "phase0-fixture-hash",
           contract_version: "0.1.0",
           metrics: {
             success_rate: 0.9,
