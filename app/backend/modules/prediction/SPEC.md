@@ -105,3 +105,34 @@ each recording sample count, mean predicted probability, and observed rate.
 Empty bins have count 0 and nullable rates; ECE is the sample-count-weighted
 mean absolute reliability gap. Scores from mock/simulated fixtures demonstrate
 pipeline behavior, **not** real-world predictive performance.
+
+## P0 LightGBM Training and Calibration
+
+`training.train_candidate(split, config, status_frame=validated_status, stations=stations,
+seed=seed)` accepts the **labeled DataFrame split** returned by
+`temporal_split`. The training partition exclusively fits lag imputations,
+`LGBMClassifier`, and `HourlyRateBaseline`. LightGBM runs with explicit
+`TrainingConfig` hyperparameters, a fixed random seed, one worker, and
+deterministic histogram settings.
+
+Predictions for the calibration partition train two post-hoc calibrators:
+isotonic regression on raw probabilities and Platt scaling (logistic
+regression on clipped log-odds). Select the lower **calibration** Brier score;
+ties select Platt. Do not fit or choose anything based on test outcomes.
+Only after choosing a calibrator, score the held-out test period once with
+`lightgbm_raw`, `lightgbm_calibrated`, `persistence`, and `hourly_rate`.
+
+`TrainedPipeline` keeps the fitted feature builder, model, calibrator,
+training config, both calibration Brier scores, test metrics, split metadata,
+sample counts, feature-column order, scenarios, source, data type, and seed.
+Its `predict_proba` requires a finite, numeric, complete feature matrix in
+the exact training order and returns two columns: `P(unavailable)` and
+`P(available)`. Serialization and serving are separate subsequent tasks.
+
+`evaluate_holdout(pipeline, validated_status, labels, source=..., seed=...)`
+scores a completely separate simulator seed/timeline or later external
+dataset using frozen model, calibrator, and reference rates. Use it to test
+increased holiday demand and outage pressure; do not refit on that holdout.
+Always label reported results by their source and `mock` / `simulated` /
+`real` / `mixed` provenance. These synthetic checks establish workflow
+correctness, not measured road-network performance.
