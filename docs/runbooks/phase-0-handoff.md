@@ -6,10 +6,11 @@ Foundation origin is immutable and defined in [harness policy](../harness/policy
 
 - Snapshot: `27d421265fe57736d3070c241544e3756772e52b` (historical `main` HEAD at survey).
 - Historical CI: [run 38104753710](https://github.com/thangak18/V-EV-Flow/actions/runs/38104753710), success on that SHA with the original six jobs.
-- Independent reviewer/approval URL/date: **BLOCKED — not yet recorded**.
+- Independent human acceptance: **PASS**, reviewer @thangak18 (non-author; snapshot author/committer TKin), 11/10/2026. [Explicit decision](https://github.com/thangak18/V-EV-Flow/issues/3#issuecomment-6109920471), recorded by Codex on behalf of the human reviewer after confirmation.
+- [Technical review](https://github.com/thangak18/V-EV-Flow/issues/3#issuecomment-6109894510): fresh clean-checkout `make setup` and `make ci` PASS on the immutable snapshot; 58 backend tests, 12 frontend tests and 1 E2E. Acceptance includes the disclosed mock/scaffold limitations; it does not certify production algorithms or live-data accuracy.
 - Foundation PR/merge approval history: not found in survey; do not fabricate an approved Foundation PR.
 - GitHub enforcement survey: branch `protected: false`; rulesets API 403 requiring plan/public-repo change. Manual merge gate applies until protection is actually available.
-- Current checkout verification: consult the bootstrap PR/evidence for exact SHA and run; this historical record does not assert a fresh local PASS.
+- Verification of later tooling/feature revisions remains separate and must attach its own exact-head/base evidence. Foundation acceptance does not approve those PRs.
 
 A non-author reviewer must inspect this snapshot, run/view fresh gate evidence and explicitly accept it. Integrator then updates Foundation review status/reviewer/evidence in policy through a tooling PR. This approval is not something an agent can supply for the human.
 
