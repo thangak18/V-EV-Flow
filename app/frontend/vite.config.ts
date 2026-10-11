@@ -14,6 +14,8 @@ export default defineConfig({
   // Read VITE_* from repo-root .env (same place as .env.example).
   envDir: repoRoot,
   server: { proxy: { "/api": "http://127.0.0.1:8000" } },
+  // Same proxy for `vite preview` / Playwright production smoke on :4173.
+  preview: { proxy: { "/api": "http://127.0.0.1:8000" } },
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",

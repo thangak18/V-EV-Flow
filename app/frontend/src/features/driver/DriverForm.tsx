@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import type { RecommendationRequest, Scenario } from "../../services/api";
+import { isTimezoneAwareIso } from "../../services/errors";
 import {
   CORRIDOR_PRESETS,
   DEFAULT_DEMO_TIME,
@@ -9,6 +10,8 @@ import {
 
 type Props = {
   pending: boolean;
+  presetId: CorridorPresetId;
+  onPresetChange: (presetId: CorridorPresetId) => void;
   onSubmit: (request: RecommendationRequest) => void;
 };
 
@@ -19,8 +22,12 @@ function samePayload(
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-export function DriverForm({ pending, onSubmit }: Props) {
-  const [presetId, setPresetId] = useState<CorridorPresetId>("hcm_vt");
+export function DriverForm({
+  pending,
+  presetId,
+  onPresetChange,
+  onSubmit,
+}: Props) {
   const [socPct, setSocPct] = useState(20);
   const [batteryKwh, setBatteryKwh] = useState(60);
   const [consumption, setConsumption] = useState(0.18);
@@ -33,15 +40,17 @@ export function DriverForm({ pending, onSubmit }: Props) {
     "request_id"
   > | null>(null);
 
+  const timeInvalid = !isTimezoneAwareIso(demoTime);
   const invalid = useMemo(() => {
     return (
+      timeInvalid ||
       socPct < 0 ||
       socPct > 100 ||
       batteryKwh <= 0 ||
       consumption <= 0 ||
       connector.trim().length === 0
     );
-  }, [socPct, batteryKwh, consumption, connector]);
+  }, [timeInvalid, socPct, batteryKwh, consumption, connector]);
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -80,7 +89,7 @@ export function DriverForm({ pending, onSubmit }: Props) {
           <select
             value={presetId}
             onChange={(event) =>
-              setPresetId(event.target.value as CorridorPresetId)
+              onPresetChange(event.target.value as CorridorPresetId)
             }
           >
             {Object.values(CORRIDOR_PRESETS).map((preset) => (
@@ -107,6 +116,7 @@ export function DriverForm({ pending, onSubmit }: Props) {
             type="text"
             value={demoTime}
             onChange={(event) => setDemoTime(event.target.value)}
+            aria-invalid={timeInvalid}
           />
         </label>
       </fieldset>
@@ -155,7 +165,9 @@ export function DriverForm({ pending, onSubmit }: Props) {
 
       {invalid ? (
         <p className="field-error" role="alert">
-          Check SOC (0–100), battery &gt; 0, consumption &gt; 0, and connector.
+          {timeInvalid
+            ? "Demo time must be ISO-8601 with timezone (e.g. 2026-10-13T16:00:00+07:00)."
+            : "Check SOC (0–100), battery > 0, consumption > 0, and connector."}
         </p>
       ) : null}
 

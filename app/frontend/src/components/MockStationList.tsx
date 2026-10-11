@@ -17,6 +17,7 @@ export function MockStationList({ client }: Props) {
     controllerRef.current = controller;
     setStatus("loading");
     setError("Unable to load stations.");
+    setStations([]);
 
     client
       .listStations(controller.signal)

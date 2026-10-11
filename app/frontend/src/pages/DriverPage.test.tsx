@@ -43,4 +43,28 @@ describe("DriverPage", () => {
     await waitFor(() => expect(recommend).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("S012")).toBeInTheDocument();
   });
+
+  test("reversing corridor preset updates map origin and destination", async () => {
+    const client = createMockApiClient();
+    render(
+      <ApiProvider client={client}>
+        <MemoryRouter>
+          <DriverPage />
+        </MemoryRouter>
+      </ApiProvider>,
+    );
+
+    expect(screen.getByLabelText("Station text list")).toHaveTextContent(
+      "10.7800",
+    );
+    fireEvent.change(screen.getByLabelText("Route"), {
+      target: { value: "vt_hcm" },
+    });
+    await waitFor(() => {
+      const list = screen.getByLabelText("Station text list");
+      expect(list).toHaveTextContent("origin");
+      expect(list.textContent).toMatch(/10\.3500/);
+      expect(list.textContent).toMatch(/107\.0800/);
+    });
+  });
 });

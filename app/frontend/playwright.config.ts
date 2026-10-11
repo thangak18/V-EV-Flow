@@ -21,11 +21,18 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
+      // Production smoke: build then preview (not Vite HMR/dev).
+      // Invoke local binaries via node so Windows PATH need not include tsc/vite.
+      // Force relative /api so preview proxy works (avoids CORS vs :8000).
       command:
-        "node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4173",
+        "node ./node_modules/typescript/bin/tsc -b && node ./node_modules/vite/bin/vite.js build && node ./node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173",
       url: "http://127.0.0.1:4173",
-      reuseExistingServer: true,
-      timeout: 120_000,
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+      env: {
+        ...process.env,
+        VITE_API_BASE_URL: "/api",
+      },
     },
   ],
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

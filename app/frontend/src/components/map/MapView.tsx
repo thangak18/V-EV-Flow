@@ -25,23 +25,33 @@ function defaultFactory(preferFake: boolean): MapAdapter {
 export function MapView({ model, adapterFactory, preferFake = false }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const adapterRef = useRef<MapAdapter | null>(null);
+  const latestModelRef = useRef(model);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const usingGoong = useMemo(
     () => !preferFake && hasGoongKey() && !adapterFactory,
     [preferFake, adapterFactory],
   );
 
   useEffect(() => {
+    latestModelRef.current = model;
+  }, [model]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     let cancelled = false;
+    setMounted(false);
     const adapter = adapterFactory?.() ?? defaultFactory(preferFake);
     adapterRef.current = adapter;
 
-    Promise.resolve(adapter.mount(container, model))
-      .then(() => {
-        if (!cancelled) setMapError(null);
+    Promise.resolve(adapter.mount(container, latestModelRef.current))
+      .then(async () => {
+        if (cancelled) return;
+        setMapError(null);
+        await adapter.update(latestModelRef.current);
+        if (!cancelled) setMounted(true);
       })
       .catch((cause: unknown) => {
         if (cancelled) return;
@@ -54,20 +64,21 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
       cancelled = true;
       adapter.destroy();
       adapterRef.current = null;
+      setMounted(false);
     };
-    // Mount once per adapter factory; updates handled below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adapterFactory, preferFake]);
 
   useEffect(() => {
     const adapter = adapterRef.current;
-    if (!adapter || mapError) return;
-    void Promise.resolve(adapter.update(model)).catch((cause: unknown) => {
-      setMapError(
-        cause instanceof Error ? cause.message : "Map failed to update",
-      );
-    });
-  }, [model, mapError]);
+    if (!adapter || mapError || !mounted) return;
+    void Promise.resolve(adapter.update(latestModelRef.current)).catch(
+      (cause: unknown) => {
+        setMapError(
+          cause instanceof Error ? cause.message : "Map failed to update",
+        );
+      },
+    );
+  }, [model, mapError, mounted]);
 
   return (
     <div className="map-panel">

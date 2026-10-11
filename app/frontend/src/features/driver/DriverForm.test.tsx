@@ -6,7 +6,15 @@ import { DriverForm } from "./DriverForm";
 describe("DriverForm", () => {
   test("uses corridor presets and default vehicle values", () => {
     const onSubmit = vi.fn();
-    render(<DriverForm pending={false} onSubmit={onSubmit} />);
+    const onPresetChange = vi.fn();
+    render(
+      <DriverForm
+        pending={false}
+        presetId="hcm_vt"
+        onPresetChange={onPresetChange}
+        onSubmit={onSubmit}
+      />,
+    );
 
     expect(screen.getByDisplayValue("TP.HCM → Vũng Tàu")).toBeInTheDocument();
     expect(screen.getByLabelText("SOC %")).toHaveValue(20);
@@ -25,8 +33,14 @@ describe("DriverForm", () => {
 
   test("disables submit while pending and rejects invalid ranges", () => {
     const onSubmit = vi.fn();
+    const onPresetChange = vi.fn();
     const { rerender } = render(
-      <DriverForm pending={false} onSubmit={onSubmit} />,
+      <DriverForm
+        pending={false}
+        presetId="hcm_vt"
+        onPresetChange={onPresetChange}
+        onSubmit={onSubmit}
+      />,
     );
     fireEvent.change(screen.getByLabelText("SOC %"), {
       target: { value: "120" },
@@ -35,7 +49,14 @@ describe("DriverForm", () => {
       screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
     ).toBeDisabled();
 
-    rerender(<DriverForm pending={true} onSubmit={onSubmit} />);
+    rerender(
+      <DriverForm
+        pending={true}
+        presetId="hcm_vt"
+        onPresetChange={onPresetChange}
+        onSubmit={onSubmit}
+      />,
+    );
     fireEvent.change(screen.getByLabelText("SOC %"), {
       target: { value: "20" },
     });
@@ -44,5 +65,24 @@ describe("DriverForm", () => {
     ).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: /Finding plan/i }));
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  test("rejects demo time without timezone", () => {
+    const onSubmit = vi.fn();
+    render(
+      <DriverForm
+        pending={false}
+        presetId="hcm_vt"
+        onPresetChange={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/Demo time/i), {
+      target: { value: "abc" },
+    });
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
+    ).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/timezone/i);
   });
 });

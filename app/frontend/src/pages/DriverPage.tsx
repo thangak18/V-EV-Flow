@@ -5,7 +5,10 @@ import { AsyncState } from "../components/common/AsyncState";
 import { DataTypeBadge } from "../components/common/DataTypeBadge";
 import { MapView } from "../components/map/MapView";
 import type { MapModel, MapPoint } from "../components/map/types";
-import { CORRIDOR_PRESETS } from "../features/driver/corridorPresets";
+import {
+  CORRIDOR_PRESETS,
+  type CorridorPresetId,
+} from "../features/driver/corridorPresets";
 import { DriverForm } from "../features/driver/DriverForm";
 import { PlanSummary } from "../features/driver/PlanSummary";
 import { useRecommendation } from "../hooks/useRecommendation";
@@ -15,6 +18,7 @@ export function DriverPage() {
   const client = useApiClient();
   const { status, result, error, submit, retry } = useRecommendation();
   const [stations, setStations] = useState<Station[]>([]);
+  const [presetId, setPresetId] = useState<CorridorPresetId>("hcm_vt");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -28,21 +32,22 @@ export function DriverPage() {
   }, [client]);
 
   const mapModel = useMemo<MapModel>(() => {
+    const corridor = CORRIDOR_PRESETS[presetId];
     const index = new Map(
       stations.map((station) => [station.station_id, station]),
     );
     const points: MapPoint[] = [
       {
         id: "origin",
-        lat: CORRIDOR_PRESETS.hcm_vt.origin.lat,
-        lng: CORRIDOR_PRESETS.hcm_vt.origin.lng,
+        lat: corridor.origin.lat,
+        lng: corridor.origin.lng,
         label: "Origin",
         role: "origin",
       },
       {
         id: "destination",
-        lat: CORRIDOR_PRESETS.hcm_vt.destination.lat,
-        lng: CORRIDOR_PRESETS.hcm_vt.destination.lng,
+        lat: corridor.destination.lat,
+        lng: corridor.destination.lng,
         label: "Destination",
         role: "destination",
       },
@@ -69,7 +74,7 @@ export function DriverPage() {
       });
     }
     return { points, fitBounds: true };
-  }, [result, stations]);
+  }, [presetId, result, stations]);
 
   return (
     <main className="driver-page">
@@ -85,7 +90,12 @@ export function DriverPage() {
           <DataTypeBadge dataType={result?.data_type ?? "mock"} />
         </div>
 
-        <DriverForm pending={status === "loading"} onSubmit={submit} />
+        <DriverForm
+          pending={status === "loading"}
+          presetId={presetId}
+          onPresetChange={setPresetId}
+          onSubmit={submit}
+        />
 
         <AsyncState
           status={status === "empty" ? "success" : status}

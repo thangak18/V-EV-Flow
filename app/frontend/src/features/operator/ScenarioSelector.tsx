@@ -1,3 +1,4 @@
+import { isTimezoneAwareIso } from "../../services/errors";
 import type { Scenario } from "../../services/api";
 
 type Props = {
@@ -17,12 +18,14 @@ export function ScenarioSelector({
   onApply,
   pending = false,
 }: Props) {
+  const timeInvalid = !isTimezoneAwareIso(time);
+
   return (
     <form
       className="scenario-selector"
       onSubmit={(event) => {
         event.preventDefault();
-        onApply();
+        if (!pending && !timeInvalid) onApply();
       }}
     >
       <label>
@@ -42,9 +45,15 @@ export function ScenarioSelector({
           type="text"
           value={time}
           onChange={(event) => onTimeChange(event.target.value)}
+          aria-invalid={timeInvalid}
         />
       </label>
-      <button type="submit" disabled={pending}>
+      {timeInvalid ? (
+        <p className="field-error" role="alert">
+          Time must be ISO-8601 with timezone (e.g. 2026-10-13T16:00:00+07:00).
+        </p>
+      ) : null}
+      <button type="submit" disabled={pending || timeInvalid}>
         {pending ? "Loading pressure…" : "Apply scenario"}
       </button>
     </form>

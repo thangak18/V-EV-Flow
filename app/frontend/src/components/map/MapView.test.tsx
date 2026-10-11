@@ -63,4 +63,35 @@ describe("MapView", () => {
     expect(screen.getByLabelText("Station text list")).toBeInTheDocument();
     expect(screen.getByText(/primary/i)).toBeInTheDocument();
   });
+
+  test("applies the latest model after an async mount completes", async () => {
+    let resolveMount: (() => void) | undefined;
+    const updates: string[] = [];
+    const slow: MapAdapter = {
+      mount: () =>
+        new Promise<void>((resolve) => {
+          resolveMount = resolve;
+        }),
+      update: (next) => {
+        updates.push(next.points[0]?.id ?? "");
+      },
+      destroy: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <MapView model={model} adapterFactory={() => slow} preferFake />,
+    );
+
+    const next = {
+      ...model,
+      points: [{ ...model.points[0]!, id: "LATEST", label: "LATEST" }],
+    };
+    rerender(<MapView model={next} adapterFactory={() => slow} preferFake />);
+    resolveMount?.();
+
+    await waitFor(() => expect(updates.at(-1)).toBe("LATEST"));
+    expect(screen.getByLabelText("Station text list")).toHaveTextContent(
+      "LATEST",
+    );
+  });
 });

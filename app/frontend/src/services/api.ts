@@ -1,6 +1,15 @@
 import type { components, operations } from "../types/api.generated";
 
-import { ApiError, isAbortError, isRecord } from "./errors";
+import { ApiError, isAbortError } from "./errors";
+import {
+  parseApiResponse,
+  PredictionResultSchema,
+  PressureResponseSchema,
+  RecommendationResultSchema,
+  ResetResponseSchema,
+  SimulationResultSchema,
+  StationListResponseSchema,
+} from "./schemas";
 
 export { ApiError } from "./errors";
 
@@ -18,8 +27,6 @@ type JsonResponse<TOperation extends keyof operations> =
     ? TResponse
     : never;
 
-const DATA_TYPES = new Set(["mock", "simulated", "real", "mixed"]);
-
 export class ApiClient {
   private readonly baseUrl: string;
 
@@ -31,14 +38,9 @@ export class ApiClient {
   }
 
   listStations(signal?: AbortSignal): Promise<JsonResponse<"listStations">> {
-    return this.request("/stations", { signal }).then((body) => {
-      this.assertObject(body);
-      this.assertDataType(body);
-      if (!Array.isArray(body.stations)) {
-        throw ApiError.invalidResponse("stations must be an array", body);
-      }
-      return body as JsonResponse<"listStations">;
-    });
+    return this.request("/stations", { signal }).then((body) =>
+      parseApiResponse(StationListResponseSchema, body, "listStations"),
+    );
   }
 
   predict(
@@ -46,17 +48,8 @@ export class ApiClient {
     signal?: AbortSignal,
   ): Promise<JsonResponse<"predictAvailability">> {
     return this.request("/predict", { method: "POST", body, signal }).then(
-      (response) => {
-        this.assertObject(response);
-        this.assertDataType(response);
-        if (typeof response.station_id !== "string") {
-          throw ApiError.invalidResponse(
-            "predict requires station_id",
-            response,
-          );
-        }
-        return response as JsonResponse<"predictAvailability">;
-      },
+      (response) =>
+        parseApiResponse(PredictionResultSchema, response, "predict"),
     );
   }
 
@@ -65,17 +58,12 @@ export class ApiClient {
     signal?: AbortSignal,
   ): Promise<JsonResponse<"recommendStation">> {
     return this.request("/recommend", { method: "POST", body, signal }).then(
-      (response) => {
-        this.assertObject(response);
-        this.assertDataType(response);
-        if (typeof response.request_id !== "string") {
-          throw ApiError.invalidResponse(
-            "recommend requires request_id",
-            response,
-          );
-        }
-        return response as JsonResponse<"recommendStation">;
-      },
+      (response) =>
+        parseApiResponse(
+          RecommendationResultSchema,
+          response,
+          "recommend",
+        ) as JsonResponse<"recommendStation">,
     );
   }
 
@@ -87,16 +75,9 @@ export class ApiClient {
       scenario: query.scenario,
       time: query.time,
     });
-    return this.request(`/pressure?${params}`, { signal }).then((response) => {
-      this.assertObject(response);
-      if (!Array.isArray(response.stations)) {
-        throw ApiError.invalidResponse("pressure requires stations", response);
-      }
-      if (typeof response.scenario !== "string") {
-        throw ApiError.invalidResponse("pressure requires scenario", response);
-      }
-      return response as JsonResponse<"getPressure">;
-    });
+    return this.request(`/pressure?${params}`, { signal }).then((response) =>
+      parseApiResponse(PressureResponseSchema, response, "getPressure"),
+    );
   }
 
   /** @deprecated Prefer getPressure; kept for Phase 0 call sites. */
@@ -112,19 +93,8 @@ export class ApiClient {
     signal?: AbortSignal,
   ): Promise<JsonResponse<"simulate">> {
     return this.request("/simulate", { method: "POST", body, signal }).then(
-      (response) => {
-        this.assertObject(response);
-        if (typeof response.strategy !== "string") {
-          throw ApiError.invalidResponse(
-            "simulate requires strategy",
-            response,
-          );
-        }
-        if (!isRecord(response.metrics)) {
-          throw ApiError.invalidResponse("simulate requires metrics", response);
-        }
-        return response as JsonResponse<"simulate">;
-      },
+      (response) =>
+        parseApiResponse(SimulationResultSchema, response, "simulate"),
     );
   }
 
@@ -133,13 +103,7 @@ export class ApiClient {
     signal?: AbortSignal,
   ): Promise<JsonResponse<"resetDemo">> {
     return this.request("/reset", { method: "POST", body, signal }).then(
-      (response) => {
-        this.assertObject(response);
-        if (typeof response.reset !== "boolean") {
-          throw ApiError.invalidResponse("reset requires reset flag", response);
-        }
-        return response as JsonResponse<"resetDemo">;
-      },
+      (response) => parseApiResponse(ResetResponseSchema, response, "reset"),
     );
   }
 
@@ -193,18 +157,6 @@ export class ApiClient {
       return { isJson: true, value: JSON.parse(text) as unknown };
     } catch {
       return { isJson: false, value: text };
-    }
-  }
-
-  private assertObject(body: unknown): asserts body is Record<string, unknown> {
-    if (!isRecord(body)) {
-      throw ApiError.invalidResponse("API response must be an object", body);
-    }
-  }
-
-  private assertDataType(body: Record<string, unknown>): void {
-    if (typeof body.data_type !== "string" || !DATA_TYPES.has(body.data_type)) {
-      throw ApiError.invalidResponse("response requires data_type", body);
     }
   }
 }

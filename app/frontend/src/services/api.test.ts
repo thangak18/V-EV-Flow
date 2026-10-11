@@ -89,6 +89,7 @@ test("maps FastAPI 422 validation errors", async () => {
   ).rejects.toMatchObject({
     status: 422,
     code: "VALIDATION_ERROR",
+    message: "soc_pct: too low",
   });
 });
 
@@ -113,7 +114,16 @@ test("client sends every contract operation through the shared request boundary"
     if (String(url).includes("/stations")) {
       body = { stations: [], data_type: "mock", source_notes: [] };
     } else if (String(url).includes("/predict")) {
-      body = { station_id: "S001", data_type: "mock", p_available: 0.5 };
+      body = {
+        station_id: "S001",
+        eta: "2026-10-13T16:40:00+07:00",
+        p_available: 0.5,
+        reasons: ["ok"],
+        explanation_method: "rule",
+        model_version: "v",
+        data_type: "mock",
+        contract_version: "0.1.0",
+      };
     } else if (String(url).includes("/recommend")) {
       body = {
         request_id: "x",
@@ -265,5 +275,42 @@ test("rejects malformed success payloads missing discriminants", async () => {
   const fetcher = mockFetch(200, { stations: [] });
   await expect(
     new ApiClient("/api", fetcher as typeof fetch).listStations(),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
+
+test("rejects stations missing required nested fields", async () => {
+  const fetcher = mockFetch(200, {
+    data_type: "mock",
+    source_notes: [],
+    stations: [{ station_id: "S1" }],
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).listStations(),
+  ).rejects.toMatchObject({
+    code: "INVALID_API_RESPONSE",
+    message: /listStations failed contract validation/,
+  });
+});
+
+test("rejects recommend payloads with invalid nested plan probability", async () => {
+  const fetcher = mockFetch(200, {
+    request_id: "x",
+    data_type: "mock",
+    primary: {
+      station_id: "S1",
+      eta: "2026-10-13T16:40:00+07:00",
+      distance_km: 1,
+      detour_km: 0,
+      arrival_soc_pct: 20,
+      p_available: 1.5,
+    },
+    backup: null,
+    reasons: [],
+    model_version: "v",
+    allocation_method: "m",
+    contract_version: "0.1.0",
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).recommend(validRecommend),
   ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
 });

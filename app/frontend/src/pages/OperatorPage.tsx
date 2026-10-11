@@ -101,16 +101,16 @@ export function OperatorPage() {
         <section className="operator-map">
           <AsyncState
             status={pressure.status}
-            loadingMessage="Loading pressure layer…"
+            loadingMessage={
+              pressure.stale
+                ? "Refreshing pressure… showing last successful result."
+                : "Loading pressure layer…"
+            }
             emptyMessage="No pressure stations for this scenario/time."
             errorMessage={pressure.error ?? "Unable to load pressure."}
             onRetry={() => void pressure.load(scenario, time)}
+            keepChildrenOnLoading={Boolean(pressure.result)}
           >
-            {pressure.stale ? (
-              <p className="status-message" role="status">
-                Showing last successful pressure while refreshing…
-              </p>
-            ) : null}
             <MapView
               model={mapModel}
               preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}

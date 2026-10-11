@@ -15,12 +15,19 @@ export function SimulationControls({
   onRun,
   pending,
 }: Props) {
+  const invalid =
+    !Number.isFinite(seed) ||
+    !Number.isInteger(seed) ||
+    !Number.isFinite(vehicleCount) ||
+    !Number.isInteger(vehicleCount) ||
+    vehicleCount < 1;
+
   return (
     <form
       className="simulation-controls"
       onSubmit={(event) => {
         event.preventDefault();
-        if (!pending) onRun();
+        if (!pending && !invalid) onRun();
       }}
     >
       <label>
@@ -29,6 +36,7 @@ export function SimulationControls({
           type="number"
           value={seed}
           onChange={(event) => onSeedChange(Number(event.target.value))}
+          aria-invalid={!Number.isInteger(seed)}
         />
       </label>
       <label>
@@ -38,9 +46,15 @@ export function SimulationControls({
           min={1}
           value={vehicleCount}
           onChange={(event) => onVehicleCountChange(Number(event.target.value))}
+          aria-invalid={vehicleCount < 1}
         />
       </label>
-      <button type="submit" disabled={pending}>
+      {invalid ? (
+        <p className="field-error" role="alert">
+          Seed must be an integer and vehicles must be ≥ 1.
+        </p>
+      ) : null}
+      <button type="submit" disabled={pending || invalid}>
         {pending ? "Running…" : "Compare 3 strategies"}
       </button>
     </form>

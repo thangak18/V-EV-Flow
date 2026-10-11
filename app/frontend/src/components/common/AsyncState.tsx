@@ -4,6 +4,8 @@ type Props = {
   emptyMessage?: string;
   errorMessage?: string;
   onRetry?: () => void;
+  /** Keep rendering children while loading (stale-while-refresh). */
+  keepChildrenOnLoading?: boolean;
   children?: React.ReactNode;
 };
 
@@ -13,9 +15,20 @@ export function AsyncState({
   emptyMessage = "Nothing to show yet.",
   errorMessage = "Something went wrong.",
   onRetry,
+  keepChildrenOnLoading = false,
   children,
 }: Props) {
   if (status === "loading") {
+    if (keepChildrenOnLoading && children) {
+      return (
+        <div className="async-stale">
+          <p className="status-message" role="status" aria-live="polite">
+            {loadingMessage}
+          </p>
+          {children}
+        </div>
+      );
+    }
     return (
       <p className="status-message" role="status" aria-live="polite">
         {loadingMessage}

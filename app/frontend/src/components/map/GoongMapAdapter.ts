@@ -5,6 +5,7 @@ const GOONG_JS =
 const GOONG_CSS =
   "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.9/dist/goong-js.css";
 const GOONG_STYLE = "https://tiles.goong.io/assets/goong_map_web.json";
+const LOAD_TIMEOUT_MS = 15_000;
 
 type GoongMap = {
   remove: () => void;
@@ -42,7 +43,9 @@ function toLngLat(point: MapPoint): [number, number] {
   return [point.lng, point.lat];
 }
 
-async function ensureGoong(): Promise<GoongNamespace> {
+async function ensureGoong(
+  timeoutMs = LOAD_TIMEOUT_MS,
+): Promise<GoongNamespace> {
   if (window.goongjs) return window.goongjs;
 
   if (!document.querySelector(`link[href="${GOONG_CSS}"]`)) {
@@ -60,12 +63,42 @@ async function ensureGoong(): Promise<GoongNamespace> {
       resolve();
       return;
     }
+
     const script = existing ?? document.createElement("script");
-    script.src = GOONG_JS;
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("Timed out loading Goong JS SDK"));
+    }, timeoutMs);
+
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      if (error) reject(error);
+      else resolve();
+    };
+
     script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Goong JS SDK"));
-    if (!existing) document.head.appendChild(script);
+    script.onload = () => finish();
+    script.onerror = () => finish(new Error("Failed to load Goong JS SDK"));
+    if (!existing) {
+      script.src = GOONG_JS;
+      document.head.appendChild(script);
+    } else if (!window.goongjs) {
+      // Script tag exists but SDK never attached — wait with timeout.
+      const poll = window.setInterval(() => {
+        if (window.goongjs) {
+          window.clearInterval(poll);
+          finish();
+        }
+      }, 50);
+      window.setTimeout(() => {
+        window.clearInterval(poll);
+        finish(new Error("Goong JS SDK script present but unavailable"));
+      }, timeoutMs);
+    }
   });
 
   if (!window.goongjs) {
@@ -74,19 +107,45 @@ async function ensureGoong(): Promise<GoongNamespace> {
   return window.goongjs;
 }
 
+function waitForMapLoad(
+  map: GoongMap,
+  timeoutMs = LOAD_TIMEOUT_MS,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("Timed out waiting for Goong map load"));
+    }, timeoutMs);
+    map.on("load", () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 export class GoongMapAdapter implements MapAdapter {
   private map: GoongMap | null = null;
   private markers: GoongMarker[] = [];
+  private generation = 0;
+  private destroyed = false;
 
   async mount(container: HTMLElement, model: MapModel): Promise<void> {
+    const mountGeneration = ++this.generation;
+    this.destroyed = false;
+
     const key = import.meta.env.VITE_GOONG_MAP_KEY as string | undefined;
-    if (!key) {
+    if (!key?.trim()) {
       throw new Error("VITE_GOONG_MAP_KEY is missing for real-map mode");
     }
 
     const goongjs = await ensureGoong();
-    goongjs.accessToken = key;
+    if (this.isStale(mountGeneration)) return;
 
+    goongjs.accessToken = key;
     const center = model.points[0]
       ? toLngLat(model.points[0])
       : ([106.7, 10.78] as [number, number]);
@@ -99,14 +158,23 @@ export class GoongMapAdapter implements MapAdapter {
     });
     this.map.addControl(new goongjs.NavigationControl());
 
-    await new Promise<void>((resolve) => {
-      this.map?.on("load", () => resolve());
-    });
+    try {
+      await waitForMapLoad(this.map);
+    } catch (error) {
+      this.teardownMap();
+      throw error;
+    }
+
+    if (this.isStale(mountGeneration)) {
+      this.teardownMap();
+      return;
+    }
+
     this.renderMarkers(goongjs, model);
   }
 
   async update(model: MapModel): Promise<void> {
-    if (!this.map || !window.goongjs) return;
+    if (!this.map || !window.goongjs || this.destroyed) return;
     this.clearMarkers();
     this.renderMarkers(window.goongjs, model);
     if (model.points[0]) {
@@ -115,6 +183,16 @@ export class GoongMapAdapter implements MapAdapter {
   }
 
   destroy(): void {
+    this.destroyed = true;
+    this.generation += 1;
+    this.teardownMap();
+  }
+
+  private isStale(mountGeneration: number): boolean {
+    return this.destroyed || mountGeneration !== this.generation;
+  }
+
+  private teardownMap(): void {
     this.clearMarkers();
     this.map?.remove();
     this.map = null;
