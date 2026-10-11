@@ -80,3 +80,28 @@ transform remaining rows with the same training-fitted builder. Do not fit
 imputation, feature selection, the model, or calibration on future splits.
 The embargo guards chronological feature/label overlap, but reported metrics
 still describe simulated examples rather than real-world prediction quality.
+
+## P0 Baselines and Probability Metrics
+
+`baseline.PersistenceBaseline().predict_proba(evaluation)` predicts 1.0 when
+`ports_free > 0` at the **observation time**, otherwise 0.0. It is a deliberately
+simple reference for a requested ETA and never consults outcome labels. The
+counts must already represent ports compatible with the requested connector;
+aggregate station counts are insufficient at mixed-connector sites.
+
+`baseline.HourlyRateBaseline().fit(train).predict_proba(evaluation)` learns the
+mean binary training target **by local ETA hour (+07:00)**. An hour with no
+training examples falls back to the global training positive rate. Call `fit`
+**once on the embargoed training partition only**; predictions require only
+known ETA timestamps. Both baselines accept labeled DataFrames or aligned
+`FeatureDataset` frames and return one probability per row.
+
+`metrics.evaluate_probabilities(y_true, probabilities, n_bins=10)` returns an
+`EvaluationMetrics` record with `sample_count`, `positive_count`,
+`positive_rate`, `brier_score`, `auc`, `calibration`, and `ece`. AUC is `None`
+for single-class partitions; Brier and calibration still apply. Calibration
+uses fixed-width probability bins `[lower, upper)` with 1.0 in the last bin,
+each recording sample count, mean predicted probability, and observed rate.
+Empty bins have count 0 and nullable rates; ECE is the sample-count-weighted
+mean absolute reliability gap. Scores from mock/simulated fixtures demonstrate
+pipeline behavior, **not** real-world predictive performance.
