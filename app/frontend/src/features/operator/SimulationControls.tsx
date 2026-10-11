@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 
-import { isIntegerDraft, parseInteger } from "../driver/numberField";
+import { isNumericDraft, parseInteger } from "../driver/numberField";
 
 type Props = {
   seed: number;
@@ -10,6 +10,17 @@ type Props = {
   onRun: (seed: number, vehicleCount: number) => void;
   pending: boolean;
 };
+
+function seedErrorMessage(draft: string): string | null {
+  if (parseInteger(draft) !== null) return null;
+  return "Seed phải là số nguyên";
+}
+
+function vehiclesErrorMessage(draft: string): string | null {
+  const parsed = parseInteger(draft);
+  if (parsed !== null && parsed >= 1) return null;
+  return "Số xe phải là số nguyên lớn hơn hoặc bằng 1";
+}
 
 export function SimulationControls({
   seed,
@@ -26,9 +37,9 @@ export function SimulationControls({
 
   const parsedSeed = parseInteger(seedDraft);
   const parsedVehicles = parseInteger(vehiclesDraft);
-  const seedInvalid = parsedSeed === null;
-  const vehiclesInvalid = parsedVehicles === null || parsedVehicles < 1;
-  const invalid = seedInvalid || vehiclesInvalid;
+  const seedError = seedErrorMessage(seedDraft);
+  const vehiclesError = vehiclesErrorMessage(vehiclesDraft);
+  const invalid = seedError !== null || vehiclesError !== null;
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -41,40 +52,49 @@ export function SimulationControls({
 
   return (
     <form className="simulation-controls" onSubmit={handleSubmit}>
-      <label>
-        Seed
+      <div className="simulation-field">
+        <label htmlFor="sim-seed">Seed</label>
         <input
+          id="sim-seed"
           type="text"
           inputMode="numeric"
           value={seedDraft}
           onChange={(event) => {
             const next = event.target.value;
-            if (isIntegerDraft(next)) setSeedDraft(next);
+            // Keep decimal drafts visible (e.g. "1.5") — validate as integer separately.
+            if (isNumericDraft(next)) setSeedDraft(next);
           }}
-          aria-invalid={seedInvalid}
+          aria-invalid={seedError !== null}
+          aria-describedby={seedError ? "sim-seed-error" : undefined}
           autoComplete="off"
         />
-      </label>
-      <label>
-        Vehicles
+        {seedError ? (
+          <p id="sim-seed-error" className="field-error" role="alert">
+            {seedError}
+          </p>
+        ) : null}
+      </div>
+      <div className="simulation-field">
+        <label htmlFor="sim-vehicles">Vehicles</label>
         <input
+          id="sim-vehicles"
           type="text"
           inputMode="numeric"
           value={vehiclesDraft}
           onChange={(event) => {
             const next = event.target.value;
-            if (isIntegerDraft(next)) setVehiclesDraft(next);
+            if (isNumericDraft(next)) setVehiclesDraft(next);
           }}
-          aria-invalid={vehiclesInvalid}
+          aria-invalid={vehiclesError !== null}
+          aria-describedby={vehiclesError ? "sim-vehicles-error" : undefined}
           autoComplete="off"
         />
-      </label>
-      {invalid ? (
-        <p className="field-error" role="alert">
-          Enter an integer seed (0 allowed) and vehicles ≥ 1. Empty fields are
-          not submitted.
-        </p>
-      ) : null}
+        {vehiclesError ? (
+          <p id="sim-vehicles-error" className="field-error" role="alert">
+            {vehiclesError}
+          </p>
+        ) : null}
+      </div>
       <button type="submit" disabled={pending || invalid}>
         {pending ? "Running…" : "Compare 3 strategies"}
       </button>

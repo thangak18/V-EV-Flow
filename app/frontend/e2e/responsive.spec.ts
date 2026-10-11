@@ -68,8 +68,9 @@ for (const width of [375, 390] as const) {
       await expect(seed).toHaveValue("");
       await expect(vehicles).toHaveValue("");
       await expect(compare).toBeDisabled();
+      await expect(page.getByText("Seed phải là số nguyên")).toBeVisible();
       await expect(
-        page.getByText(/Empty fields are not submitted/i),
+        page.getByText("Số xe phải là số nguyên lớn hơn hoặc bằng 1"),
       ).toBeVisible();
 
       await seed.fill("0");
@@ -77,6 +78,40 @@ for (const width of [375, 390] as const) {
       await expect(compare).toBeEnabled();
       await compare.click();
       await expect(page.getByText(/seed 0/i)).toBeVisible({ timeout: 30_000 });
+    });
+
+    test("decimal seed/vehicles drafts stay visible and block Compare", async ({
+      page,
+    }) => {
+      await page.goto("/operator");
+
+      const seed = page.getByLabel("Seed");
+      const vehicles = page.getByLabel("Vehicles");
+      const compare = page.getByRole("button", {
+        name: /Compare 3 strategies/i,
+      });
+
+      await seed.fill("");
+      await seed.pressSequentially("1.5");
+      await expect(seed).toHaveValue("1.5");
+      await expect(page.getByText("Seed phải là số nguyên")).toBeVisible();
+      await expect(compare).toBeDisabled();
+
+      await vehicles.fill("");
+      await vehicles.pressSequentially("1,5");
+      await expect(vehicles).toHaveValue("1,5");
+      await expect(
+        page.getByText("Số xe phải là số nguyên lớn hơn hoặc bằng 1"),
+      ).toBeVisible();
+      await expect(compare).toBeDisabled();
+
+      await seed.fill("15");
+      await vehicles.fill("15");
+      await expect(page.getByText("Seed phải là số nguyên")).toHaveCount(0);
+      await expect(
+        page.getByText("Số xe phải là số nguyên lớn hơn hoặc bằng 1"),
+      ).toHaveCount(0);
+      await expect(compare).toBeEnabled();
     });
   });
 }

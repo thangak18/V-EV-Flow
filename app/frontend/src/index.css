@@ -231,8 +231,14 @@ h2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.simulation-controls > button,
-.simulation-controls > .field-error {
+.simulation-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  align-content: start;
+}
+
+.simulation-controls > button {
   grid-column: 1 / -1;
 }
 

@@ -58,4 +58,10 @@ describe("integer drafts", () => {
     expect(parseInteger("0")).toBe(0);
     expect(parseInteger("42")).toBe(42);
   });
+
+  test("rejects decimal text so callers can warn instead of coercing", () => {
+    expect(parseInteger("1.5")).toBeNull();
+    expect(parseInteger("1,5")).toBeNull();
+    expect(parseInteger("15.")).toBeNull();
+  });
 });
