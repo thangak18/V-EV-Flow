@@ -66,4 +66,21 @@ describe("routes and shared status UI", () => {
       "No feasible station.",
     );
   });
+
+  test("keeps children visible while loading when stale-while-refresh is on", () => {
+    render(
+      <AsyncState
+        status="loading"
+        loadingMessage="Refreshing pressure…"
+        keepChildrenOnLoading
+      >
+        <p>Previous pressure layer</p>
+      </AsyncState>,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Refreshing pressure…",
+    );
+    expect(screen.getByText("Previous pressure layer")).toBeInTheDocument();
+  });
 });

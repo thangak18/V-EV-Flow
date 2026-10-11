@@ -314,3 +314,56 @@ test("rejects recommend payloads with invalid nested plan probability", async ()
     new ApiClient("/api", fetcher as typeof fetch).recommend(validRecommend),
   ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
 });
+
+test("rejects pressure stations missing nested fields", async () => {
+  const fetcher = mockFetch(200, {
+    time: "2026-10-13T16:00:00+07:00",
+    scenario: "normal",
+    stations: [{ station_id: "S1", p_available: 0.5 }],
+    contract_version: "0.1.0",
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).getPressure({
+      scenario: "normal",
+      time: "2026-10-13T16:00:00+07:00",
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
+
+test("rejects simulate payloads with incomplete metrics", async () => {
+  const fetcher = mockFetch(200, {
+    scenario: "normal",
+    seed: 1,
+    strategy: "nearest",
+    model_version: "v",
+    metrics: { success_rate: 1 },
+    fixture_hash: "h",
+    contract_version: "0.1.0",
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).simulate({
+      scenario: "normal",
+      seed: 1,
+      vehicle_count: 10,
+      strategy: "nearest",
+      contract_version: "0.1.0",
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
+
+test("rejects predict payloads missing nested discriminants", async () => {
+  const fetcher = mockFetch(200, {
+    station_id: "S001",
+    eta: "2026-10-13T16:40:00+07:00",
+    p_available: 0.5,
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).predict({
+      station_id: "S001",
+      observed_at: "2026-10-13T16:00:00+07:00",
+      eta: "2026-10-13T16:40:00+07:00",
+      connector_type: "CCS2",
+      scenario: "normal",
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
