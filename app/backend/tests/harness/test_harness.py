@@ -380,13 +380,10 @@ def test_hook_cli_failure_is_nonblocking_json(repo: Path, payload: str) -> None:
 
 def test_smoke_refuses_existing_server() -> None:
     with socket.socket() as listener:
-        try:
-            listener.bind(("127.0.0.1", 4173))
-        except OSError:
-            pytest.skip("port occupied before fixture")
+        listener.bind(("127.0.0.1", 0))
         listener.listen()
         with pytest.raises(harness.HarnessError, match="occupied"):
-            harness.smoke_ports()
+            harness.smoke_ports((listener.getsockname()[1],))
 
 
 def test_colocated_tests_are_collected_and_failing_test_fails(tmp_path: Path) -> None:

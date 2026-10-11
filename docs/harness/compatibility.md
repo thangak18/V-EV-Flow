@@ -27,6 +27,8 @@ Fixtures kiểm tra protocol, stale evidence, worktree và clone mới đều th
 
 Repo không chọn model/tài khoản, nới quyền, ghi credentials hay sửa global config. Người dùng tự đăng nhập công cụ và `gh`; setup cài theo lockfiles. MCP/plugin cá nhân là tùy chọn; Git/gh + scripts là fallback.
 
+Runner lưu version tự phát hiện ở `tool.cli_version`. `tool.version` chỉ dùng giá trị đó cho surface `cli`; surface khác ghi `NOT VERIFIED` cho tới khi engine/profile được kiểm chứng riêng. Không dùng binary CLI trên máy để chứng nhận desktop engine.
+
 Codex hooks được bật bằng `.codex/config.toml`, định nghĩa JSON ở cùng lớp project. Người dùng phải trust project và review/trust hook definitions trong UI/prompt của công cụ; không tự ghi trust vào global config. Hook commands dùng Git root được quote để hoạt động từ subdirectory. [Tài liệu Codex hooks](https://learn.chatgpt.com/docs/hooks).
 
 Claude hooks dùng `CLAUDE_PROJECT_DIR`; JSON stdin cho state reader có cwd. SessionStart đưa context, Stop chỉ `systemMessage` exit 0: không blocking decision, không yêu cầu thêm turn, không dùng `Stop.additionalContext` của bản mới cho baseline 2.1.78. [Hooks docs](https://code.claude.com/docs/en/hooks), [ví dụ 2.1.78](https://github.com/anthropics/claude-code/blob/v2.1.78/plugins/explanatory-output-style/hooks/hooks.json).

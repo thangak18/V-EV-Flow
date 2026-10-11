@@ -432,6 +432,9 @@ def start(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     directory = f".harness/issues/{number}/sessions/{session}"
     snapshot["source"] = "offline" if args.snapshot else "github"
     write_json(root, f"{directory}/issue.json", snapshot, exclusive=True)
+    cli_version = (
+        version(root, [args.tool, "--version"]) if args.tool in ("codex", "claude") else "manual"
+    )
     active = {
         "schema_version": 1,
         "issue": number,
@@ -447,9 +450,8 @@ def start(root: Path, args: argparse.Namespace) -> dict[str, Any]:
         "tool": {
             "name": args.tool,
             "surface": args.surface,
-            "version": version(root, [args.tool, "--version"])
-            if args.tool in ("codex", "claude")
-            else "manual",
+            "version": cli_version if args.surface == "cli" else "NOT VERIFIED",
+            "cli_version": cli_version,
         },
     }
     write_json(root, ".harness/active.json", active)
@@ -510,8 +512,8 @@ def check_command(root: Path, check: str, test_path: str | None = None) -> list[
     raise HarnessError("Focused test path does not match selected check", "FAIL")
 
 
-def smoke_ports() -> None:
-    for port in (8000, 4173):
+def smoke_ports(ports: tuple[int, ...] = (8000, 4173)) -> None:
+    for port in ports:
         with socket.socket() as probe:
             probe.settimeout(0.25)
             if probe.connect_ex(("127.0.0.1", port)) == 0:
