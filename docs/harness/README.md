@@ -33,6 +33,20 @@ python3 .github/scripts/harness.py handoff --issue 123
 
 `123` và `<integration-base-sha>` là placeholders, không phải issue hoặc SHA đã nghiệm thu. Chạy từ checkout đang làm việc; hooks cũng hỗ trợ subdirectory/worktree. `start` không claim issue hay tạo nhánh. `--snapshot FILE` chỉ dùng replay/offline fixture; phải đánh dấu provenance và không thay lần đối chiếu GitHub khi review-ready.
 
+`scope` dùng recorded active base; `--base` chỉ assertion cùng SHA, không đổi
+comparison để bỏ committed paths. Evidence v2 có runner HMAC seal để phát hiện
+metadata edits; new `<uuid>.v2.evidence.json` records yêu cầu v2/seal và không
+được downgrade thành legacy bằng metadata edits. Local checkout/key/filenames
+vẫn do operator kiểm soát, nên trust vẫn là
+self-reported. Current legacy unsealed evidence cần rerun; stale history giữ
+lại nhưng không dùng cho readiness. Xem [workflow](workflow.md) cho seal/log
+validation và independent CI/human AC review; local `ready` không là human PR
+acceptance (`review_ready: false`).
+Mất/sai key cần restore hoặc fresh checkout; record sửa phải restore/archive
+ngoài sessions discovery rồi rerun, theo workflow. Log mất/đổi cũng cần restore
+đúng hash hoặc archive record lỗi. Rerun đơn thuần không chữa seal/log mismatch;
+không đổi metadata/key để ép PASS.
+
 ## Nguồn chuẩn
 
 | Thông tin | Nguồn |
@@ -58,6 +72,16 @@ quy tắc không chuyển vào V-EV.
 ## Trạng thái triển khai
 
 Bộ docs, policy, CLI, adapters và kiểm tra tự động được xây trong harness bootstrap. Kết quả test phải đọc từ bằng chứng của PR, không suy ra từ việc file tồn tại. Foundation review độc lập và pilot hai công cụ/thành viên mới vẫn là gate cần người thực hiện; xem runbook và pilot. Không coi các ví dụ P1/P2 là feature đã có.
+
+First bootstrap chưa có trusted base validator: technical checks có thể PASS/
+green CI nhưng automated scope, Foundation/manual acceptance vẫn BLOCKED.
+Warning/step summary ghi exact head/base và human checklist. PR cần link
+non-author human approval và manual scope/policy acceptance đúng revision;
+Foundation snapshot acceptance là gate riêng trước feature lanes và có thể còn
+BLOCKED khi tooling lands. Commit/base đổi cần review mới; thiếu bootstrap
+scope/policy acceptance, non-author approval hoặc technical gates thì không merge
+bootstrap. [Protection runbook](../runbooks/branch-protection.md)
+ghi giới hạn repo chưa protected và quy trình manual acceptance.
 
 ## Nguyên lý tham khảo
 

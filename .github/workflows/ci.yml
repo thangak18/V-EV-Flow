@@ -188,6 +188,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CHECKED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
         shell: bash
         run: |
@@ -202,8 +203,84 @@ jobs:
               exit 2
             fi
           fi
-          python3 "$validator" ci --event-file "$GITHUB_EVENT_PATH" > .harness/ci/scope.json
+          scope_exit=0
+          python3 "$validator" ci --event-file "$GITHUB_EVENT_PATH" > .harness/ci/scope.json || scope_exit=$?
           cat .harness/ci/scope.json
+          export HARNESS_SCOPE_EXIT="$scope_exit"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          value = json.loads(Path(".harness/ci/scope.json").read_text())
+          if not isinstance(value, dict):
+              raise SystemExit("Unexpected harness scope result: expected an object")
+          status = int(os.environ["HARNESS_SCOPE_EXIT"])
+          head, base = os.environ["CHECKED_HEAD"], os.environ["BASE_SHA"]
+          bootstrap = (
+              status == 2
+              and bool(base)
+              and os.environ["HEAD_BRANCH"] == "codex/harness-bootstrap"
+              and value.get("result") == "BLOCKED"
+              and value.get("checks") == "PASS"
+              and value.get("mode") == "bootstrap"
+              and value.get("scope") == "BLOCKED"
+              and value.get("foundation_review") == "BLOCKED"
+              and value.get("manual_acceptance") == "BLOCKED"
+              and value.get("review_ready") is False
+              and value.get("head") == head
+              and value.get("base") == base
+          )
+          if bootstrap:
+              print(
+                  "::warning title=Bootstrap manual acceptance required::"
+                  f"Technical checks passed for head {head} / base {base}; "
+                  "scope/policy and Foundation acceptance remain BLOCKED. "
+                  "A green job does not establish review-ready or permission to merge."
+              )
+              summary = (
+                  "## Bootstrap: technical checks PASS; manual acceptance BLOCKED\n\n"
+                  f"- PR head: `{head}`\n- Integration base: `{base}`\n"
+                  "- Automated scope: **BLOCKED** (no trusted base validator).\n"
+                  "- Foundation snapshot acceptance: **BLOCKED** (separate human gate).\n"
+                  "- Manual scope/policy acceptance: **BLOCKED**; `review_ready=false`.\n\n"
+                  "Required human records linked on the PR before bootstrap landing:\n\n"
+                  "- [ ] Non-author human PR approval for this exact head/base.\n"
+                  "- [ ] Manual scope/policy acceptance covering the bootstrap diff, "
+                  "protected paths, initial policy and validator; record exact head/base and reviewer.\n"
+                  "- [ ] Fresh clean-revision local full CI, hosted required checks, "
+                  "AC evidence, resolved conversations, limitations and rollback checked.\n"
+                  "- [ ] Integrator rechecks current head/base; new commits invalidate "
+                  "old approval/acceptance. Manual merge remains a human decision.\n\n"
+                  "Separate gate before opening feature lanes:\n\n"
+                  "- [ ] Independent Foundation snapshot acceptance record. "
+                  "Foundation may remain BLOCKED for tooling landing; "
+                  "bootstrap approval does not substitute for Foundation acceptance.\n\n"
+                  "The repository is currently unprotected; CI cannot enforce human merge decisions.\n"
+              )
+          elif (
+              status == 0
+              and value.get("result") == "PASS"
+              and value.get("mode") != "bootstrap"
+              and all(
+                  gate not in value or value[gate] in ("PASS", "NOT RUN")
+                  for gate in ("scope", "foundation_review", "manual_acceptance")
+              )
+              and (not base or (value.get("head") == head and value.get("base") == base))
+          ):
+              summary = (
+                  "## Harness technical check\n\n"
+                  f"- Head: `{head}`\n- Integration base: `{base or 'Not a PR event'}`\n"
+                  "- Technical validator result: **PASS**.\n"
+                  "- Human approval/merge acceptance: **not established by CI**.\n"
+              )
+              if not base:
+                  summary += "- Push self-check does not validate PR task scope.\n"
+          else:
+              print("::error::Unexpected or failed harness scope result; manual gates cannot be inferred.")
+              raise SystemExit(status if status in (1, 2) else 1)
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as stream:
+              stream.write(summary)
+          PY
       - name: Record independent execution identity
         if: always()
         env:

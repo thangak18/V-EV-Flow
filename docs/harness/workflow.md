@@ -63,7 +63,7 @@ flowchart TD
   Review -->|Chấp nhận revision cuối| Merge[Integrator merge thủ công]
 ```
 
-`scope --issue N --base SHA` kiểm tra cả committed/staged/unstaged/untracked paths; rename xét cả nguồn và đích. Protected denylist ưu tiên allowlist; policy đọc từ base đáng tin cậy, feature branch không tự cấp quyền. Owner chỉ được sửa handoff đúng số issue mình.
+`scope --issue N` dùng integration base/bootstrap đã ghi trong active session và kiểm tra cả committed/staged/unstaged/untracked paths; rename xét cả nguồn và đích. `--base SHA` tùy chọn chỉ là assertion phải resolve đúng recorded base, không đổi comparison base để giấu committed paths; base ref đã chuyển là BLOCKED và cần restart/reverify. Protected denylist ưu tiên allowlist; policy đọc từ base đáng tin cậy, feature branch không tự cấp quyền. Owner chỉ được sửa handoff đúng số issue mình.
 
 Sửa một lát cắt có test hành vi, mapping mỗi AC tới lệnh/artifact. `run --issue N --check NAME --ac AC-01` chỉ gọi gate được định nghĩa; `--ac` lặp được. Runner hỗ trợ focused IDs `backend-test`, `frontend-test`, `e2e-test` với `--path` là test file trong repo. Ví dụ: `run --issue N --check frontend-test --path app/frontend/src/services/api.test.ts --ac AC-01`. Chạy lệnh tập trung trực tiếp để debug được, nhưng evidence readiness cần ghi qua runner.
 
@@ -110,7 +110,29 @@ reviewer; checks chưa chạy ghi `NOT RUN`. Agent verdict không là human appr
 | `BLOCKED` | Thiếu prerequisite/môi trường/quyền để kiểm chứng |
 | `NOT RUN` | Chưa chạy; không tương đương PASS |
 
-Evidence v1 theo [schema](schemas/evidence.schema.json): issue/AC, tool/surface/version, argv/cwd, thời điểm/exit, head/base, dirty fingerprint, môi trường, path/hash logs/artifacts. Lệnh runner phát hiện prerequisite thiếu hoặc port conflicts phải ghi BLOCKED. Exit CLI gate: 0 đạt, 1 không đạt, 2 bị prerequisite chặn; giữ exit thực của command trong manifest.
+Evidence v2 theo [schema](schemas/evidence.schema.json): issue/AC, tool/surface/version, argv/cwd, thời điểm/exit, head/base, dirty fingerprint, môi trường, path/hash logs/artifacts. `integrity` có algorithm `hmac-sha256` và value seal toàn record trừ chính `integrity`; runner tạo key local `.harness/evidence.key` và validate seal trước khi dùng metadata/logs cho readiness hoặc focused reuse. Không sửa manifest/AC/check/result sau khi ghi, tự đổi version hoặc tự thêm seal; chạy lại qua runner khi cần evidence mới.
+
+Runner mới ghi `<uuid>.v2.evidence.json`; tên này yêu cầu v2 và seal hợp lệ,
+không được đổi schema version/xóa seal để giả làm legacy. Unmarked historical
+v1 chỉ là history; rerun tạo proof v2 mới. Filename/key cũng do local operator
+kiểm soát, nên cơ chế này không chống người sở hữu checkout.
+
+Seal phát hiện metadata bị sửa sau khi runner ghi, không chứng minh kết quả độc
+lập với người vận hành. Cùng operator có thể sửa checkout, runner và local key;
+evidence vẫn là **self-reported**, cần hosted CI độc lập và human AC review.
+Không commit/chia sẻ key trong PR hoặc logs. Current legacy v1/unsealed evidence
+là `BLOCKED` và phải chạy lại; stale legacy history được giữ/ignored, không dùng
+để readiness. `ready` báo local verified với `evidence_trust: self-reported` và
+`review_ready: false`; human PR acceptance còn riêng.
+
+Mất/sai key hoặc record có seal/log mismatch không tự được chữa bằng rerun. Restore
+key gốc hoặc dùng fresh checkout để chạy lại; với record đã sửa, restore bản gốc
+hoặc archive bản invalid cùng lý do ngoài sessions discovery trước khi rerun.
+Log mất/đổi cần restore đúng hash hoặc archive record lỗi tương ứng trước rerun.
+Giữ archived history, không xóa/downgrade metadata hay thay key để ép PASS. Fresh
+v2 execution có thể thay proof legacy còn lưu, nhưng không bỏ qua v2 tampering.
+
+Lệnh runner phát hiện prerequisite thiếu hoặc port conflicts phải ghi BLOCKED. Exit CLI gate: 0 đạt, 1 không đạt, 2 bị prerequisite chặn; giữ exit thực của command trong manifest.
 
 HEAD/base/diff/dependency/issue đổi làm evidence không đủ cho revision mới; giữ evidence cũ như lịch sử. Log mất hoặc hash đổi phải chạy lại. `ready --issue N` kiểm tra clean state, scope, handoff, AC mapping và evidence còn hiệu lực; không approve/merge hoặc chứng nhận review GitHub.
 
@@ -133,5 +155,22 @@ review findings. Không suy ra quyền gửi GitHub comments, approve, merge ho�
 state hoặc thay non-author reviewer thật.
 
 Integrator kiểm tra latest head/base, fresh local `make ci` trên commit sạch, toàn bộ CI required, non-author approval trên revision cuối, conversations resolved và evidence scope/AC. Commit mới/base đổi kích hoạt chạy lại. Squash merge thủ công trong pilot; không force-push/admin bypass. Nếu chưa có branch protection cưỡng chế, ghi checklist review thật theo [runbook](../runbooks/branch-protection.md).
+
+First bootstrap thiếu trusted base validator có technical `checks: PASS` nhưng
+`result: BLOCKED`/exit 2, `scope`, `foundation_review`, `manual_acceptance` đều
+BLOCKED và `review_ready: false` trên exact head/base. Workflow chỉ phân loại
+expected bootstrap response đó thành green technical job kèm warning/summary;
+không đổi automated scope sang PASS hoặc coi đó là approval. Push self-check chỉ
+kiểm tra kỹ thuật, không approve PR scope.
+
+Trước landing bootstrap, PR phải link non-author human approval và manual
+scope/policy acceptance record cho exact latest head/base, nêu reviewer và diff
+đã review và technical gates đạt. Foundation có thể còn BLOCKED khi tooling
+lands; trước mở feature lanes cần snapshot acceptance độc lập riêng cho immutable
+Foundation SHA, không suy ra từ bootstrap approval. Commit mới/base đổi làm
+approval/manual acceptance cũ hết hiệu lực. CI không cưỡng chế được quyết định
+merge của con người ở repo hiện chưa protected; integrator áp dụng checklist
+runbook. Khi chưa có bootstrap manual scope/policy acceptance, non-author PR
+approval hoặc technical gates, giữ manual gate BLOCKED và không merge bootstrap.
 
 Logs/traces artifacts giữ 14 ngày; PR giữ summary/SHA/results/limitations lâu dài. Khi artifact hết hạn mà cần tái kiểm toán, chạy lại trên commit liên quan và ghi thời điểm mới. Không coi summary là log mới.

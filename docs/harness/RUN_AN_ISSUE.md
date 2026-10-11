@@ -98,6 +98,19 @@ thiếu môi trường hay evidence stale phải giữ trạng thái thật. UI 
 loading/error/empty và screenshot/trace liên quan. QA roles chỉ dùng khi được
 yêu cầu hoặc plan cần, mặc định một agent phụ đồng thời.
 
+Runner ghi `<uuid>.v2.evidence.json` với HMAC seal trên metadata; tên v2 yêu cầu
+version/seal hợp lệ, không đổi version hoặc xóa seal để giả thành legacy. Validate seal và log hashes
+khi ready/reuse. Không sửa manifest hoặc tự gắn AC/PASS sau khi chạy. Current
+legacy unsealed records cần rerun; stale history được giữ nhưng không tính.
+Local key/checkout vẫn do operator kiểm soát, vì vậy evidence là self-reported,
+không thay independent CI hoặc human AC review. Không đưa key vào PR/logs.
+Key mất/sai: restore key hoặc fresh checkout. Record sửa: restore/archive bản
+invalid ngoài sessions discovery, giữ lý do/history rồi rerun. Log mất/đổi cần
+restore đúng hash hoặc archive record lỗi; rerun đơn thuần không chữa seal/log
+mismatch. Không downgrade manifest hoặc thay key để ép PASS.
+Scope dùng recorded active base; `--base` chỉ assertion đúng SHA, không phải
+override để giấu committed paths. Base ref chuyển cần restart/reverify.
+
 Sau khi code và checkpoint đã commit, working tree sạch:
 
 ```bash
@@ -111,6 +124,8 @@ qua `run` với đúng `--path`; chỉ evidence thực thi còn hiệu lực đ�
 Giữ log cuối trong ignored evidence/PR/CI artifacts. Không commit thêm một file
 chỉ để chép PASS và khiến SHA đã test cũ đi. Revision/base/issue/dependency đổi
 thì đối chiếu và kiểm chứng lại. `ready` không chứng nhận human review hay merge.
+Local success vẫn có `evidence_trust: self-reported`, `review_ready: false`;
+review acceptance trên PR cần người thật.
 
 ## 5. Draft PR và bàn giao review
 
@@ -128,6 +143,16 @@ không gọi implemented là verified.
 Reviewer người thật và integrator đối chiếu revision cuối, full local/hosted CI,
 scope, evidence và conversations theo workflow/protection runbook. Merge thủ
 công; agent không approve, merge, đóng issue/Epic hoặc nhận task tiếp theo.
+
+Với first bootstrap thiếu trusted base validator, green technical job không
+clear `BLOCKED` scope/Foundation/manual acceptance. Đọc warning/step summary và
+link trên PR một non-author human approval cùng manual scope/policy acceptance
+record cho exact head/base cuối, với technical gates đã đạt. Foundation có thể
+còn BLOCKED khi tooling lands; trước mở feature lanes cần acceptance độc lập
+cho immutable Foundation SHA. Commit mới/base đổi cần records mới; không tự ghi
+approval hoặc merge bootstrap khi manual scope/policy acceptance, non-author PR
+approval hay technical gates còn thiếu. Repo hiện chưa protected, nên
+integrator phải thực hiện [manual checklist](../runbooks/branch-protection.md).
 
 ## Chẩn đoán hook tùy chọn
 

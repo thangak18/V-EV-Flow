@@ -12,11 +12,52 @@ Integrator records in the PR on its latest head and integration base:
 
 - Fresh local `make ci` exit 0 at exact clean HEAD; all required GitHub jobs green for that revision/base.
 - Scope validated against trusted base policy; AC mapped to current evidence, no stale/missing logs; source/limitations/rollback/handoff complete.
-- At least one non-author approval on latest revision; stale approvals re-requested after new commits.
+- At least one non-author human PR approval on exact latest head/base, linked with reviewer handle and review URL; stale approvals re-requested after new commits or base changes.
 - All conversations resolved; branch contains current prerequisites/base; no conflicting owner lane work.
 - Squash merge manually. Never force-push, bypass checks or invent independent review. Confirm merge before declaring merged/closing issue.
 
 A script reports local readiness; it cannot approve a PR or certify that hosted protections are enabled.
+
+## First harness bootstrap: explicit manual acceptance
+
+When the PR base has no trusted harness validator, `codex/harness-bootstrap`
+cannot receive automated policy/scope approval from its own new validator.
+After technical self-checks pass, `ci` reports `result: BLOCKED` with exit 2,
+`checks: PASS`, `mode: bootstrap`, blocked `scope`, `foundation_review` and
+`manual_acceptance`, `review_ready: false`, and exact PR head/base. The workflow
+recognizes only this complete expected result as a green technical job and adds
+a warning/checklist to the step summary. Other blocked/failing/unexpected
+results fail CI. A green bootstrap job leaves the human gate unresolved.
+
+Before landing, the integrator links these separate human records on the PR:
+
+- A non-author human PR approval for the exact current head and integration base.
+- Manual scope/policy acceptance naming reviewer, head, base and reviewed diff:
+  protected paths, initial owner policy, validator/workflow behavior, AC evidence,
+  limitations and rollback. Keep the machine scope artifact BLOCKED; this record
+  supplies human acceptance rather than retroactive automated PASS.
+
+Foundation acceptance may remain BLOCKED while bootstrap tooling lands after
+manual scope/policy acceptance, non-author human PR approval and all technical
+gates. Before opening feature lanes, obtain separate independent Foundation
+snapshot acceptance naming its immutable policy SHA and evidence/review link.
+Bootstrap scope acceptance or approval of another head cannot substitute for
+that Foundation gate.
+
+New commits or a changed base invalidate prior approval/manual acceptance; obtain
+fresh records and checks for the final revision. Do not fabricate acceptance in
+policy, infer it from CI/agent output or merge bootstrap while its manual
+scope/policy acceptance, non-author PR approval or technical gates are missing.
+The repository is currently unprotected, so CI cannot enforce that the human
+integrator follows this checklist. This PR remains unmerged until the human
+decides and confirms landing.
+
+Local evidence v2 has a checkout-local HMAC seal to detect metadata edits and
+log hashes to detect changed output. The same operator can modify the runner,
+checkout and key, so its trust is **self-reported**. Independent hosted execution
+and human AC review are still required; local `ready` does not supply PR approval
+or `review_ready`. Current legacy unsealed evidence must be rerun; stale history
+is preserved without counting toward readiness.
 
 ## Required GitHub settings when available
 

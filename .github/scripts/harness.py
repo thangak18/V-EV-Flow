@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import hashlib
+import hmac
 import importlib.util
 import json
 import os
@@ -118,6 +119,35 @@ def write_json(root: Path, relative: str, value: Any, exclusive: bool = False) -
     with path.open("x" if exclusive else "w", encoding="utf-8") as stream:
         json.dump(value, stream, indent=2, ensure_ascii=True)
         stream.write("\n")
+
+
+def evidence_key(root: Path, create: bool = False) -> bytes:
+    """Local tamper detection only; the checkout owner can read/recreate this key."""
+    path = inside(root, ".harness/evidence.key")
+    if path.is_symlink():
+        raise HarnessError("Evidence integrity key must not be a symlink", "FAIL")
+    if create:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            pass
+        else:
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(os.urandom(32))
+    if not path.is_file():
+        raise HarnessError("Evidence integrity key missing; restore it or use a fresh checkout")
+    key = path.read_bytes()
+    if len(key) != 32:
+        raise HarnessError(
+            "Evidence integrity key invalid; restore it or use a fresh checkout", "FAIL"
+        )
+    return key
+
+
+def evidence_signature(root: Path, record: dict[str, Any], create: bool = False) -> str:
+    unsigned = {name: value for name, value in record.items() if name != "integrity"}
+    return hmac.new(evidence_key(root, create), canonical(unsigned), hashlib.sha256).hexdigest()
 
 
 def resolve(root: Path, ref: str) -> str:
@@ -381,6 +411,26 @@ def active_task(root: Path, number: int | None = None) -> tuple[dict[str, Any], 
     return active, snapshot
 
 
+def task_scope(root: Path, args: argparse.Namespace) -> dict[str, Any]:
+    number = issue_number(root, args.issue)
+    active, snapshot = active_task(root, number)
+    if resolve(root, active.get("base_ref", active["base"])) != active["base"]:
+        raise HarnessError("Integration base changed; restart and reverify")
+    if args.base and resolve(root, args.base) != active["base"]:
+        raise HarnessError("Scope --base differs from the recorded integration base", "FAIL")
+    if args.bootstrap and not active["bootstrap"]:
+        raise HarnessError("Scope cannot enable bootstrap for an existing feature task", "FAIL")
+    if args.lane and args.lane != snapshot["spec"]["lane"]:
+        raise HarnessError("Lane does not match active issue", "FAIL")
+    return scope_check(
+        root,
+        load_policy(root, active["base"], active["bootstrap"]),
+        snapshot["spec"],
+        number,
+        active["base"],
+    )
+
+
 def version(root: Path, argv: list[str]) -> str:
     try:
         return execute(root, argv, timeout=3).decode(errors="replace").strip().splitlines()[0]
@@ -592,7 +642,7 @@ def run_check(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     argv = check_command(root, args.check, args.path)
     before = identity(root, active["base"])
     result: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "issue": number,
         "issue_hash": snapshot["issue_hash"],
         "check": args.check,
@@ -642,7 +692,11 @@ def run_check(root: Path, args: argparse.Namespace) -> dict[str, Any]:
         log.write_text(content, encoding="utf-8")
         result.update(log_path=log_path, log_sha256=digest(log.read_bytes()))
     result["finished_at"] = now()
-    write_json(root, f"{active['directory']}/{stamp}.evidence.json", result, exclusive=True)
+    result["integrity"] = {
+        "algorithm": "hmac-sha256",
+        "value": evidence_signature(root, result, create=True),
+    }
+    write_json(root, f"{active['directory']}/{stamp}.v2.evidence.json", result, exclusive=True)
     return result
 
 
@@ -685,6 +739,38 @@ def validate_schema(value: Any, schema: dict[str, Any], location: str = "evidenc
             raise HarnessError(f"{location}: duplicate values", "FAIL")
         for item in value:
             validate_schema(item, schema.get("items", {}), location)
+
+
+def current_evidence(
+    root: Path, number: int, snapshot: dict[str, Any], code: dict[str, Any]
+) -> list[dict[str, Any]]:
+    schema = read_json(inside(root, SCHEMA_PATH))
+    records = []
+    legacy = False
+    for path in inside(root, f".harness/issues/{number}/sessions").glob("*/*.evidence.json"):
+        item = read_json(path)
+        if path.name.endswith(".v2.evidence.json") and item.get("schema_version") != 2:
+            raise HarnessError(
+                "Evidence integrity version mismatch; sealed record downgraded", "FAIL"
+            )
+        current = (
+            item.get("issue") == number
+            and item.get("issue_hash") == snapshot["issue_hash"]
+            and item.get("identity") == code
+        )
+        if item.get("schema_version") == 1 and "integrity" not in item:
+            legacy |= current
+            continue
+        validate_schema(item, schema)
+        if not hmac.compare_digest(item["integrity"]["value"], evidence_signature(root, item)):
+            raise HarnessError(
+                "Evidence integrity mismatch; restore/archive the altered record and rerun", "FAIL"
+            )
+        if current:
+            records.append(item)
+    if legacy and not records:
+        raise HarnessError("Legacy unsealed evidence has no integrity seal; rerun checks")
+    return records
 
 
 def handoff(root: Path, number: int) -> dict[str, Any]:
@@ -793,17 +879,8 @@ def ready(root: Path, number: int, refresh: bool = True) -> dict[str, Any]:
     if not current_identity["clean"]:
         raise HarnessError("Ready requires committed work and clean git status", "FAIL")
     read_handoff(root, number, active, snapshot)
-    schema = read_json(inside(root, SCHEMA_PATH))
-    records = []
-    for path in inside(root, f".harness/issues/{number}/sessions").glob("*/*.evidence.json"):
-        item = read_json(path)
-        validate_schema(item, schema)
-        if (
-            item["issue"] != number
-            or item["issue_hash"] != snapshot["issue_hash"]
-            or item["identity"] != current_identity
-        ):
-            continue
+    records = current_evidence(root, number, snapshot, current_identity)
+    for item in records:
         if item["result"] in ("PASS", "FAIL") and item["exit_code"] is None:
             raise HarnessError("Executed result requires exit code", "FAIL")
         if item["result"] == "PASS" and item["exit_code"] != 0:
@@ -814,7 +891,6 @@ def ready(root: Path, number: int, refresh: bool = True) -> dict[str, Any]:
             log = inside(root, item["log_path"])
             if not log.is_file() or digest(log.read_bytes()) != item["log_sha256"]:
                 raise HarnessError("Evidence log missing or modified", "FAIL")
-        records.append(item)
     latest: dict[tuple[str, str], dict[str, Any]] = {}
     for item in sorted(records, key=lambda record: record["finished_at"]):
         latest[(item["check"], "gate")] = item
@@ -837,6 +913,8 @@ def ready(root: Path, number: int, refresh: bool = True) -> dict[str, Any]:
     return {
         "result": "PASS",
         "state": "verified",
+        "evidence_trust": "self-reported",
+        "review_ready": False,
         "head": current_identity["head"],
         "next": "Attach evidence to PR; independent CI and human review still required",
         "merge": "NOT RUN",
@@ -893,19 +971,11 @@ def verify(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     records = []
     for check in checks:
         if check in CHECKS[-3:]:
-            current = []
-            schema = read_json(inside(root, SCHEMA_PATH))
-            for path in inside(root, f".harness/issues/{number}/sessions").glob(
-                "*/*.evidence.json"
-            ):
-                record = read_json(path)
-                validate_schema(record, schema)
-                if (
-                    record["identity"] == code
-                    and record["issue_hash"] == snapshot["issue_hash"]
-                    and record["check"] == check
-                ):
-                    current.append(record)
+            current = [
+                record
+                for record in current_evidence(root, number, snapshot, code)
+                if record["check"] == check
+            ]
             required_ids = {
                 ac["id"] for ac in snapshot["spec"]["acceptance"] if check in ac["verification"]
             }
@@ -928,7 +998,7 @@ def verify(root: Path, args: argparse.Namespace) -> dict[str, Any]:
                         "check": check,
                         "result": "PASS",
                         "ac_ids": sorted(covered),
-                        "reason": "Reused executed evidence with current revision and log hashes",
+                        "reason": "Reused sealed local evidence with matching revision and logs",
                     }
                 )
                 continue
@@ -962,6 +1032,7 @@ def verify(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     )
     summary = {
         "result": result,
+        "evidence_trust": "self-reported",
         "issue": number,
         "identity": code,
         "full": args.full,
@@ -1119,8 +1190,15 @@ def ci(root: Path, event_path: str) -> dict[str, Any]:
             raise
         return {
             **self_check(root),
+            "result": "BLOCKED",
+            "checks": "PASS",
+            "mode": "bootstrap",
             "scope": "BLOCKED",
             "foundation_review": "BLOCKED",
+            "manual_acceptance": "BLOCKED",
+            "review_ready": False,
+            "head": head,
+            "base": base,
             "reason": (
                 "First harness bootstrap requires manual scope/policy review; "
                 "base has no trusted validator"
@@ -1162,7 +1240,11 @@ def parser() -> argparse.ArgumentParser:
         command = commands.add_parser(name)
         command.add_argument("--issue", required=True)
         if name in ("start", "scope"):
-            command.add_argument("--base", default="origin/main")
+            command.add_argument(
+                "--base",
+                default="origin/main" if name == "start" else None,
+                help="Integration base at start; scope only accepts the recorded base SHA",
+            )
             command.add_argument("--bootstrap", action="store_true")
         if name == "start":
             command.add_argument(
@@ -1235,16 +1317,7 @@ def main(argv: list[str] | None = None) -> int:
                 elif args.command == "verify":
                     output = verify(root, args)
                 else:
-                    active, snapshot = active_task(root, number)
-                    if args.lane and args.lane != snapshot["spec"]["lane"]:
-                        raise HarnessError("Lane does not match active issue", "FAIL")
-                    output = scope_check(
-                        root,
-                        load_policy(root, args.base, args.bootstrap),
-                        snapshot["spec"],
-                        number,
-                        args.base,
-                    )
+                    output = task_scope(root, args)
         print(json.dumps(output, ensure_ascii=True))
         if args.command == "hook":
             return 0

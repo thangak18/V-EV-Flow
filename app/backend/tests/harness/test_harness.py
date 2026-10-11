@@ -3,9 +3,11 @@
 import argparse
 import importlib.util
 import json
+import os
 import shutil
 import socket
 import subprocess
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -246,6 +248,273 @@ def test_ready_uses_clean_commit_and_external_evidence_without_recursive_sha(rep
     assert run(repo, "ci", ac=False)["result"] == "PASS"
     assert harness.ready(repo, 9, refresh=False)["state"] == "verified"
     assert command(repo, "git", "status", "--porcelain") == ""
+
+
+def test_failed_evidence_metadata_cannot_be_changed_to_pass(repo: Path) -> None:
+    (repo / "Makefile").write_text("test ci:\n\t@echo failed-fixture\n\t@exit 7\n")
+    base = commit(repo, "failing gates fixture")
+    command(repo, "git", "update-ref", "refs/remotes/origin/main", base)
+    activate(repo)
+    finish_handoff(repo)
+    for check, ac in (("test", True), ("ci", False)):
+        record = run(repo, check, ac=ac)
+        assert record["result"] == "FAIL" and record["exit_code"] != 0
+    active, _ = harness.active_task(repo)
+    for path in (repo / active["directory"]).glob("*.evidence.json"):
+        record = json.loads(path.read_text())
+        record.update(result="PASS", exit_code=0)
+        path.write_text(json.dumps(record))
+    with pytest.raises(harness.HarnessError, match="integrity"):
+        harness.ready(repo, 9, refresh=False)
+
+
+@pytest.mark.parametrize("field", ["argv", "finished_at", "integrity"])
+def test_evidence_seal_covers_command_and_ordering_metadata(repo: Path, field: str) -> None:
+    activate(repo)
+    finish_handoff(repo)
+    run(repo)
+    run(repo, "ci", ac=False)
+    active, _ = harness.active_task(repo)
+    path = next((repo / active["directory"]).glob("*.evidence.json"))
+    record = json.loads(path.read_text())
+    assert record["schema_version"] == 2
+    if field == "integrity":
+        record.pop(field)
+    else:
+        record[field] = ["make", "setup"] if field == "argv" else "2099-01-01T00:00:00Z"
+    path.write_text(json.dumps(record))
+    with pytest.raises(harness.HarnessError, match="integrity"):
+        harness.ready(repo, 9, refresh=False)
+
+
+def test_legacy_unsealed_proof_requires_fresh_run_but_preserves_history(repo: Path) -> None:
+    activate(repo)
+    finish_handoff(repo)
+    run(repo)
+    run(repo, "ci", ac=False)
+    active, _ = harness.active_task(repo)
+    legacy = []
+    for path in (repo / active["directory"]).glob("*.evidence.json"):
+        record = json.loads(path.read_text())
+        record["schema_version"] = 1
+        record.pop("integrity")
+        path.write_text(json.dumps(record))
+        original = path.with_name(path.name.replace(".v2.evidence.json", ".evidence.json"))
+        path.rename(original)
+        legacy.append(original)
+    with pytest.raises(harness.HarnessError, match="Legacy unsealed"):
+        harness.ready(repo, 9, refresh=False)
+    run(repo)
+    run(repo, "ci", ac=False)
+    output = harness.ready(repo, 9, refresh=False)
+    assert output["result"] == "PASS" and output["evidence_trust"] == "self-reported"
+    assert output["review_ready"] is False
+    assert all(path.exists() for path in legacy)
+
+
+def test_evidence_key_is_local_private_and_required_for_validation(repo: Path) -> None:
+    activate(repo)
+    finish_handoff(repo)
+    run(repo)
+    run(repo, "ci", ac=False)
+    key = repo / ".harness/evidence.key"
+    assert key.stat().st_mode & 0o777 == 0o600
+    assert len(key.read_bytes()) == 32
+    assert command(repo, "git", "status", "--porcelain") == ""
+    key.unlink()
+    with pytest.raises(harness.HarnessError, match="integrity key missing"):
+        harness.ready(repo, 9, refresh=False)
+    assert not key.exists()
+
+
+@pytest.mark.parametrize("mutation", ["identity", "downgrade"])
+def test_modified_identity_or_version_cannot_hide_latest_failed_evidence(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, mutation: str
+) -> None:
+    activate(repo)
+    finish_handoff(repo)
+    run(repo)
+    run(repo, "ci", ac=False)
+    monkeypatch.setattr(
+        harness, "check_command", lambda *args: ["python3", "-c", "raise SystemExit(1)"]
+    )
+    failed = run(repo)
+    active, _ = harness.active_task(repo)
+    for path in (repo / active["directory"]).glob("*.evidence.json"):
+        record = json.loads(path.read_text())
+        if record["log_path"] == failed["log_path"]:
+            if mutation == "identity":
+                record["identity"]["head"] = "f" * 40
+            else:
+                record["schema_version"] = 1
+                record.pop("integrity")
+            path.write_text(json.dumps(record))
+    with pytest.raises(harness.HarnessError, match="integrity"):
+        harness.ready(repo, 9, refresh=False)
+
+
+def test_scope_cli_rejects_head_that_hides_committed_protected_change(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    activate(repo)
+    (repo / "app/frontend/src/types/api.generated.ts").write_text("protected change\n")
+    commit(repo, "scope violation fixture")
+    with pytest.raises(harness.HarnessError, match="Scope violation"):
+        scoped(repo)
+    assert harness.main(["--root", str(repo), "scope", "--issue", "9", "--base", "HEAD"]) == 1
+    assert "integration base" in json.loads(capsys.readouterr().out)["reason"]
+
+
+@pytest.mark.parametrize("base", [None, "origin/main", "sha-alias"])
+def test_scope_uses_saved_base_and_accepts_only_matching_sha_assertions(
+    repo: Path, base: str | None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    activate(repo)
+    source = repo / "app/frontend/src/feature.ts"
+    source.write_text("scoped committed change\n")
+    commit(repo)
+    argv = ["--root", str(repo), "scope", "--issue", "9"]
+    if base:
+        argv.extend(
+            ["--base", harness.resolve(repo, "origin/main") if base == "sha-alias" else base]
+        )
+    assert harness.main(argv) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["paths"] == ["app/frontend/src/feature.ts"]
+    assert output["base"] == harness.active_task(repo)[0]["base"]
+
+
+def test_scope_default_blocks_protected_change_and_cannot_enable_bootstrap(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    activate(repo)
+    argv = ["--root", str(repo), "scope", "--issue", "9"]
+    assert harness.main([*argv, "--bootstrap"]) == 1
+    assert "cannot enable bootstrap" in json.loads(capsys.readouterr().out)["reason"]
+    (repo / "app/frontend/src/types/api.generated.ts").write_text("protected change\n")
+    commit(repo)
+    assert harness.main(argv) == 1
+    assert "Scope violation" in json.loads(capsys.readouterr().out)["reason"]
+
+
+def test_scope_blocks_advanced_saved_base_ref(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    activate(repo)
+    (repo / "app/frontend/src/feature.ts").write_text("new base\n")
+    new_base = commit(repo)
+    command(repo, "git", "update-ref", "refs/remotes/origin/main", new_base)
+    assert harness.main(["--root", str(repo), "scope", "--issue", "9"]) == 2
+    assert "Integration base changed" in json.loads(capsys.readouterr().out)["reason"]
+
+
+def test_bootstrap_ci_reports_blocked_manual_acceptance_not_overall_pass(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    command(repo, "git", "switch", "-c", "codex/harness-bootstrap")
+    base = harness.load_policy(repo)["foundation"]["sha"]
+    head = command(repo, "git", "rev-parse", "HEAD")
+    event = repo / ".harness/event.json"
+    event.parent.mkdir(exist_ok=True)
+    event.write_text(
+        json.dumps(
+            {
+                "pull_request": {
+                    "base": {"sha": base},
+                    "head": {"sha": head, "ref": "codex/harness-bootstrap"},
+                }
+            }
+        )
+    )
+    monkeypatch.setattr(harness, "self_check", lambda root: {"result": "PASS"})
+    assert harness.main(["--root", str(repo), "ci", "--event-file", str(event)]) == 2
+    output = json.loads(capsys.readouterr().out)
+    assert output["result"] == output["scope"] == output["manual_acceptance"] == "BLOCKED"
+    assert output["checks"] == "PASS" and output["mode"] == "bootstrap"
+    assert output["review_ready"] is False
+    assert output["head"] == head and output["base"] == base
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        None,
+        "old-pass",
+        "wrong-head",
+        "wrong-branch",
+        "failed-checks",
+        "wrong-exit",
+        "normal-pass",
+        "push-pass",
+        "blocked-normal",
+    ],
+)
+def test_ci_workflow_classifies_manual_gate_without_masking_failures(
+    repo: Path, mutation: str | None
+) -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text()
+    block = workflow.split('export HARNESS_SCOPE_EXIT="$scope_exit"', 1)[1]
+    script = textwrap.dedent(block.split("python3 - <<'PY'\n", 1)[1].split("          PY\n", 1)[0])
+    head, base = harness.resolve(repo, "HEAD"), harness.resolve(repo, "origin/main")
+    output = {
+        "result": "BLOCKED",
+        "checks": "PASS",
+        "mode": "bootstrap",
+        "scope": "BLOCKED",
+        "foundation_review": "BLOCKED",
+        "manual_acceptance": "BLOCKED",
+        "review_ready": False,
+        "head": head,
+        "base": base,
+    }
+    status, branch = 2, "codex/harness-bootstrap"
+    if mutation == "old-pass":
+        output["result"], status = "PASS", 0
+    elif mutation == "wrong-head":
+        output["head"] = "f" * 40
+    elif mutation == "wrong-branch":
+        branch = "feat/web-map"
+    elif mutation == "failed-checks":
+        output["checks"] = "FAIL"
+    elif mutation == "wrong-exit":
+        status = 1
+    elif mutation in ("normal-pass", "blocked-normal"):
+        output = {"result": "PASS", "head": head, "base": base}
+        status, branch = 0, "feat/web-map"
+        if mutation == "blocked-normal":
+            output["manual_acceptance"] = "BLOCKED"
+    elif mutation == "push-pass":
+        output = {"result": "PASS", "scope": "NOT RUN"}
+        status, branch, base = 0, "", ""
+    path = repo / ".harness/ci/scope.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(output))
+    summary = repo / ".harness/summary.md"
+    process = subprocess.run(
+        ["python3", "-c", script],
+        cwd=repo,
+        text=True,
+        capture_output=True,
+        env={
+            **os.environ,
+            "HARNESS_SCOPE_EXIT": str(status),
+            "CHECKED_HEAD": head,
+            "BASE_SHA": base,
+            "HEAD_BRANCH": branch,
+            "GITHUB_STEP_SUMMARY": str(summary),
+        },
+        timeout=5,
+    )
+    if mutation in (None, "normal-pass", "push-pass"):
+        assert process.returncode == 0, process.stderr
+        if mutation is None:
+            assert "::warning" in process.stdout
+            assert "manual acceptance BLOCKED" in summary.read_text()
+            assert head in summary.read_text() and base in summary.read_text()
+        else:
+            assert "not established by CI" in summary.read_text()
+    else:
+        assert process.returncode != 0
 
 
 @pytest.mark.parametrize("mutation", ["new-commit", "dirty", "log", "missing-log", "not-run"])
@@ -667,3 +936,27 @@ def test_verify_can_reuse_current_executed_focus_but_rejects_changed_logs(
         harness.verify(repo, argparse.Namespace(issue="9", full=True, timeout=10))["result"]
         == "NOT RUN"
     )
+
+
+def test_focused_verify_rejects_modified_execution_metadata(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    activate(repo, verification="frontend-test")
+    finish_handoff(repo)
+    monkeypatch.setattr(
+        harness, "check_command", lambda *args: ["python3", "-c", "print('executed focus')"]
+    )
+    record = harness.run_check(
+        repo,
+        argparse.Namespace(
+            issue="9", check="frontend-test", path="fixture", ac=["AC-01"], timeout=10
+        ),
+    )
+    active, _ = harness.active_task(repo)
+    for path in (repo / active["directory"]).glob("*.evidence.json"):
+        value = json.loads(path.read_text())
+        if value["log_path"] == record["log_path"]:
+            value["argv"] = ["make", "test"]
+            path.write_text(json.dumps(value))
+    with pytest.raises(harness.HarnessError, match="integrity mismatch"):
+        harness.verify(repo, argparse.Namespace(issue="9", full=True, timeout=10))

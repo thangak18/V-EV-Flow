@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "V-EV Flow executed verification evidence v1",
+  "title": "V-EV Flow locally sealed verification evidence v2 (self-reported)",
   "type": "object",
   "required": [
     "schema_version",
@@ -18,11 +18,12 @@
     "tool",
     "environment",
     "log_path",
-    "log_sha256"
+    "log_sha256",
+    "integrity"
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "issue": {
       "type": "integer",
@@ -145,6 +146,22 @@
     },
     "reason": {
       "type": "string"
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "value"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "hmac-sha256"
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
     }
   }
 }
