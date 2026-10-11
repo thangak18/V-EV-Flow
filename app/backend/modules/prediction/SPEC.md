@@ -54,3 +54,29 @@ aggregate ports are valid for a compatible single-connector station only. The
 training result is from simulated fixtures, not evidence of real-world accuracy.
 
 Verify with `uv run pytest app/backend/modules/prediction -q`, then `make ci`.
+
+## P0 Chronological Split and Label Embargo
+
+`split.temporal_split(dataset, train_end, calibration_end, max_horizon_minutes)`
+accepts either a labeled DataFrame or the aligned `FeatureDataset` from the
+feature builder. Both cutoffs are timezone-aware `+07:00` timestamps and apply
+**globally**, not separately per station or scenario. Splits are ordered by
+`observed_at`, then scenario/station/horizon; their row indices restart at 0.
+
+With `gap = max_horizon_minutes`, training observations end at
+`train_end - gap` (inclusive); calibration observations start strictly after
+`train_end` and end at `calibration_end - gap` (inclusive); test observations
+start strictly after `calibration_end`. All observations in
+`(train_end - gap, train_end]` and
+`(calibration_end - gap, calibration_end]` are embargoed, **including labels
+with shorter horizons**. The maximum horizon must be at least as large as
+every row's label horizon. Empty partitions, duplicate keys, broken ETA
+alignment, invalid timestamps, and misaligned feature matrices are rejected.
+
+`DatasetSplit.metadata` exposes cutoffs, max horizon, sample counts, retained
+observation ranges, and rows removed at each embargo. Construct the label
+split **before** calling `FeatureBuilder.fit(status, split.train)`; build or
+transform remaining rows with the same training-fitted builder. Do not fit
+imputation, feature selection, the model, or calibration on future splits.
+The embargo guards chronological feature/label overlap, but reported metrics
+still describe simulated examples rather than real-world prediction quality.
