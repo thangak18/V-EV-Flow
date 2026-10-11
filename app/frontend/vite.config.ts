@@ -10,6 +10,14 @@ export default defineConfig({
     exclude: ["e2e/**", "node_modules/**"],
     coverage: {
       provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/main.tsx",
+        "src/types/**",
+        "src/test/**",
+        "src/components/map/GoongMapAdapter.ts",
+        "**/*.test.{ts,tsx}",
+      ],
       thresholds: {
         branches: 75,
         functions: 75,

@@ -2,26 +2,50 @@ import { expect, test, vi } from "vitest";
 
 import { ApiClient, ApiError } from "./api";
 
-test("listStations returns the typed payload", async () => {
-  const fetcher = vi.fn().mockResolvedValue({
-    ok: true,
-    status: 200,
+function mockFetch(status: number, body: unknown, ok = status < 400) {
+  return vi.fn().mockResolvedValue({
+    ok,
+    status,
     headers: new Headers({ "content-type": "application/json" }),
-    text: async () =>
-      JSON.stringify({ stations: [], data_type: "mock", source_notes: [] }),
+    text: async () => JSON.stringify(body),
   });
-  const client = new ApiClient("http://test/api", fetcher as typeof fetch);
+}
+
+const validRecommend = {
+  request_id: "demo-001",
+  origin: { lat: 10.78, lng: 106.7 },
+  destination: { lat: 10.35, lng: 107.08 },
+  observed_at: "2026-10-13T16:00:00+07:00",
+  depart_time: "2026-10-13T16:00:00+07:00",
+  scenario: "normal" as const,
+  vehicle: {
+    soc_pct: 20,
+    battery_kwh: 60,
+    consumption_kwh_per_km: 0.18,
+    connector_type: "CCS2",
+  },
+};
+
+test("listStations returns the typed payload", async () => {
+  const fetcher = mockFetch(200, {
+    stations: [],
+    data_type: "mock",
+    source_notes: [],
+  });
+  const client = new ApiClient("http://test/api/", fetcher as typeof fetch);
 
   expect((await client.listStations()).data_type).toBe("mock");
+  expect(fetcher).toHaveBeenCalledWith(
+    "http://test/api/stations",
+    expect.objectContaining({ signal: undefined }),
+  );
 });
 
 test("listStations forwards an abort signal to the fetch boundary", async () => {
-  const fetcher = vi.fn().mockResolvedValue({
-    ok: true,
-    status: 200,
-    headers: new Headers({ "content-type": "application/json" }),
-    text: async () =>
-      JSON.stringify({ stations: [], data_type: "mock", source_notes: [] }),
+  const fetcher = mockFetch(200, {
+    stations: [],
+    data_type: "mock",
+    source_notes: [],
   });
   const controller = new AbortController();
   const client = new ApiClient("http://test/api", fetcher as typeof fetch);
@@ -36,6 +60,38 @@ test("listStations forwards an abort signal to the fetch boundary", async () => 
   });
 });
 
+test("maps a business error without losing code", async () => {
+  const fetcher = mockFetch(
+    409,
+    { code: "REQUEST_ID_CONFLICT", message: "conflict", details: {} },
+    false,
+  );
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).recommend(validRecommend),
+  ).rejects.toMatchObject({
+    status: 409,
+    code: "REQUEST_ID_CONFLICT",
+  });
+});
+
+test("maps FastAPI 422 validation errors", async () => {
+  const fetcher = mockFetch(
+    422,
+    {
+      detail: [
+        { loc: ["body", "soc_pct"], msg: "too low", type: "value_error" },
+      ],
+    },
+    false,
+  );
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).recommend(validRecommend),
+  ).rejects.toMatchObject({
+    status: 422,
+    code: "VALIDATION_ERROR",
+  });
+});
+
 test("request rejects a non-JSON success response", async () => {
   const fetcher = vi.fn().mockResolvedValue({
     ok: true,
@@ -46,26 +102,84 @@ test("request rejects a non-JSON success response", async () => {
   const client = new ApiClient("http://test/api", fetcher as typeof fetch);
 
   await expect(client.listStations()).rejects.toMatchObject({
-    status: 200,
-    code: "invalid_response",
-    message: "Response body was not valid JSON",
+    status: 502,
+    code: "INVALID_API_RESPONSE",
   });
 });
 
 test("client sends every contract operation through the shared request boundary", async () => {
-  const fetcher = vi.fn().mockResolvedValue({
-    ok: true,
-    status: 200,
-    headers: new Headers({ "content-type": "application/json" }),
-    text: async () => JSON.stringify({}),
+  const fetcher = vi.fn().mockImplementation(async (url: string) => {
+    let body: unknown = { data_type: "mock" };
+    if (String(url).includes("/stations")) {
+      body = { stations: [], data_type: "mock", source_notes: [] };
+    } else if (String(url).includes("/predict")) {
+      body = { station_id: "S001", data_type: "mock", p_available: 0.5 };
+    } else if (String(url).includes("/recommend")) {
+      body = {
+        request_id: "x",
+        data_type: "mock",
+        primary: null,
+        backup: null,
+        reasons: [],
+        model_version: "v",
+        allocation_method: "m",
+        contract_version: "0.1.0",
+      };
+    } else if (String(url).includes("/pressure")) {
+      body = {
+        scenario: "normal",
+        time: "t",
+        stations: [],
+        contract_version: "0.1.0",
+      };
+    } else if (String(url).includes("/simulate")) {
+      body = {
+        strategy: "nearest",
+        metrics: {
+          success_rate: 1,
+          mean_detour_km: 0,
+          mean_wait_minutes: 0,
+          failed_count: 0,
+          vehicle_count: 1,
+        },
+        scenario: "normal",
+        seed: 1,
+        model_version: "v",
+        fixture_hash: "h",
+        contract_version: "0.1.0",
+      };
+    } else if (String(url).includes("/reset")) {
+      body = { reset: true, contract_version: "0.1.0" };
+    }
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "application/json" }),
+      text: async () => JSON.stringify(body),
+    };
   });
   const client = new ApiClient("http://test/api", fetcher as typeof fetch);
 
-  await client.predict({} as Parameters<ApiClient["predict"]>[0]);
-  await client.recommend({} as Parameters<ApiClient["recommend"]>[0]);
-  await client.pressure({ scenario: "normal", time: "2026-10-11T00:00:00Z" });
-  await client.simulate({} as Parameters<ApiClient["simulate"]>[0]);
-  await client.reset({} as Parameters<ApiClient["reset"]>[0]);
+  await client.predict({
+    station_id: "S001",
+    observed_at: "2026-10-13T16:00:00+07:00",
+    eta: "2026-10-13T16:40:00+07:00",
+    connector_type: "CCS2",
+    scenario: "normal",
+  });
+  await client.recommend(validRecommend);
+  await client.getPressure({
+    scenario: "normal",
+    time: "2026-10-11T00:00:00Z",
+  });
+  await client.simulate({
+    scenario: "normal",
+    seed: 42,
+    vehicle_count: 100,
+    strategy: "nearest",
+    contract_version: "0.1.0",
+  });
+  await client.reset({ contract_version: "0.1.0" });
 
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
     "http://test/api/predict",
@@ -77,17 +191,15 @@ test("client sends every contract operation through the shared request boundary"
 });
 
 test("request normalizes a structured error response", async () => {
-  const fetcher = vi.fn().mockResolvedValue({
-    ok: false,
-    status: 503,
-    headers: new Headers({ "content-type": "application/json" }),
-    text: async () =>
-      JSON.stringify({
-        code: "unavailable",
-        message: "Service unavailable",
-        details: { retry_after: 60 },
-      }),
-  });
+  const fetcher = mockFetch(
+    503,
+    {
+      code: "unavailable",
+      message: "Service unavailable",
+      details: { retry_after: 60 },
+    },
+    false,
+  );
   const client = new ApiClient("http://test/api", fetcher as typeof fetch);
 
   await expect(client.listStations()).rejects.toMatchObject(
@@ -129,4 +241,29 @@ test("request converts a non-JSON error response into an ApiError", async () => 
     message: "Gateway timed out",
     details: null,
   });
+});
+
+test("network failures become ApiError NETWORK_ERROR", async () => {
+  const fetcher = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).listStations(),
+  ).rejects.toMatchObject({
+    status: 0,
+    code: "NETWORK_ERROR",
+  });
+});
+
+test("abort errors are rethrown", async () => {
+  const abortError = new DOMException("Aborted", "AbortError");
+  const fetcher = vi.fn().mockRejectedValue(abortError);
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).listStations(),
+  ).rejects.toBe(abortError);
+});
+
+test("rejects malformed success payloads missing discriminants", async () => {
+  const fetcher = mockFetch(200, { stations: [] });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).listStations(),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
 });

@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-test("shows the mock station fixture", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByText("S001")).toBeVisible();
+test("driver shell shows mock data badge and station text list", async ({
+  page,
+}) => {
+  await page.goto("/driver");
   await expect(page.getByText("Mock data")).toBeVisible();
+  await expect(page.getByLabel("Station text list")).toBeVisible();
 });
