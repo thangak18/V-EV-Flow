@@ -1,7 +1,9 @@
 # Frontend agent instructions
 
-Read [root `AGENTS.md`](../../AGENTS.md), [frontend `SPEC.md`](SPEC.md), [`app/SPEC.md`](../SPEC.md), the committed [API contract](../../docs/API_CONTRACT.md), [`app/backend/contracts/SPEC.md`](../backend/contracts/SPEC.md), and the assigned plan [`2026-10-11-d-tu-frontend-map.md`](../../docs/superpowers/plans/2026-10-11-d-tu-frontend-map.md).
+Read [root instructions](../../AGENTS.md), [app instructions](../AGENTS.md), [frontend SPEC](SPEC.md), [API contract](../../docs/API_CONTRACT.md), [contracts SPEC](../backend/contracts/SPEC.md), and [frontend plan](../../docs/superpowers/plans/2026-10-11-d-tu-frontend-map.md). [Harness policy](../../docs/harness/policy.json) defines permitted files; [workflow](../../docs/harness/workflow.md) defines evidence and handoff.
 
-Allowed feature paths are `app/frontend/src/`, frontend tests/e2e, and this module's docs. Do not edit backend contracts, generated `src/types/api.generated.ts`, OpenAPI, root tooling, lockfiles, CI, or backend modules on a feature branch. Request contract/tooling changes in a separate reviewed PR.
+Feature code/tests/e2e and module docs use committed API types. Backend code/contracts, generated `src/types/api.generated.ts`, dependency manifests/lockfiles, root tooling, CI and build/test configuration require separate reviewed contract/tooling changes. A missing package is a tooling prerequisite; do not install it on `feat/web-map`.
 
-The mock UI starts with `npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173`. OpenAPI types are generated from `../backend/contracts/openapi.yaml` by `npm --prefix app/frontend run generate:api` as part of `make contract-check`; never hand-edit generated types. Use only `make setup`, `make lint`, `make test`, `make contract-check`, `make smoke`, and `make ci` as canonical checks.
+Start the mock UI with `npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173`. Canonical checks come from Makefile and include TypeScript/production build. Use loading/error/empty tests and screenshots when UI behavior changes. Verification smoke requires its own servers; port conflicts are blockers.
+
+In an authorized contract PR, `npm --prefix app/frontend run generate:api` generates types from committed OpenAPI. `make contract-check` detects drift. Never hand-edit generated types.

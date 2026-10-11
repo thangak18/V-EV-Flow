@@ -1,6 +1,6 @@
 # Integration, Demo, and Release Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Use the repository-owned [harness workflow](../../harness/workflow.md), applicable AGENTS/SPEC and assigned issue AC. Track task checkboxes as implementation notes; no external skill/plugin is required. Evidence and handoff follow the common workflow.
 
 **Goal:** Integrate the four green owner branches into one reproducible demo, package it, enforce protected-main gates, and produce evidence for the 15/10 submission.
 

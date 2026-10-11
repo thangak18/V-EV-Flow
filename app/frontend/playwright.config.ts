@@ -17,7 +17,7 @@ export default defineConfig({
       command: `"${python}" -m uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port 8000`,
       cwd: root,
       url: "http://127.0.0.1:8000/api/health",
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
@@ -25,7 +25,7 @@ export default defineConfig({
       // Invoke local binaries via node so Windows PATH need not include tsc/vite.
       // Force relative /api so preview proxy works (avoids CORS vs :8000).
       command:
-        "node ./node_modules/typescript/bin/tsc -b && node ./node_modules/vite/bin/vite.js build && node ./node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173",
+        "node ./node_modules/typescript/bin/tsc -b && node ./node_modules/vite/bin/vite.js build && node ./node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173 --strictPort",
       url: "http://127.0.0.1:4173",
       // Always rebuild so VITE_GOONG_MAP_KEY is baked for Goong-failure e2e.
       reuseExistingServer: false,

@@ -1,6 +1,6 @@
 # D/Tú Frontend and Map Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Use the repository-owned [harness workflow](../../harness/workflow.md), applicable AGENTS/SPEC and assigned issue AC. Track task checkboxes as implementation notes; no external skill/plugin is required. Evidence and handoff follow the common workflow.
 
 **Goal:** Deliver a responsive Driver experience and an Operator pressure/simulation experience that work against the frozen OpenAPI mock before real backend integration.
 
@@ -107,8 +107,7 @@ git commit -m "feat(web): harden typed API service"
 - Create: `app/frontend/src/components/common/AsyncState.tsx`
 - Create: `app/frontend/src/components/common/common.test.tsx`
 - Modify: `app/frontend/src/App.tsx`
-- Modify: `app/frontend/package.json`
-- Modify: `app/frontend/package-lock.json`
+- Prerequisite tooling PR (outside this feature branch): `app/frontend/package.json` and `app/frontend/package-lock.json` if routing dependency is missing.
 
 **Interfaces:**
 - Produces: `/driver`, `/operator`, default redirect, accessible nav, `DataTypeBadge`, and loading/error/empty primitives.
@@ -125,7 +124,7 @@ Expected: FAIL because router/components do not exist.
 
 - [ ] **Step 3: Implement semantic shell and components**
 
-Run `npm --prefix app/frontend install react-router-dom`. Use links/buttons with visible focus, `aria-live="polite"` for async status, color plus text/icon rather than color alone, and no automatic endpoint calls in the shared shell.
+First verify the routing dependency is present in the frozen manifest. If missing, create a separate tooling prerequisite and wait for its reviewed merge; then merge `main` and run `make setup`. Do not install/change manifests or locks on `feat/web-map`. Use links/buttons with visible focus, `aria-live="polite"` for async status, color plus text/icon rather than color alone, and no automatic endpoint calls in the shared shell.
 
 - [ ] **Step 4: Run tests**
 
@@ -136,7 +135,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add app/frontend/src/app app/frontend/src/components/common app/frontend/src/App.tsx app/frontend/package.json app/frontend/package-lock.json
+git add app/frontend/src/app app/frontend/src/components/common app/frontend/src/App.tsx
 git commit -m "feat(web): add routes and shared status UI"
 ```
 
@@ -238,7 +237,7 @@ git commit -m "feat(web): present transparent charging plans"
 
 - [ ] **Step 1: Confirm the supported Goong browser SDK from official docs and record the package/script choice**
 
-Record the exact SDK name, version, key usage, attribution, and coordinate order in `app/frontend/SPEC.md` before installing it. Do not use an inferred package name.
+Record the exact SDK name, version, key usage, attribution, and coordinate order in `app/frontend/SPEC.md`. If a dependency must be installed, open a separate tooling prerequisite PR and integrate it before continuing this feature task. Do not use an inferred package name or edit manifests/lockfiles on this lane.
 
 - [ ] **Step 2: Write failing adapter lifecycle tests**
 
@@ -267,7 +266,7 @@ Expected: PASS; test suite uses fake adapter and no network/key.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add app/frontend/src/components/map app/frontend/src/pages/DriverPage.tsx app/frontend/SPEC.md app/frontend/package.json app/frontend/package-lock.json
+git add app/frontend/src/components/map app/frontend/src/pages/DriverPage.tsx app/frontend/SPEC.md
 git commit -m "feat(web): add isolated charging map"
 ```
 
