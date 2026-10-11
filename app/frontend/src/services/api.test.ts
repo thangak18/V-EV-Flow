@@ -1,10 +1,7 @@
 import { expect, test, vi } from "vitest";
 
+import { FIXTURE_HASH } from "../test/fixtureHash";
 import { ApiClient, ApiError } from "./api";
-
-/** Valid lowercase sha256 hex — matches backend FixtureHash. */
-const FIXTURE_HASH =
-  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 function mockFetch(status: number, body: unknown, ok = status < 400) {
   return vi.fn().mockResolvedValue({

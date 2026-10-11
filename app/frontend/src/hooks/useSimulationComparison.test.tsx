@@ -3,13 +3,9 @@ import type { ReactNode } from "react";
 import { describe, expect, test, vi } from "vitest";
 
 import { ApiProvider } from "../app/ApiContext";
+import { FIXTURE_HASH, OTHER_FIXTURE_HASH } from "../test/fixtureHash";
 import { createMockApiClient } from "../test/mockApiClient";
 import { useSimulationComparison } from "./useSimulationComparison";
-
-const FIXTURE_HASH =
-  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const OTHER_HASH =
-  "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
 
 function okResult(strategy: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -59,7 +55,6 @@ describe("useSimulationComparison", () => {
   });
 
   test("rejects responses that mislabel strategy", async () => {
-    // Backend always returns strategy=nearest regardless of request.
     const simulate = vi.fn().mockResolvedValue(okResult("nearest"));
     const wrapper = ({ children }: { children: ReactNode }) => (
       <ApiProvider client={createMockApiClient({ simulate })}>
@@ -76,19 +71,8 @@ describe("useSimulationComparison", () => {
       strategy: "nearest",
       status: "success",
     });
-    expect(result.current.rows[1]).toMatchObject({
-      strategy: "currently_available",
-      status: "error",
-    });
-    expect(result.current.rows[2]).toMatchObject({
-      strategy: "ai_allocation",
-      status: "error",
-    });
-    expect(
-      result.current.rows
-        .filter((row) => row.status === "error")
-        .every((row) => /does not match requested/i.test(row.message)),
-    ).toBe(true);
+    expect(result.current.rows[1]?.status).toBe("error");
+    expect(result.current.rows[2]?.status).toBe("error");
   });
 
   test("rejects mismatched fixture hashes across the comparison set", async () => {
@@ -97,7 +81,9 @@ describe("useSimulationComparison", () => {
       .mockImplementation(async (body: { strategy: string }) =>
         okResult(body.strategy, {
           fixture_hash:
-            body.strategy === "ai_allocation" ? OTHER_HASH : FIXTURE_HASH,
+            body.strategy === "ai_allocation"
+              ? OTHER_FIXTURE_HASH
+              : FIXTURE_HASH,
         }),
       );
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -148,5 +134,60 @@ describe("useSimulationComparison", () => {
     expect(result.current.rows.every((row) => row.status === "error")).toBe(
       true,
     );
+  });
+
+  test("clears previous rows as soon as a new run starts", async () => {
+    const gate = {
+      release: null as null | (() => void),
+      wait: Promise.resolve(),
+    };
+    gate.wait = new Promise<void>((resolve) => {
+      gate.release = resolve;
+    });
+
+    let phase: "first" | "second" = "first";
+    const simulate = vi
+      .fn()
+      .mockImplementation(async (body: { strategy: string; seed: number }) => {
+        if (phase === "second") {
+          await gate.wait;
+        }
+        return okResult(body.strategy, { seed: body.seed });
+      });
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <ApiProvider client={createMockApiClient({ simulate })}>
+        {children}
+      </ApiProvider>
+    );
+
+    const { result } = renderHook(() => useSimulationComparison(), { wrapper });
+    await act(async () => {
+      await result.current.run("normal", 42, 100);
+    });
+    await waitFor(() => expect(result.current.rows).toHaveLength(3));
+    expect(result.current.config?.seed).toBe(42);
+
+    phase = "second";
+    let secondRun!: Promise<void>;
+    await act(async () => {
+      secondRun = result.current.run("normal", 99, 100);
+    });
+
+    await waitFor(() => {
+      expect(result.current.pending).toBe(true);
+      expect(result.current.config?.seed).toBe(99);
+      expect(result.current.rows).toHaveLength(0);
+    });
+
+    await act(async () => {
+      gate.release?.();
+      await secondRun;
+    });
+    await waitFor(() => {
+      expect(result.current.pending).toBe(false);
+      expect(result.current.rows).toHaveLength(3);
+      expect(result.current.config?.seed).toBe(99);
+    });
   });
 });

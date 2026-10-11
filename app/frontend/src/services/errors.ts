@@ -80,14 +80,41 @@ export function formatValidationDetails(detail: unknown[]): string {
   return parts.join("; ");
 }
 
-/** ISO-8601 datetime with explicit timezone (Z or ±HH:MM). */
+/**
+ * ISO-8601 datetime with explicit timezone (Z or ±HH:MM).
+ * Rejects non-existent calendar dates (e.g. 2026-02-31) that Date.parse
+ * would silently normalize — matching backend Pydantic validation.
+ */
 export function isTimezoneAwareIso(value: string): boolean {
-  if (
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(
       value,
-    )
-  ) {
-    return false;
+    );
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const offset = match[7]!;
+
+  if (month < 1 || month > 12) return false;
+  if (hour > 23 || minute > 59 || second > 59) return false;
+
+  if (offset !== "Z") {
+    const offsetMatch = /^([+-])(\d{2}):(\d{2})$/.exec(offset);
+    if (!offsetMatch) return false;
+    const offsetHour = Number(offsetMatch[2]);
+    const offsetMinute = Number(offsetMatch[3]);
+    if (offsetHour > 14 || offsetMinute > 59) return false;
+    if (offsetHour === 14 && offsetMinute !== 0) return false;
   }
+
+  // Day 0 of next month → last valid day of `month` (UTC, leap-year aware).
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (day < 1 || day > daysInMonth) return false;
+
   return !Number.isNaN(Date.parse(value));
 }

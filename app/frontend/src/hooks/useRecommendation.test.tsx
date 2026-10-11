@@ -88,6 +88,56 @@ describe("useRecommendation", () => {
     expect(recommend).toHaveBeenCalledTimes(2);
   });
 
+  test("clears prior result when a new submit fails", async () => {
+    const recommend = vi
+      .fn()
+      .mockResolvedValueOnce({
+        request_id: "r1",
+        primary: {
+          station_id: "S012",
+          eta: "2026-10-13T16:40:00+07:00",
+          distance_km: 10,
+          detour_km: 1,
+          arrival_soc_pct: 18,
+          p_available: 0.7,
+        },
+        backup: null,
+        reasons: ["ok"],
+        model_version: "v1",
+        allocation_method: "ranking_penalty",
+        data_type: "mock",
+        contract_version: "0.1.0",
+      })
+      .mockRejectedValueOnce(new ApiError(500, "boom", "boom", null));
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <ApiProvider client={createMockApiClient({ recommend })}>
+        {children}
+      </ApiProvider>
+    );
+
+    const { result } = renderHook(() => useRecommendation(), { wrapper });
+    await act(async () => {
+      await result.current.submit({
+        ...request,
+        vehicle: { ...request.vehicle, soc_pct: 20 },
+      });
+    });
+    await waitFor(() =>
+      expect(result.current.result?.primary?.station_id).toBe("S012"),
+    );
+
+    await act(async () => {
+      await result.current.submit({
+        ...request,
+        vehicle: { ...request.vehicle, soc_pct: 40 },
+      });
+    });
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.result).toBeNull();
+    expect(result.current.error).toBe("boom");
+  });
+
   test("clear resets result and aborts in-flight work", async () => {
     let resolveRecommend: ((value: unknown) => void) | undefined;
     const recommend = vi.fn().mockImplementation(

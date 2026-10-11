@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, test, vi } from "vitest";
 
 import { ApiProvider } from "../app/ApiContext";
+import { FIXTURE_HASH } from "../test/fixtureHash";
 import { createMockApiClient } from "../test/mockApiClient";
 import { OperatorPage } from "./OperatorPage";
 
@@ -28,8 +29,7 @@ describe("OperatorPage", () => {
         seed: 42,
         strategy: body.strategy,
         model_version: "fake-sim-v1",
-        fixture_hash:
-          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        fixture_hash: FIXTURE_HASH,
         contract_version: "0.1.0",
         metrics: {
           success_rate: 0.9,

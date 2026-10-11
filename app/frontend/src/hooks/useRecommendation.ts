@@ -34,6 +34,8 @@ export function useRecommendation() {
       const controller = new AbortController();
       controllerRef.current = controller;
       lastRequestRef.current = request;
+      // Drop prior plan immediately so markers/summary cannot outlive a new submit.
+      setResult(null);
       setStatus("loading");
       setError(null);
 
@@ -45,6 +47,7 @@ export function useRecommendation() {
         setStatus(empty ? "empty" : "success");
       } catch (cause) {
         if (isAbortError(cause) || controller.signal.aborted) return;
+        setResult(null);
         setError(cause instanceof ApiError ? cause.message : "Request failed");
         setStatus("error");
       }

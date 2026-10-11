@@ -68,9 +68,11 @@ export function useSimulationComparison() {
 
   const run = useCallback(
     async (scenario: Scenario, seed: number, vehicleCount: number) => {
-      setPending(true);
       const runConfig: RunConfig = { scenario, seed, vehicleCount };
+      // Clear previous rows before awaiting so metadata cannot describe a stale table.
+      setPending(true);
       setConfig(runConfig);
+      setRows([]);
       const settled = await Promise.allSettled(
         STRATEGIES.map((strategy) =>
           client.simulate({

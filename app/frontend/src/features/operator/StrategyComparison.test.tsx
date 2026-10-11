@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
 import type { StrategyRow } from "../../hooks/useSimulationComparison";
+import { FIXTURE_HASH } from "../../test/fixtureHash";
 import { StrategyComparison } from "./StrategyComparison";
 
 const rows: StrategyRow[] = [
@@ -13,8 +14,7 @@ const rows: StrategyRow[] = [
       seed: 42,
       strategy: "nearest",
       model_version: "fake-sim-v1",
-      fixture_hash:
-        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      fixture_hash: FIXTURE_HASH,
       contract_version: "0.1.0",
       metrics: {
         success_rate: 0.9,
@@ -38,8 +38,7 @@ const rows: StrategyRow[] = [
       seed: 42,
       strategy: "ai_allocation",
       model_version: "fake-sim-v1",
-      fixture_hash:
-        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      fixture_hash: FIXTURE_HASH,
       contract_version: "0.1.0",
       metrics: {
         success_rate: 0.92,
