@@ -136,3 +136,33 @@ increased holiday demand and outage pressure; do not refit on that holdout.
 Always label reported results by their source and `mock` / `simulated` /
 `real` / `mixed` provenance. These synthetic checks establish workflow
 correctness, not measured road-network performance.
+
+## P0 Versioned Model Artifacts
+
+`artifacts.save_pipeline(trained_pipeline, directory, data_version=...,
+fixture_hash=...)` saves the fitted LightGBM, chosen calibrator, feature
+builder (including training-only lag imputations), hourly baseline and test
+report as **one compressed joblib binary**. It returns a `ModelManifest` and
+writes `manifest.json` beside a content-addressed
+`model-<sha256>.joblib`. Binary names contain their SHA-256 and manifest
+publication occurs last via atomic replacement; earlier binaries remain so
+an interrupted replacement does not invalidate the existing manifest.
+
+The JSON manifest records schema/contract/model versions, creation time,
+binary checksum, LightGBM and calibrator classes, calibration method,
+ordered features and lag medians, configuration, split ranges and embargo
+counts, calibration scores, all four test metric summaries, scenario/seed,
+data type, source, data version and optional input fixture hash. Pass a real
+SHA-256 input digest when available; otherwise `fixture_hash` is explicitly
+`null` and `data_version` defaults to `unspecified` rather than claiming
+measured provenance.
+
+`artifacts.read_manifest(directory)` inspects metadata without unpickling.
+`artifacts.load_pipeline(directory, expected_contract_version="0.1.0")`
+checks supported schema, expected contract version, current `FEATURE_COLUMNS`
+order, safe binary filename and SHA-256 **before** joblib deserialization,
+then checks that stored metadata agrees with the loaded pipeline. Recovered
+models preserve probability predictions and calibration. Joblib uses pickle:
+only load files from a trusted producer; the manifest's hash detects
+corruption but is not a signature/authenticity guarantee. Model binaries
+remain Git-ignored. Do not commit them or simulated/generated histories.
