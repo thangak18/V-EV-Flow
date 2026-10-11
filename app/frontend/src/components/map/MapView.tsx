@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { FakeMapAdapter } from "./FakeMapAdapter";
 import { GoongMapAdapter } from "./GoongMapAdapter";
@@ -10,8 +10,13 @@ type Props = {
   preferFake?: boolean;
 };
 
+function hasGoongKey(): boolean {
+  const key = import.meta.env.VITE_GOONG_MAP_KEY;
+  return typeof key === "string" && key.trim().length > 0;
+}
+
 function defaultFactory(preferFake: boolean): MapAdapter {
-  if (preferFake || import.meta.env.MODE === "test") {
+  if (preferFake || import.meta.env.MODE === "test" || !hasGoongKey()) {
     return new FakeMapAdapter();
   }
   return new GoongMapAdapter();
@@ -21,6 +26,10 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const adapterRef = useRef<MapAdapter | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+  const usingGoong = useMemo(
+    () => !preferFake && hasGoongKey() && !adapterFactory,
+    [preferFake, adapterFactory],
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -62,6 +71,17 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
 
   return (
     <div className="map-panel">
+      {!usingGoong ? (
+        <p className="map-mode-banner" role="status">
+          Đang dùng schematic map (chưa có Goong tiles). Thêm{" "}
+          <code>VITE_GOONG_MAP_KEY</code> vào <code>.env</code> ở root repo rồi
+          restart Vite để hiện bản đồ Goong thật.
+        </p>
+      ) : (
+        <p className="map-mode-banner map-mode-banner--live" role="status">
+          Goong map · tiles © Goong
+        </p>
+      )}
       <div
         ref={containerRef}
         className="map-canvas"

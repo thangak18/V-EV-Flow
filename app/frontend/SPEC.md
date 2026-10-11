@@ -27,7 +27,8 @@ Do not call `/recommend` during render or passive refetch because it records vir
 | Key | `VITE_GOONG_MAP_KEY` (public maptiles key; never commit secrets) |
 | Coordinates | Contract uses `{lat,lng}`; conversion to `[lng, lat]` happens only inside `GoongMapAdapter` |
 | Attribution | Map tiles © Goong |
-| Offline / tests | `FakeMapAdapter` + always-visible textual station list |
+| Offline / tests | `FakeMapAdapter` draws a corridor schematic with markers when `VITE_GOONG_MAP_KEY` is empty; textual station list always visible |
+| Env | Vite `envDir` is the repo root so `VITE_GOONG_MAP_KEY` in `/.env` is picked up after restart |
 
 ## Freedom, Tests, and Done Criteria
 
