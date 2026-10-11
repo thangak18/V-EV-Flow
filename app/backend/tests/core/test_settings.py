@@ -1,0 +1,39 @@
+"""Tests for validated backend settings and adapter selection."""
+
+from pydantic import ValidationError
+
+from app.backend.core.settings import Settings, get_settings
+
+
+def test_mock_mode_needs_no_external_secret() -> None:
+    settings = Settings(data_backend="mock", predictor_backend="fake", route_backend="fake")
+    assert settings.demo_seed == 42
+
+
+def test_cors_origins_default_is_local_frontend() -> None:
+    assert Settings().cors_origins == ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+
+def test_cors_origins_accepts_csv_environment_value(monkeypatch) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", "https://demo.example, https://ops.example ")
+    assert Settings().cors_origins == ["https://demo.example", "https://ops.example"]
+
+
+def test_goong_mode_requires_rest_key() -> None:
+    try:
+        Settings(route_backend="goong", goong_rest_api_key=None)
+    except ValidationError:
+        return
+    raise AssertionError("goong mode accepted a missing key")
+
+
+def test_get_settings_is_cached() -> None:
+    get_settings.cache_clear()
+    assert get_settings() is get_settings()
+
+
+def test_goong_rest_api_key_is_redacted_from_repr() -> None:
+    settings = Settings(goong_rest_api_key="super-secret")
+    rendered = repr(settings)
+    assert "super-secret" not in rendered
+    assert "goong_rest_api_key" not in rendered

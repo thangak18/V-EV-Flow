@@ -1,0 +1,7 @@
+# Bootstrap owner; enable required code-owner review only after a second
+# non-author maintainer handle has been verified (see branch-protection runbook).
+/app/backend/contracts/ @thangak18
+/.github/ @thangak18
+/pyproject.toml @thangak18
+/uv.lock @thangak18
+/Makefile @thangak18

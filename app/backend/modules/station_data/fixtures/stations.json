@@ -1,0 +1,28 @@
+[
+  {
+    "station_id": "S001",
+    "name": "TP.HCM East Gateway",
+    "lat": 10.7769,
+    "lng": 106.7009,
+    "n_ports": 4,
+    "power_kw": 120.0,
+    "connector_types": ["CCS2"],
+    "network": "phase0-demo",
+    "station_type": "urban",
+    "source": "phase0-fixture",
+    "assumptions": ["Location and capacity are synthetic for demonstration."]
+  },
+  {
+    "station_id": "S002",
+    "name": "Vung Tau Coastal Gateway",
+    "lat": 10.4114,
+    "lng": 107.1362,
+    "n_ports": 6,
+    "power_kw": 180.0,
+    "connector_types": ["CCS2"],
+    "network": "phase0-demo",
+    "station_type": "highway",
+    "source": "phase0-fixture",
+    "assumptions": ["Location and capacity are synthetic for demonstration."]
+  }
+]

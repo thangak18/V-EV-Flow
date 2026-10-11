@@ -1,0 +1,59 @@
+[project]
+name = "v-ev-flow"
+version = "0.1.0"
+description = "V-EV Flow modular-monolith application"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "httpx",
+    "joblib",
+    "lightgbm",
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "pydantic",
+    "pydantic-settings",
+    "pyyaml",
+    "scikit-learn",
+    "uvicorn[standard]",
+]
+
+[dependency-groups]
+dev = [
+    "detect-secrets",
+    "import-linter",
+    "pip-audit",
+    "pre-commit",
+    "pyright",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+include = ["app/backend"]
+typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+testpaths = ["app/backend/tests"]
+asyncio_mode = "auto"
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["app.backend"]
+
+[tool.coverage.report]
+fail_under = 75
+show_missing = true
+
+[tool.importlinter]
+root_package = "app"
