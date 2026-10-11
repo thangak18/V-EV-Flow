@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./base";
 
 test("driver shell shows mock data badge and station text list", async ({
   page,

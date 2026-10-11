@@ -27,11 +27,14 @@ export default defineConfig({
       command:
         "node ./node_modules/typescript/bin/tsc -b && node ./node_modules/vite/bin/vite.js build && node ./node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173",
       url: "http://127.0.0.1:4173",
-      reuseExistingServer: !process.env.CI,
+      // Always rebuild so VITE_GOONG_MAP_KEY is baked for Goong-failure e2e.
+      reuseExistingServer: false,
       timeout: 180_000,
       env: {
         ...process.env,
         VITE_API_BASE_URL: "/api",
+        // Fake key forces GoongMapAdapter (not FakeMap) in production preview.
+        VITE_GOONG_MAP_KEY: "e2e-fake-goong-key",
       },
     },
   ],
