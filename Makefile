@@ -19,7 +19,7 @@ lint:
 	npm --prefix app/frontend run format:check
 
 test:
-	uv run pytest app/backend/tests --cov=app.backend --cov-report=term-missing --cov-fail-under=75
+	uv run pytest app/backend --cov=app.backend --cov-report=term-missing --cov-fail-under=75
 	npm --prefix app/frontend run test:coverage
 
 contract-check:

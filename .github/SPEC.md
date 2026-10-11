@@ -13,3 +13,8 @@ No direct or force push; PRs require current branch, all checks, at least one no
 ## PR Evidence and Release
 
 The PR template requires scope, owner, contract impact, test commands/results, data origin, screenshots for UI, limitations, and rollback. Release runs manually or from `demo-v*` tags and packages only a commit already green on `main`; it never embeds repository secrets in artifacts.
+
+Backend test discovery uses `app/backend` in pytest defaults, `make test`, and
+the `python-tests` job. This includes foundation tests and colocated domain
+tests under `modules/*/tests`; all contribute to the unchanged 75% aggregate
+coverage threshold. No local environment override is required.

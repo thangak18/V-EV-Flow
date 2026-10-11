@@ -48,7 +48,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: uv sync --frozen
-      - run: uv run pytest app/backend/tests --cov=app.backend --cov-report=term-missing --cov-fail-under=75
+      - run: uv run pytest app/backend --cov=app.backend --cov-report=term-missing --cov-fail-under=75
 
   contract-check:
     name: contract-check
