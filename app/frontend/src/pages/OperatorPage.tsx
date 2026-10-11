@@ -115,7 +115,9 @@ export function OperatorPage() {
             vehicleCount={vehicleCount}
             onSeedChange={setSeed}
             onVehicleCountChange={setVehicleCount}
-            onRun={() => void simulation.run(scenario, seed, vehicleCount)}
+            onRun={(nextSeed, nextVehicles) =>
+              void simulation.run(scenario, nextSeed, nextVehicles)
+            }
             pending={simulation.pending}
           />
           {directoryFailed ? (

@@ -33,3 +33,20 @@ export function parseLocaleNumber(raw: string): number | null {
   const value = Number(normalized);
   return Number.isFinite(value) ? value : null;
 }
+
+/** True for empty or in-progress integer typing (optional leading `-`). */
+export function isIntegerDraft(raw: string): boolean {
+  return /^-?\d*$/.test(raw.trim());
+}
+
+/**
+ * Parse a finished integer. Empty / lone `-` → null (do not coerce to 0).
+ * Explicit `"0"` parses to 0.
+ */
+export function parseInteger(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0 || trimmed === "-") return null;
+  if (!/^-?\d+$/.test(trimmed)) return null;
+  const value = Number(trimmed);
+  return Number.isInteger(value) ? value : null;
+}

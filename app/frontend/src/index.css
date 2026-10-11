@@ -61,6 +61,8 @@ select:focus-visible {
 
 .app-frame {
   width: min(100% - 1.5rem, 1200px);
+  max-width: 100%;
+  min-width: 0;
   margin: 0 auto;
   padding: 1rem 0 2.5rem;
 }
@@ -204,6 +206,8 @@ h2 {
 .strategy-comparison,
 .map-panel {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 1rem;
   padding: 1.25rem;
@@ -408,11 +412,24 @@ input[aria-invalid="true"] {
 .operator-page {
   display: grid;
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .operator-grid {
   display: grid;
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Prevent strategy table min-content from widening the whole page. */
+.operator-page > *,
+.operator-grid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pressure-legend ul {
@@ -444,16 +461,28 @@ input[aria-invalid="true"] {
   background: #b91c1c;
 }
 
+.strategy-comparison {
+  overflow: hidden;
+}
+
 .table-wrap {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  margin: 0 -0.25rem;
-  padding: 0 0.25rem;
+}
+
+.strategy-comparison table {
+  width: max-content;
+  min-width: 32rem;
+  max-width: none;
+  border-collapse: collapse;
 }
 
 table {
   width: 100%;
-  min-width: 32rem;
   border-collapse: collapse;
 }
 
@@ -579,9 +608,16 @@ dd {
     flex-basis: 100%;
   }
 
+  .panel-heading,
   .operator-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* Column layout: do not keep flex-basis 12rem (inflates height). */
+  .panel-heading > div,
+  .operator-header > div {
+    flex: 0 1 auto;
   }
 
   .operator-header .data-badge {

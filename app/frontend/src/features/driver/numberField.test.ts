@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { isNumericDraft, parseLocaleNumber } from "./numberField";
+import {
+  isIntegerDraft,
+  isNumericDraft,
+  parseInteger,
+  parseLocaleNumber,
+} from "./numberField";
 
 describe("isNumericDraft", () => {
   test("allows empty and in-progress decimal separators", () => {
@@ -38,5 +43,19 @@ describe("parseLocaleNumber", () => {
     expect(parseLocaleNumber("30,")).toBeNull();
     expect(parseLocaleNumber(".")).toBeNull();
     expect(parseLocaleNumber(",")).toBeNull();
+  });
+});
+
+describe("integer drafts", () => {
+  test("keeps empty draft and parses explicit zero", () => {
+    expect(isIntegerDraft("")).toBe(true);
+    expect(isIntegerDraft("0")).toBe(true);
+    expect(isIntegerDraft("42")).toBe(true);
+    expect(isIntegerDraft("-1")).toBe(true);
+    expect(isIntegerDraft("12a")).toBe(false);
+    expect(parseInteger("")).toBeNull();
+    expect(parseInteger("-")).toBeNull();
+    expect(parseInteger("0")).toBe(0);
+    expect(parseInteger("42")).toBe(42);
   });
 });

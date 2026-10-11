@@ -1,9 +1,13 @@
+import { useState, type FormEvent } from "react";
+
+import { isIntegerDraft, parseInteger } from "../driver/numberField";
+
 type Props = {
   seed: number;
   vehicleCount: number;
   onSeedChange: (seed: number) => void;
   onVehicleCountChange: (count: number) => void;
-  onRun: () => void;
+  onRun: (seed: number, vehicleCount: number) => void;
   pending: boolean;
 };
 
@@ -15,43 +19,60 @@ export function SimulationControls({
   onRun,
   pending,
 }: Props) {
-  const invalid =
-    !Number.isFinite(seed) ||
-    !Number.isInteger(seed) ||
-    !Number.isFinite(vehicleCount) ||
-    !Number.isInteger(vehicleCount) ||
-    vehicleCount < 1;
+  const [seedDraft, setSeedDraft] = useState(() => String(seed));
+  const [vehiclesDraft, setVehiclesDraft] = useState(() =>
+    String(vehicleCount),
+  );
+
+  const parsedSeed = parseInteger(seedDraft);
+  const parsedVehicles = parseInteger(vehiclesDraft);
+  const seedInvalid = parsedSeed === null;
+  const vehiclesInvalid = parsedVehicles === null || parsedVehicles < 1;
+  const invalid = seedInvalid || vehiclesInvalid;
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (pending || parsedSeed === null || parsedVehicles === null) return;
+    if (parsedVehicles < 1) return;
+    onSeedChange(parsedSeed);
+    onVehicleCountChange(parsedVehicles);
+    onRun(parsedSeed, parsedVehicles);
+  }
 
   return (
-    <form
-      className="simulation-controls"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!pending && !invalid) onRun();
-      }}
-    >
+    <form className="simulation-controls" onSubmit={handleSubmit}>
       <label>
         Seed
         <input
-          type="number"
-          value={seed}
-          onChange={(event) => onSeedChange(Number(event.target.value))}
-          aria-invalid={!Number.isInteger(seed)}
+          type="text"
+          inputMode="numeric"
+          value={seedDraft}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (isIntegerDraft(next)) setSeedDraft(next);
+          }}
+          aria-invalid={seedInvalid}
+          autoComplete="off"
         />
       </label>
       <label>
         Vehicles
         <input
-          type="number"
-          min={1}
-          value={vehicleCount}
-          onChange={(event) => onVehicleCountChange(Number(event.target.value))}
-          aria-invalid={vehicleCount < 1}
+          type="text"
+          inputMode="numeric"
+          value={vehiclesDraft}
+          onChange={(event) => {
+            const next = event.target.value;
+            if (isIntegerDraft(next)) setVehiclesDraft(next);
+          }}
+          aria-invalid={vehiclesInvalid}
+          autoComplete="off"
         />
       </label>
       {invalid ? (
         <p className="field-error" role="alert">
-          Seed must be an integer and vehicles must be ≥ 1.
+          Enter an integer seed (0 allowed) and vehicles ≥ 1. Empty fields are
+          not submitted.
         </p>
       ) : null}
       <button type="submit" disabled={pending || invalid}>
