@@ -2,6 +2,10 @@ import { expect, test, vi } from "vitest";
 
 import { ApiClient, ApiError } from "./api";
 
+/** Valid lowercase sha256 hex — matches backend FixtureHash. */
+const FIXTURE_HASH =
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
 function mockFetch(status: number, body: unknown, ok = status < 400) {
   return vi.fn().mockResolvedValue({
     ok,
@@ -138,7 +142,7 @@ test("client sends every contract operation through the shared request boundary"
     } else if (String(url).includes("/pressure")) {
       body = {
         scenario: "normal",
-        time: "t",
+        time: "2026-10-11T00:00:00Z",
         stations: [],
         contract_version: "0.1.0",
       };
@@ -155,7 +159,7 @@ test("client sends every contract operation through the shared request boundary"
         scenario: "normal",
         seed: 1,
         model_version: "v",
-        fixture_hash: "h",
+        fixture_hash: FIXTURE_HASH,
         contract_version: "0.1.0",
       };
     } else if (String(url).includes("/reset")) {
@@ -365,5 +369,114 @@ test("rejects predict payloads missing nested discriminants", async () => {
       connector_type: "CCS2",
       scenario: "normal",
     }),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
+
+test("rejects station lat out of range and empty connector_types", async () => {
+  const fetcher = mockFetch(200, {
+    data_type: "mock",
+    source_notes: [],
+    stations: [
+      {
+        station_id: "S1",
+        name: "Bad",
+        lat: 999,
+        lng: 106.7,
+        n_ports: 1,
+        power_kw: 50,
+        connector_types: [],
+        network: "n",
+        station_type: "urban",
+        source: "s",
+        assumptions: [],
+      },
+    ],
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).listStations(),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
+
+test("rejects pressure_score outside 0..1 and naive timestamps", async () => {
+  const fetcher = mockFetch(200, {
+    time: "2026-10-13T16:00:00",
+    scenario: "normal",
+    stations: [
+      {
+        station_id: "S1",
+        p_available: 0.5,
+        pressure_score: 8,
+        data_type: "mock",
+      },
+    ],
+    contract_version: "0.1.0",
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).getPressure({
+      scenario: "normal",
+      time: "2026-10-13T16:00:00+07:00",
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
+
+test("rejects plan with negative distance and impossible arrival SOC", async () => {
+  const fetcher = mockFetch(200, {
+    request_id: "x",
+    data_type: "mock",
+    primary: {
+      station_id: "S1",
+      eta: "2026-10-13T16:40:00+07:00",
+      distance_km: -20,
+      detour_km: 0,
+      arrival_soc_pct: 250,
+      p_available: 0.5,
+    },
+    backup: null,
+    reasons: [],
+    model_version: "v",
+    allocation_method: "m",
+    contract_version: "0.1.0",
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).recommend(validRecommend),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
+
+test("rejects simulate metrics that violate backend ranges and hash format", async () => {
+  const fetcher = mockFetch(200, {
+    scenario: "normal",
+    seed: 1,
+    strategy: "nearest",
+    model_version: "v",
+    metrics: {
+      success_rate: 4,
+      mean_detour_km: 0,
+      mean_wait_minutes: 0,
+      failed_count: 5,
+      vehicle_count: 2,
+    },
+    fixture_hash: "not-a-sha256",
+    contract_version: "0.1.0",
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).simulate({
+      scenario: "normal",
+      seed: 1,
+      vehicle_count: 10,
+      strategy: "nearest",
+      contract_version: "0.1.0",
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});
+
+test("rejects unknown fields because schemas are strict", async () => {
+  const fetcher = mockFetch(200, {
+    stations: [],
+    data_type: "mock",
+    source_notes: [],
+    unexpected: true,
+  });
+  await expect(
+    new ApiClient("/api", fetcher as typeof fetch).listStations(),
   ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
 });

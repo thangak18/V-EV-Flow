@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { FakeMapAdapter } from "./FakeMapAdapter";
 import { GoongMapAdapter } from "./GoongMapAdapter";
-import type { MapAdapter, MapModel, MapPoint } from "./types";
+import type {
+  MapAdapter,
+  MapModel,
+  MapPoint,
+  UnlocatedMapPoint,
+} from "./types";
 
 type Props = {
   model: MapModel;
@@ -104,13 +109,22 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
           Map unavailable: {mapError}. Textual station list remains usable.
         </p>
       ) : null}
-      <StationTextList points={model.points} />
+      <StationTextList
+        points={model.points}
+        unlocated={model.unlocated ?? []}
+      />
     </div>
   );
 }
 
-function StationTextList({ points }: { points: MapPoint[] }) {
-  if (points.length === 0) {
+function StationTextList({
+  points,
+  unlocated,
+}: {
+  points: MapPoint[];
+  unlocated: UnlocatedMapPoint[];
+}) {
+  if (points.length === 0 && unlocated.length === 0) {
     return (
       <p className="status-message" role="status">
         No map points yet.
@@ -124,6 +138,11 @@ function StationTextList({ points }: { points: MapPoint[] }) {
         <li key={`${point.role}-${point.id}`}>
           <strong>{point.role}</strong>: {point.label} ({point.lat.toFixed(4)},{" "}
           {point.lng.toFixed(4)})
+        </li>
+      ))}
+      {unlocated.map((point) => (
+        <li key={`unlocated-${point.role}-${point.id}`}>
+          <strong>{point.role}</strong>: {point.label} (location unavailable)
         </li>
       ))}
     </ul>

@@ -87,4 +87,46 @@ describe("useRecommendation", () => {
     await waitFor(() => expect(result.current.status).toBe("success"));
     expect(recommend).toHaveBeenCalledTimes(2);
   });
+
+  test("clear resets result and aborts in-flight work", async () => {
+    let resolveRecommend: ((value: unknown) => void) | undefined;
+    const recommend = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRecommend = resolve;
+        }),
+    );
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <ApiProvider client={createMockApiClient({ recommend })}>
+        {children}
+      </ApiProvider>
+    );
+
+    const { result } = renderHook(() => useRecommendation(), { wrapper });
+    await act(async () => {
+      void result.current.submit(request);
+    });
+    await waitFor(() => expect(result.current.status).toBe("loading"));
+
+    await act(async () => {
+      result.current.clear();
+    });
+    expect(result.current.status).toBe("idle");
+    expect(result.current.result).toBeNull();
+
+    await act(async () => {
+      resolveRecommend?.({
+        request_id: "r1",
+        primary: null,
+        backup: null,
+        reasons: ["late"],
+        model_version: "v1",
+        allocation_method: "ranking_penalty",
+        data_type: "mock",
+        contract_version: "0.1.0",
+      });
+    });
+    expect(result.current.status).toBe("idle");
+    expect(result.current.result).toBeNull();
+  });
 });

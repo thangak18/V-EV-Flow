@@ -28,7 +28,8 @@ describe("OperatorPage", () => {
         seed: 42,
         strategy: body.strategy,
         model_version: "fake-sim-v1",
-        fixture_hash: "phase0-fixture-hash",
+        fixture_hash:
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         contract_version: "0.1.0",
         metrics: {
           success_rate: 0.9,
@@ -66,5 +67,49 @@ describe("OperatorPage", () => {
     );
     await waitFor(() => expect(simulate).toHaveBeenCalledTimes(3));
     expect(screen.getByText("Nearest")).toBeInTheDocument();
+  });
+
+  test("keeps pressure stations textual when directory lacks coordinates", async () => {
+    const getPressure = vi.fn().mockResolvedValue({
+      time: "2026-10-13T16:00:00+07:00",
+      scenario: "normal",
+      contract_version: "0.1.0",
+      stations: [
+        {
+          station_id: "UNKNOWN",
+          p_available: 0.2,
+          pressure_score: 0.8,
+          data_type: "mock",
+        },
+      ],
+    });
+    const client = createMockApiClient({
+      listStations: vi.fn().mockResolvedValue({
+        stations: [],
+        data_type: "mock",
+        source_notes: [],
+      }),
+      getPressure,
+      pressure: getPressure,
+    });
+
+    render(
+      <ApiProvider client={client}>
+        <MemoryRouter>
+          <OperatorPage />
+        </MemoryRouter>
+      </ApiProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Apply scenario/i }));
+    expect(
+      await screen.findByText(/location unavailable/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Station text list")).toHaveTextContent(
+      "UNKNOWN",
+    );
+    expect(screen.getByLabelText("Station text list").textContent).not.toMatch(
+      /10\.7800/,
+    );
   });
 });

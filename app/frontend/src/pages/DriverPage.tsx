@@ -4,7 +4,11 @@ import { useApiClient } from "../app/useApiClient";
 import { AsyncState } from "../components/common/AsyncState";
 import { DataTypeBadge } from "../components/common/DataTypeBadge";
 import { MapView } from "../components/map/MapView";
-import type { MapModel, MapPoint } from "../components/map/types";
+import type {
+  MapModel,
+  MapPoint,
+  UnlocatedMapPoint,
+} from "../components/map/types";
 import {
   CORRIDOR_PRESETS,
   type CorridorPresetId,
@@ -16,17 +20,24 @@ import type { Station } from "../services/api";
 
 export function DriverPage() {
   const client = useApiClient();
-  const { status, result, error, submit, retry } = useRecommendation();
+  const { status, result, error, submit, retry, clear } = useRecommendation();
   const [stations, setStations] = useState<Station[]>([]);
+  const [directoryFailed, setDirectoryFailed] = useState(false);
   const [presetId, setPresetId] = useState<CorridorPresetId>("hcm_vt");
 
   useEffect(() => {
     const controller = new AbortController();
     client
       .listStations(controller.signal)
-      .then((response) => setStations(response.stations))
+      .then((response) => {
+        setStations(response.stations);
+        setDirectoryFailed(false);
+      })
       .catch(() => {
-        /* map enrichment optional */
+        if (!controller.signal.aborted) {
+          setStations([]);
+          setDirectoryFailed(true);
+        }
       });
     return () => controller.abort();
   }, [client]);
@@ -52,29 +63,40 @@ export function DriverPage() {
         role: "destination",
       },
     ];
+    const unlocated: UnlocatedMapPoint[] = [];
 
-    if (result?.primary) {
-      const meta = index.get(result.primary.station_id);
-      points.push({
-        id: result.primary.station_id,
-        lat: meta?.lat ?? 10.55,
-        lng: meta?.lng ?? 106.9,
-        label: result.primary.station_id,
-        role: "primary",
+    const placeStation = (
+      stationId: string,
+      role: "primary" | "backup",
+    ): void => {
+      const meta = index.get(stationId);
+      if (meta) {
+        points.push({
+          id: stationId,
+          lat: meta.lat,
+          lng: meta.lng,
+          label: stationId,
+          role,
+        });
+        return;
+      }
+      unlocated.push({
+        id: stationId,
+        label: stationId,
+        role,
       });
-    }
-    if (result?.backup) {
-      const meta = index.get(result.backup.station_id);
-      points.push({
-        id: result.backup.station_id,
-        lat: meta?.lat ?? 10.45,
-        lng: meta?.lng ?? 107.05,
-        label: result.backup.station_id,
-        role: "backup",
-      });
-    }
-    return { points, fitBounds: true };
+    };
+
+    if (result?.primary) placeStation(result.primary.station_id, "primary");
+    if (result?.backup) placeStation(result.backup.station_id, "backup");
+
+    return { points, unlocated, fitBounds: true };
   }, [presetId, result, stations]);
+
+  function handlePresetChange(next: CorridorPresetId) {
+    setPresetId(next);
+    clear();
+  }
 
   return (
     <main className="driver-page">
@@ -93,9 +115,16 @@ export function DriverPage() {
         <DriverForm
           pending={status === "loading"}
           presetId={presetId}
-          onPresetChange={setPresetId}
+          onPresetChange={handlePresetChange}
           onSubmit={submit}
         />
+
+        {directoryFailed ? (
+          <p className="status-message" role="status">
+            Station directory unavailable — map markers need directory
+            coordinates.
+          </p>
+        ) : null}
 
         <AsyncState
           status={status === "empty" ? "success" : status}

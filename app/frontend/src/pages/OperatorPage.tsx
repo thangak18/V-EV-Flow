@@ -4,7 +4,11 @@ import { useApiClient } from "../app/useApiClient";
 import { AsyncState } from "../components/common/AsyncState";
 import { DataTypeBadge } from "../components/common/DataTypeBadge";
 import { MapView } from "../components/map/MapView";
-import type { MapModel } from "../components/map/types";
+import type {
+  MapModel,
+  MapPoint,
+  UnlocatedMapPoint,
+} from "../components/map/types";
 import { PressureLegend } from "../features/operator/PressureLegend";
 import { ScenarioSelector } from "../features/operator/ScenarioSelector";
 import { SimulationControls } from "../features/operator/SimulationControls";
@@ -26,6 +30,7 @@ export function OperatorPage() {
   const [seed, setSeed] = useState(42);
   const [vehicleCount, setVehicleCount] = useState(100);
   const [stations, setStations] = useState<Station[]>([]);
+  const [directoryFailed, setDirectoryFailed] = useState(false);
   const pressure = usePressure();
   const simulation = useSimulationComparison();
 
@@ -33,9 +38,15 @@ export function OperatorPage() {
     const controller = new AbortController();
     client
       .listStations(controller.signal)
-      .then((response) => setStations(response.stations))
+      .then((response) => {
+        setStations(response.stations);
+        setDirectoryFailed(false);
+      })
       .catch(() => {
-        /* directory is optional enrichment for map pins */
+        if (!controller.signal.aborted) {
+          setStations([]);
+          setDirectoryFailed(true);
+        }
       });
     return () => controller.abort();
   }, [client]);
@@ -46,20 +57,31 @@ export function OperatorPage() {
 
   const mapModel = useMemo<MapModel>(() => {
     const pressureStations = pressure.result?.stations ?? [];
-    return {
-      points: pressureStations.map((station, index) => {
-        const meta = stationIndex.get(station.station_id);
-        return {
+    const points: MapPoint[] = [];
+    const unlocated: UnlocatedMapPoint[] = [];
+
+    for (const station of pressureStations) {
+      const meta = stationIndex.get(station.station_id);
+      const label = `${station.station_id} · pressure ${station.pressure_score.toFixed(2)}`;
+      if (!meta) {
+        unlocated.push({
           id: station.station_id,
-          lat: meta?.lat ?? 10.78 - index * 0.05,
-          lng: meta?.lng ?? 106.7 + index * 0.05,
-          label: `${station.station_id} · pressure ${station.pressure_score.toFixed(2)}`,
-          role: "pressure" as const,
-          color: pressureColor(station.pressure_score),
-        };
-      }),
-      fitBounds: true,
-    };
+          label,
+          role: "pressure",
+        });
+        continue;
+      }
+      points.push({
+        id: station.station_id,
+        lat: meta.lat,
+        lng: meta.lng,
+        label,
+        role: "pressure",
+        color: pressureColor(station.pressure_score),
+      });
+    }
+
+    return { points, unlocated, fitBounds: true };
   }, [pressure.result, stationIndex]);
 
   const dataType = pressure.result?.stations[0]?.data_type ?? ("mock" as const);
@@ -96,6 +118,12 @@ export function OperatorPage() {
             onRun={() => void simulation.run(scenario, seed, vehicleCount)}
             pending={simulation.pending}
           />
+          {directoryFailed ? (
+            <p className="status-message" role="status">
+              Station directory unavailable — pressure markers need directory
+              coordinates.
+            </p>
+          ) : null}
         </section>
 
         <section className="operator-map">

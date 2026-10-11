@@ -19,6 +19,15 @@ export function useRecommendation() {
   const controllerRef = useRef<AbortController | null>(null);
   const lastRequestRef = useRef<RecommendationRequest | null>(null);
 
+  const clear = useCallback(() => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    lastRequestRef.current = null;
+    setResult(null);
+    setError(null);
+    setStatus("idle");
+  }, []);
+
   const submit = useCallback(
     async (request: RecommendationRequest) => {
       controllerRef.current?.abort();
@@ -49,5 +58,5 @@ export function useRecommendation() {
     }
   }, [submit]);
 
-  return { status, result, error, submit, retry };
+  return { status, result, error, submit, retry, clear };
 }
