@@ -1,0 +1,3 @@
+# Shared lifecycle hooks only. Trust remains a personal decision.
+[features]
+hooks = true

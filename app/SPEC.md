@@ -19,7 +19,7 @@ Read the closest module `SPEC.md` before editing. Stay inside the assigned owner
 
 Local instructions live in [`app/AGENTS.md`](AGENTS.md), [`app/backend/AGENTS.md`](backend/AGENTS.md), and [`app/frontend/AGENTS.md`](frontend/AGENTS.md). They point back to the root rules, this specification, shared contracts, and the assigned implementation plan. Feature branches must not change `app/backend/contracts`, generated OpenAPI/types, Make targets, lockfiles, CI, or another owner's path; use a separate reviewed contract/tooling PR instead.
 
-Foundation verification uses only `make setup`, `make lint`, `make test`, `make contract-check`, `make smoke`, and `make ci`. The mock vertical slice may be started with `uv run uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port 8000` and `npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173`. OpenAPI is generated from the FastAPI app and frontend types from the committed OpenAPI artifact; never hand-edit generated files.
+Canonical verification uses `make setup`, `make lint`, `make test`, `make build`, `make contract-check`, `make smoke`, `make harness-check`, and `make ci`; see `docs/harness/workflow.md` for issue evidence and focused checks. The mock vertical slice may be started with `uv run uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port 8000` and `npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173`. OpenAPI is generated from the FastAPI app and frontend types from the committed OpenAPI artifact; never hand-edit generated files.
 
 ## Completion Standard
 

@@ -1,6 +1,10 @@
 # Phase 0 Foundation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Use the repository-owned [harness workflow](../../harness/workflow.md), applicable AGENTS/SPEC and assigned issue AC. Track task checkboxes as implementation notes; no external skill/plugin is required. Evidence and handoff follow the common workflow.
+
+**Historical plan:** Foundation code already exists; do not rerun scaffolding/install snippets against the frozen checkout. Current commands, policy and handoff workflow are authoritative; new dependency changes require tooling review.
+
+> Foundation checklist is historical. The current Makefile and shared harness workflow control checks; do not restore obsolete tooling from code examples below.
 
 **Goal:** Build the shared, tested modular-monolith baseline that must merge before the four owner branches begin.
 
@@ -120,11 +124,11 @@ lint:
 	npm --prefix app/frontend run format:check
 
 test:
-	uv run pytest app/backend/tests --cov=app.backend --cov-report=term-missing --cov-fail-under=75
+	uv run pytest app/backend --cov=app.backend --cov-report=term-missing --cov-fail-under=75
 	npm --prefix app/frontend run test:coverage
 
 contract-check:
-	uv run python -m app.backend.contracts.generate_openapi --check
+	uv run python -m app.backend.api.generate_openapi --check
 	npm --prefix app/frontend run lint:openapi
 	npm --prefix app/frontend run generate:api
 	git diff --exit-code -- app/backend/contracts/openapi.yaml app/frontend/src/types/api.generated.ts
@@ -667,7 +671,7 @@ git commit -m "feat: expose contract-compliant mock API"
 ```python
 from pathlib import Path
 
-from app.backend.contracts.generate_openapi import generate_document
+from app.backend.api.generate_openapi import generate_document
 
 
 def test_committed_openapi_matches_generated_document() -> None:
@@ -686,7 +690,7 @@ Call `create_app().openapi()`, recursively sort object keys, serialize with `yam
 
 - [ ] **Step 4: Generate the artifact and add contract examples**
 
-Run: `uv run python -m app.backend.contracts.generate_openapi`
+Run: `uv run python -m app.backend.api.generate_openapi`
 
 Expected: `openapi.yaml` contains all operation IDs and declared error models.
 
@@ -698,7 +702,7 @@ Add parametrized tests that load each example and call the matching `.model_vali
 
 Run: `uv run pytest app/backend/tests/contracts -v`
 
-Expected: PASS and `uv run python -m app.backend.contracts.generate_openapi --check` exits 0.
+Expected: PASS and `uv run python -m app.backend.api.generate_openapi --check` exits 0.
 
 - [ ] **Step 7: Commit**
 
@@ -919,7 +923,7 @@ Expected: exit 0; all runtime work remains under `app/`.
 
 - [ ] **Step 3: Replace planned-command wording with verified commands**
 
-Document only `make setup`, `make lint`, `make test`, `make contract-check`, `make smoke`, and `make ci`, plus mock backend/frontend start commands proven locally.
+Document Makefile canonical targets (including build and harness checks added by tooling), plus mock backend/frontend start commands actually verified. Record exact results/SHA; historical expected outcomes are not evidence.
 
 - [ ] **Step 4: Run the complete gate from a clean checkout or disposable worktree**
 

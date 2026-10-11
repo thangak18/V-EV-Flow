@@ -1,6 +1,6 @@
 # C/Kiên Backend Recommendation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Use the repository-owned [harness workflow](../../harness/workflow.md), applicable AGENTS/SPEC and assigned issue AC. Track task checkboxes as implementation notes; no external skill/plugin is required. Evidence and handoff follow the common workflow.
 
 **Goal:** Replace Phase 0 fakes with file/Goong adapters, feasible recommendation and backup selection, virtual-load allocation, and integrated FastAPI endpoints.
 
@@ -385,7 +385,7 @@ Pass strategy enum and immutable fixtures; do not share Driver virtual-load stat
 
 - [ ] **Step 5: Regenerate OpenAPI in a separate contract PR if and only if route signatures changed**
 
-For the expected implementation, signatures remain unchanged and `make contract-check` must produce no diff. Any required signature change stops this branch until the contract PR merges and this branch rebases.
+For the expected implementation, signatures remain unchanged and `make contract-check` must produce no diff. Any required signature change stops this branch until the contract PR merges and this branch merges the updated `main`.
 
 - [ ] **Step 6: Run API tests and contract check**
 

@@ -30,9 +30,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: uv sync --frozen
-      - run: uv run ruff format --check app
-      - run: uv run ruff check app
-      - run: uv run pyright app/backend
+      - run: uv run ruff format --check app .github/scripts/harness.py
+      - run: uv run ruff check app .github/scripts/harness.py
+      - run: uv run pyright app/backend .github/scripts/harness.py
       - run: uv run lint-imports
 
   python-tests:
@@ -48,7 +48,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: uv sync --frozen
-      - run: uv run pytest app/backend/tests --cov=app.backend --cov-report=term-missing --cov-fail-under=75
+      - run: uv run pytest app/backend --cov=app.backend --cov-report=term-missing --cov-fail-under=75
 
   contract-check:
     name: contract-check
@@ -128,11 +128,18 @@ jobs:
       - run: uv sync --frozen
       - run: npm --prefix app/frontend ci
       - run: npm --prefix app/frontend exec playwright install --with-deps chromium
-      - run: npm --prefix app/frontend run test:e2e
+      - run: make smoke
         env:
           DATA_BACKEND: mock
           PREDICTOR_BACKEND: fake
           ROUTE_BACKEND: fake
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-${{ github.sha }}
+          path: app/frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
   security:
     name: security
@@ -156,3 +163,70 @@ jobs:
       - run: uv run pip-audit
       - run: npm --prefix app/frontend ci
       - run: npm --prefix app/frontend audit --audit-level=high
+
+  harness-check:
+    name: harness-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: uv sync --frozen
+      - run: make harness-check
+      - name: Check PR scope using the trusted base validator
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          mkdir -p .harness/ci
+          validator=.github/scripts/harness.py
+          if [[ -n "$BASE_SHA" ]]; then
+            if git cat-file -e "$BASE_SHA:.github/scripts/harness.py" 2>/dev/null; then
+              git show "$BASE_SHA:.github/scripts/harness.py" > "$RUNNER_TEMP/vev-harness.py"
+              validator="$RUNNER_TEMP/vev-harness.py"
+            elif [[ "$HEAD_BRANCH" != "codex/harness-bootstrap" ]]; then
+              echo 'BLOCKED: base has no trusted harness validator; bootstrap must land first.'
+              exit 2
+            fi
+          fi
+          python3 "$validator" ci --event-file "$GITHUB_EVENT_PATH" > .harness/ci/scope.json
+          cat .harness/ci/scope.json
+      - name: Record independent execution identity
+        if: always()
+        env:
+          CHECKED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          JOB_RESULT: ${{ job.status }}
+        run: |
+          mkdir -p .harness/ci
+          python3 - <<'PY'
+          import json, os, subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+          value = {
+              "head": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "expected_head": os.environ["CHECKED_HEAD"],
+              "result": os.environ["JOB_RESULT"],
+              "recorded_at": datetime.now(timezone.utc).isoformat(),
+              "provenance": "GitHub Actions harness-check job; not local self-reported evidence",
+          }
+          Path(".harness/ci/execution.json").write_text(json.dumps(value, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: harness-${{ github.event.pull_request.head.sha || github.sha }}
+          path: .harness/ci/
+          retention-days: 14

@@ -27,6 +27,7 @@ Dự báo và điều phối nhu cầu sạc xe điện trên hành lang cao t�
 | [Hai giao diện](docs/UI_SPEC.md) | Driver/Operator, bố cục và thứ tự dựng |
 | [Demo và checklist](docs/DEMO.md) | Demo 20% pin, 100 xe, dự phòng và việc hỏi mentor |
 | [Làm việc chung](CONTRIBUTING.md) | Nhánh, PR, integration và quy tắc repo |
+| [Harness Codex/Claude](docs/harness/README.md) | Issue, workflow, evidence, adapters và pilot |
 | [Phase 0 handoff](docs/runbooks/phase-0-handoff.md) | Đọc theo thứ tự, gates, OpenAPI và tạo nhánh owner |
 
 ## Cấu trúc
@@ -59,7 +60,7 @@ cd V-EV-Flow
 cp .env.example .env
 ```
 
-Repo private nên thành viên cần được cấp quyền trước khi clone. Foundation agent phải được review và merge trước; sau đó Bảo/Thắng/Kiên/Tú tạo nhánh từ đúng merge commit được ghi trong runbook. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế trong tài liệu module.
+Repo private nên thành viên cần được cấp quyền trước khi clone. Foundation snapshot cần reviewer độc lập chấp nhận theo runbook; survey ghi CI xanh nhưng chưa có bằng chứng approval. Sau khi gate đó và tooling prerequisites đạt, Bảo/Thắng/Kiên/Tú tạo nhánh từ Foundation origin trong policy rồi tích hợp `main`. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế trong tài liệu module.
 
 ## Lệnh canonical và trạng thái xác minh
 
@@ -69,12 +70,14 @@ Chạy từ root repo sau khi đã cài `uv` và Node/npm. `make setup` đồng 
 make setup
 make lint
 make test
+make build
 make contract-check
 make smoke
+make harness-check
 make ci
 ```
 
-`make setup`, contract checks, backend/frontend tests, smoke, Ruff, Pyright, import-linter, and security audits have been verified in this checkout. `make ci` exits 0; Redocly emits seven non-fatal warnings for the current contract. Do not merge Foundation or create owner branches without recording a fresh `make ci` result and clean `git status --short` in the handoff runbook.
+Foundation snapshot có historical CI success trên `27d421265fe57736d3070c241544e3756772e52b`; xem [record](docs/runbooks/phase-0-handoff.md). Đó không thay kết quả mới trên commit hiện tại. Harness bootstrap ghi kết quả local/CI bằng lệnh, exit, SHA/base và logs trong PR; independent review và pilot vẫn cần người thật. Chỉ hoàn tất handoff khi fresh `make ci` exit 0 và working tree sạch.
 
 Mock backend và frontend có thể chạy độc lập để kiểm tra vertical slice:
 
@@ -83,6 +86,6 @@ uv run uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port
 npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Backend health check là `http://127.0.0.1:8000/api/health`; frontend mở `http://127.0.0.1:5173/`. Không ghi lệnh khác như lệnh canonical cho Phase 0.
+Backend health check là `http://127.0.0.1:8000/api/health`; frontend mở `http://127.0.0.1:5173/`. Các gate canonical được định nghĩa trong Makefile; xem workflow để ghi evidence và bàn giao.
 
 Proposal và kế hoạch mới do nhóm có sẵn được giữ nguyên ở root. Kế hoạch 7 ngày ban đầu được lưu tại [docs/reference](docs/reference/README.md). Khi có khác biệt, dùng bộ tài liệu triển khai hiện tại ở README này; lịch BTC và dữ liệu đối tác vẫn cần nhóm xác nhận.

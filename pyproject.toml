@@ -44,7 +44,7 @@ include = ["app/backend"]
 typeCheckingMode = "standard"
 
 [tool.pytest.ini_options]
-testpaths = ["app/backend/tests"]
+testpaths = ["app/backend"]
 asyncio_mode = "auto"
 pythonpath = ["."]
 

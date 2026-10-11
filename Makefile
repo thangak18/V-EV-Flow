@@ -1,4 +1,4 @@
-.PHONY: setup format lint test contract-check smoke security ci
+.PHONY: setup format lint test build contract-check smoke security harness-check ci
 
 setup:
 	uv sync --frozen
@@ -6,21 +6,24 @@ setup:
 	npm --prefix app/frontend exec playwright install chromium
 
 format:
-	uv run ruff format app
-	uv run ruff check --fix app
+	uv run ruff format app .github/scripts/harness.py
+	uv run ruff check --fix app .github/scripts/harness.py
 	npm --prefix app/frontend run format
 
 lint:
-	uv run ruff format --check app
-	uv run ruff check app
-	uv run pyright app/backend
+	uv run ruff format --check app .github/scripts/harness.py
+	uv run ruff check app .github/scripts/harness.py
+	uv run pyright app/backend .github/scripts/harness.py
 	uv run lint-imports
 	npm --prefix app/frontend run lint
 	npm --prefix app/frontend run format:check
 
 test:
-	uv run pytest app/backend/tests --cov=app.backend --cov-report=term-missing --cov-fail-under=75
+	uv run pytest app/backend --cov=app.backend --cov-report=term-missing --cov-fail-under=75
 	npm --prefix app/frontend run test:coverage
+
+build:
+	npm --prefix app/frontend run build
 
 contract-check:
 	uv run python -m app.backend.api.generate_openapi --check
@@ -29,6 +32,7 @@ contract-check:
 	git diff --exit-code -- app/backend/contracts/openapi.yaml app/frontend/src/types/api.generated.ts
 
 smoke:
+	python3 .github/scripts/harness.py smoke-preflight
 	npm --prefix app/frontend run test:e2e
 
 security:
@@ -36,4 +40,8 @@ security:
 	uv run pip-audit
 	npm --prefix app/frontend audit --audit-level=high
 
-ci: lint test contract-check smoke security
+harness-check:
+	python3 .github/scripts/harness.py self-check
+	uv run pytest app/backend/tests/harness -q
+
+ci: lint test build contract-check smoke security harness-check
