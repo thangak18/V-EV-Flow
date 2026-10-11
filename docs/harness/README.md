@@ -2,6 +2,11 @@
 
 Harness lưu quy trình trong repo và dùng adapter mỏng cho hai công cụ. Con người giao issue, bắt đầu phiên và quyết định merge. API/DTO sản phẩm không đổi để phục vụ harness.
 
+Hướng dẫn thành viên: [Run one issue](RUN_AN_ISSUE.md). Canonical assets trong
+[.agents/README.md](../../.agents/README.md) cung cấp `project-init`, `task-start`,
+`task-verify`, `task-ship`, explicit-only `vev-issue` và read-only review/QA roles.
+Stage skills route tới workflow hiện có, không tạo quy trình hoặc backlog khác.
+
 ## Bắt đầu
 
 Cần quyền clone repo private, Git, Python 3.11+, `uv`, Node 22/npm, `gh` đã đăng nhập. Không lưu credentials trong repo.
@@ -10,6 +15,7 @@ Cần quyền clone repo private, Git, Python 3.11+, `uv`, Node 22/npm, `gh` đ�
 cp .env.example .env
 python3 .github/scripts/harness.py doctor
 make setup
+python3 .github/scripts/harness.py sync --check
 python3 .github/scripts/harness.py self-check
 ```
 
@@ -21,6 +27,7 @@ Sau khi người giao task tạo issue đủ đầu vào và reviewer chấp nh�
 python3 .github/scripts/harness.py start --issue 123
 python3 .github/scripts/harness.py scope --issue 123 --base <integration-base-sha>
 python3 .github/scripts/harness.py run --issue 123 --check test --ac AC-01
+python3 .github/scripts/harness.py verify --issue 123
 python3 .github/scripts/harness.py handoff --issue 123
 ```
 
@@ -37,9 +44,16 @@ python3 .github/scripts/harness.py handoff --issue 123
 | Goal, scope, AC, dependency, assignee | GitHub Issue |
 | Decisions và checkpoint | `handoffs/<issue>.md` |
 | Execution output/revision | Ignored `.harness/`, PR và CI artifacts |
+| Shared skills/roles/hook definitions | `.agents/` canonical sources; generated adapters không là policy |
 | Review/merge/completion | GitHub PR và integrator |
 
-Đọc [compatibility](compatibility.md) trước khi dùng surface mới; [pilot](pilot.md) ghi những nghiệm thu thực tế còn cần. Handoff format tại [template](templates/handoff.md), evidence format tại [schema](schemas/evidence.schema.json). Hooks là tiện ích đọc trạng thái; tắt hooks vẫn phải dùng workflow và gate như nhau.
+Đọc [compatibility](compatibility.md) trước khi dùng surface mới; [pilot](pilot.md) ghi những nghiệm thu thực tế còn cần. Handoff format tại [template](templates/handoff.md), evidence format tại [schema](schemas/evidence.schema.json). Hooks đưa session context và supplementary heuristic guard; thiếu/untrusted hooks vẫn dùng workflow và gate như nhau. Optional canary chỉ chứng minh một PreToolUse observation; named roles có shared-prompt fallback. Scoped `verify` không thay clean-revision `verify --full`/`make ci`.
+
+Assigned tooling task sửa canonical assets rồi chạy `harness.py sync`, commit
+source và generated outputs cùng nhau. `sync --check` không sửa files. Không
+vendor bulk skills hay tự cài personal plugin/model/credentials. Xem
+[LMAO comparison/provenance](lmao-reference.md) cho mechanics áp dụng và những
+quy tắc không chuyển vào V-EV.
 
 ## Trạng thái triển khai
 

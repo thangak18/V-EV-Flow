@@ -30,9 +30,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: uv sync --frozen
-      - run: uv run ruff format --check app .github/scripts/harness.py
-      - run: uv run ruff check app .github/scripts/harness.py
-      - run: uv run pyright app/backend .github/scripts/harness.py
+      - run: uv run ruff format --check app .github/scripts
+      - run: uv run ruff check app .github/scripts
+      - run: uv run pyright app/backend .github/scripts
       - run: uv run lint-imports
 
   python-tests:

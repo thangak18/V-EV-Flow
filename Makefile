@@ -1,4 +1,4 @@
-.PHONY: setup format lint test build contract-check smoke security harness-check ci
+.PHONY: setup format lint test build contract-check smoke security harness-check harness-sync ci backend-lint frontend-lint backend-test-suite frontend-test-suite
 
 setup:
 	uv sync --frozen
@@ -6,21 +6,29 @@ setup:
 	npm --prefix app/frontend exec playwright install chromium
 
 format:
-	uv run ruff format app .github/scripts/harness.py
-	uv run ruff check --fix app .github/scripts/harness.py
+	uv run ruff format app .github/scripts
+	uv run ruff check --fix app .github/scripts
 	npm --prefix app/frontend run format
 
-lint:
-	uv run ruff format --check app .github/scripts/harness.py
-	uv run ruff check app .github/scripts/harness.py
-	uv run pyright app/backend .github/scripts/harness.py
+backend-lint:
+	uv run ruff format --check app .github/scripts
+	uv run ruff check app .github/scripts
+	uv run pyright app/backend .github/scripts
 	uv run lint-imports
+
+frontend-lint:
 	npm --prefix app/frontend run lint
 	npm --prefix app/frontend run format:check
 
-test:
+lint: backend-lint frontend-lint
+
+backend-test-suite:
 	uv run pytest app/backend --cov=app.backend --cov-report=term-missing --cov-fail-under=75
+
+frontend-test-suite:
 	npm --prefix app/frontend run test:coverage
+
+test: backend-test-suite frontend-test-suite
 
 build:
 	npm --prefix app/frontend run build
@@ -43,5 +51,8 @@ security:
 harness-check:
 	python3 .github/scripts/harness.py self-check
 	uv run pytest app/backend/tests/harness -q
+
+harness-sync:
+	python3 .github/scripts/harness.py sync
 
 ci: lint test build contract-check smoke security harness-check

@@ -28,6 +28,7 @@ Dự báo và điều phối nhu cầu sạc xe điện trên hành lang cao t�
 | [Demo và checklist](docs/DEMO.md) | Demo 20% pin, 100 xe, dự phòng và việc hỏi mentor |
 | [Làm việc chung](CONTRIBUTING.md) | Nhánh, PR, integration và quy tắc repo |
 | [Harness Codex/Claude](docs/harness/README.md) | Issue, workflow, evidence, adapters và pilot |
+| [Chạy một issue](docs/harness/RUN_AN_ISSUE.md) | Onboarding, stage skills, checkpoint, checks và manual review |
 | [Phase 0 handoff](docs/runbooks/phase-0-handoff.md) | Đọc theo thứ tự, gates, OpenAPI và tạo nhánh owner |
 
 ## Cấu trúc
@@ -78,6 +79,13 @@ make ci
 ```
 
 Foundation snapshot có historical CI success trên `27d421265fe57736d3070c241544e3756772e52b`; xem [record](docs/runbooks/phase-0-handoff.md). Đó không thay kết quả mới trên commit hiện tại. Harness bootstrap ghi kết quả local/CI bằng lệnh, exit, SHA/base và logs trong PR; independent review và pilot vẫn cần người thật. Chỉ hoàn tất handoff khi fresh `make ci` exit 0 và working tree sạch.
+
+Harness có canonical skills/roles/hooks trong [.agents](.agents/README.md), sinh
+adapter Codex/Claude bằng `python3 .github/scripts/harness.py sync`; CI kiểm tra
+drift. `verify --issue N` chọn fixed scoped Make gates để phản hồi nhanh,
+`verify --issue N --full` ghi final `make ci`. Con người vẫn giao issue, bắt đầu
+phiên, review và merge. Hooks/roles có fallback bằng CLI/shared prompt; runtime
+status thực tế nằm trong [compatibility](docs/harness/compatibility.md).
 
 Mock backend và frontend có thể chạy độc lập để kiểm tra vertical slice:
 

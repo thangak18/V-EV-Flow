@@ -618,3 +618,52 @@ def test_self_check_rejects_missing_required_ci_job(tmp_path: Path) -> None:
     workflow.write_text(workflow.read_text().replace("  security:\n", "  disabled-security:\n"))
     with pytest.raises(harness.HarnessError, match="Required GitHub checks"):
         harness.self_check(tmp_path)
+
+
+def test_verify_full_records_required_ac_checks_after_clean_checkpoint(repo: Path) -> None:
+    activate(repo)
+    finish_handoff(repo)
+    summary = harness.verify(repo, argparse.Namespace(issue="9", full=True, timeout=10))
+    assert summary["result"] == "PASS"
+    assert [item["check"] for item in summary["checks"]] == ["ci", "test"]
+    assert harness.ready(repo, 9, refresh=False)["state"] == "verified"
+
+
+def test_verify_full_blocks_dirty_work_before_running(repo: Path) -> None:
+    activate(repo)
+    (repo / "app/frontend/src/feature.ts").write_text("uncommitted\n")
+    with pytest.raises(harness.HarnessError, match="clean status"):
+        harness.verify(repo, argparse.Namespace(issue="9", full=True, timeout=10))
+
+
+def test_verify_full_does_not_turn_focused_test_registration_into_pass(repo: Path) -> None:
+    activate(repo, verification="frontend-test")
+    finish_handoff(repo)
+    summary = harness.verify(repo, argparse.Namespace(issue="9", full=True, timeout=10))
+    assert summary["result"] == "NOT RUN"
+    assert summary["checks"][-1]["check"] == "frontend-test"
+    with pytest.raises(harness.HarnessError, match="missing"):
+        harness.ready(repo, 9, refresh=False)
+
+
+def test_verify_can_reuse_current_executed_focus_but_rejects_changed_logs(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    activate(repo, verification="frontend-test")
+    finish_handoff(repo)
+    monkeypatch.setattr(
+        harness, "check_command", lambda *args: ["python3", "-c", "print('executed focus')"]
+    )
+    evidence = harness.run_check(
+        repo,
+        argparse.Namespace(
+            issue="9", check="frontend-test", path="fixture", ac=["AC-01"], timeout=10
+        ),
+    )
+    summary = harness.verify(repo, argparse.Namespace(issue="9", full=True, timeout=10))
+    assert summary["result"] == "PASS"
+    (repo / evidence["log_path"]).write_text("modified log\n")
+    assert (
+        harness.verify(repo, argparse.Namespace(issue="9", full=True, timeout=10))["result"]
+        == "NOT RUN"
+    )

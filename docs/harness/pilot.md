@@ -11,7 +11,7 @@ Ngày 11/10/2026: harness bootstrap xây bộ workflow/policy/CLI/adapters/check
 | H2 | Discovery/build/smoke/generation gates | Execution evidence trên exact PR SHA |
 | H3 | Issue/PR/handoff/evidence formats | Real issue walkthrough: NOT RUN |
 | H4 | Stdlib CLI và evidence | Automated fixtures + final gate evidence |
-| H5 | Two skills và nonblocking hook adapters | Native discovery/trust/hooks runtime: NOT RUN |
+| H5 | Canonical onboarding/stage skills, explicit-only alias, read-only roles và generated hooks | Native discovery/trust của assets mới, PreToolUse/canary, role execution: NOT RUN |
 | H6 | Trusted-base scope CI, artifact retention | Hosted PR CI/review gate: NOT RUN trước PR |
 | H7 | Scope/stale-evidence/resume/hook regressions | Test/CI evidence tại PR; không suy ra từ docs |
 | H8 | Pilot specs và cùng rubric | P1–P3, desktop probe, adoption: NOT RUN |
@@ -46,6 +46,15 @@ Hai chiều dùng phiên mới không lịch sử chat; đọc handoff, lấy is
 
 Codex desktop cần probe riêng cho instructions/skill/hooks/check. Claude Desktop/IDE/cloud giữ NOT RUN cho tới profile thực được chạy. Diễn tập hook malformed input, timeout, missing script/Python, subdirectory/worktree, hooks disabled; Stop không tạo lượt mới. Tích hợp hai lane tuần tự, merge base mới và chạy lại gate.
 
+Probe canonical stage skills và alias invocation policy riêng, rồi optional
+PreToolUse canary theo provider/session: PASS chỉ chứng minh một observation.
+Diễn tập generated edits, protected owner paths, force/main push, staged
+env/secret commit và safe `.env.example` copy. Tooling/contract exception phải
+khớp policy, guard unavailable không thay scope/evidence/full CI. Named roles
+hoặc read-only canonical-prompt fallback phải báo actual HEAD/base, AC evidence,
+`BLOCKED`/`NOT RUN`; không có GitHub writes hoặc fabricated human approval.
+QA mặc định một agent phụ đồng thời, chỉ chạy khi requested/plan warranted.
+
 Status: **NOT RUN**.
 
 ## Record và rubric dùng chung
@@ -59,10 +68,17 @@ Mỗi lượt ghi tool/surface/version, issue/branch/head/base, start/end/active
 | P3 Codex → Claude | Local CLI | Chưa chạy | NOT RUN | Chưa có | Hai tài khoản hoạt động |
 | P3 Claude → Codex | Local CLI | Chưa chạy | NOT RUN | Chưa có | Hai tài khoản hoạt động |
 | Fresh checkout member | Máy/thành viên mới | Chưa chạy | NOT RUN | Chưa có | Quyền clone/thành viên thực |
+| New stage skills / alias policy | Codex và Claude native profiles | Chưa chạy | NOT RUN | Chưa có | Discover assets mới và human-request gating |
+| PreToolUse guard / canary | Codex và Claude native profiles | Chưa chạy | NOT RUN | Chưa có | Safe/blocked calls và one-observation diagnostic |
+| Review / QA roles / fallback | Runtime role API hoặc read-only prompt | Chưa chạy | NOT RUN | Chưa có | Scoped evidence, không write/approve GitHub |
 | Codex desktop probe | Engine/version cần ghi | Chưa chạy | NOT RUN | Chưa có | Trust/discovery runtime |
 | Claude Desktop/IDE/cloud | Profile riêng | Chưa chạy | NOT RUN | Chưa có | Chưa trong baseline |
 
 Read-only probes trong lượt bootstrap: Codex CLI 0.160.0 đọc instructions/skill/workflow thành công; Claude Code 2.1.78 discover skill và chạy SessionStart hook thành công, nhưng model response BLOCKED sau API retries/timeout 120 giây. Xem [compatibility](compatibility.md) để biết phạm vi quan sát và logs. P1/P2/P3 vẫn NOT RUN.
+
+Các probe cũ được giữ nguyên. Chúng không chứng nhận các generated assets,
+stage skills, guard/canary hoặc QA roles mới. Comparison/provenance của thay đổi
+harness theo [LMAO reference](lmao-reference.md) không phải runtime evidence.
 
 Chấm cùng rubric: đúng AC, đủ evidence, đúng scope, tái hiện được, handoff đủ để tiếp tục. P1/P2 khác task chỉ chứng minh dùng chung workflow. Muốn đánh giá thời gian/usage, baseline vs harness phải cùng tình huống/base/công cụ/rubric; không kết luận nhân quả từ task khác nhau.
 

@@ -17,3 +17,12 @@ No direct or force push; PRs require current branch, all checks, at least one no
 The PR template requires scope, owner, contract impact, test commands/results, data origin, screenshots for UI, limitations, and rollback. Release runs manually or from `demo-v*` tags and packages only a commit already green on `main`; it never embeds repository secrets in artifacts.
 
 Harness CI validates scope with policy/validator from the trusted PR base. Feature changes cannot authorize their own protected-file edits. Missing pre-harness base is reported as the bootstrap introduction case requiring tooling review. Execution artifacts identify revision and retain logs/traces for 14 days.
+
+Canonical agent assets live under `.agents/`; `.github/scripts/harness_assets.py`
+renders tool-specific skills, roles and hooks through `harness.py sync`.
+`harness-check` rejects generated drift. Scoped `verify` gates provide
+intermediate evidence and do not replace aggregate `make ci` or hosted required
+jobs. Session hooks and the heuristic PreToolUse guard are supplementary;
+untrusted/unavailable hooks retain the same core scope/evidence/CI gates.
+Agent review and QA reports are advisory and cannot supply human approval,
+merge or issue closure.

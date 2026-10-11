@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -32,6 +33,10 @@ CHECKS = (
     "security",
     "harness-check",
     "ci",
+    "backend-lint",
+    "backend-test-suite",
+    "frontend-lint",
+    "frontend-test-suite",
     "backend-test",
     "frontend-test",
     "e2e-test",
@@ -43,6 +48,17 @@ class HarnessError(Exception):
     def __init__(self, message: str, result: str = "BLOCKED") -> None:
         super().__init__(message)
         self.result = result
+
+
+def agent_assets() -> Any:
+    """Lazy load: the trusted CI scope validator remains standalone."""
+    module_path = Path(__file__).with_name("harness_assets.py")
+    spec = importlib.util.spec_from_file_location("vev_agent_assets", module_path)
+    if spec is None or spec.loader is None:
+        raise HarnessError("Agent assets module is unavailable")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def now() -> str:
@@ -827,9 +843,168 @@ def ready(root: Path, number: int, refresh: bool = True) -> dict[str, Any]:
     }
 
 
+def verification_plan(changed: list[str], spec: dict[str, Any], full: bool = False) -> list[str]:
+    if full:
+        declared = {check for ac in spec["acceptance"] for check in ac["verification"]}
+        return ["ci", *[check for check in CHECKS if check in declared and check != "ci"]]
+    selected: set[str] = set()
+    backend = any(path.startswith("app/backend/") for path in changed)
+    frontend = any(path.startswith("app/frontend/") for path in changed)
+    contracts = any(
+        path.startswith("app/backend/contracts/")
+        or path == "app/frontend/src/types/api.generated.ts"
+        for path in changed
+    )
+    automation = any(
+        path.startswith((".agents/", ".claude/", ".codex/", ".github/", "docs/harness/"))
+        or Path(path).name in ("AGENTS.md", "CLAUDE.md", "Makefile", "pyproject.toml")
+        for path in changed
+    )
+    if backend or contracts:
+        selected.update(("backend-lint", "backend-test-suite"))
+    if frontend or contracts:
+        selected.update(("frontend-lint", "frontend-test-suite", "build", "smoke"))
+    if contracts:
+        selected.add("contract-check")
+    if automation:
+        selected.add("harness-check")
+        if any(path.endswith(".py") for path in changed):
+            selected.add("backend-lint")
+    for ac in spec["acceptance"]:
+        selected.update(ac["verification"])
+    if "ci" in selected:
+        return ["ci", *[item for item in CHECKS[-3:] if item in selected]]
+    if "lint" in selected:
+        selected.difference_update(("backend-lint", "frontend-lint"))
+    if "test" in selected:
+        selected.difference_update(("backend-test-suite", "frontend-test-suite"))
+    return [check for check in CHECKS if check in selected]
+
+
+def verify(root: Path, args: argparse.Namespace) -> dict[str, Any]:
+    number = issue_number(root, args.issue)
+    active, snapshot = active_task(root, number)
+    policy = load_policy(root, active["base"], active["bootstrap"])
+    scope = scope_check(root, policy, snapshot["spec"], number, active["base"])
+    code = identity(root, active["base"])
+    if args.full and not code["clean"]:
+        raise HarnessError("Full verification requires a committed checkpoint and clean status")
+    checks = verification_plan(scope["paths"], snapshot["spec"], args.full)
+    records = []
+    for check in checks:
+        if check in CHECKS[-3:]:
+            current = []
+            schema = read_json(inside(root, SCHEMA_PATH))
+            for path in inside(root, f".harness/issues/{number}/sessions").glob(
+                "*/*.evidence.json"
+            ):
+                record = read_json(path)
+                validate_schema(record, schema)
+                if (
+                    record["identity"] == code
+                    and record["issue_hash"] == snapshot["issue_hash"]
+                    and record["check"] == check
+                ):
+                    current.append(record)
+            required_ids = {
+                ac["id"] for ac in snapshot["spec"]["acceptance"] if check in ac["verification"]
+            }
+            ordered = sorted(current, key=lambda item: item["finished_at"])
+            covered = set()
+            for record in ordered:
+                valid = (
+                    record["result"] == "PASS" and record["exit_code"] == 0 and record["log_path"]
+                )
+                if valid:
+                    log = inside(root, record["log_path"])
+                    valid = log.is_file() and digest(log.read_bytes()) == record["log_sha256"]
+                if valid:
+                    covered.update(record["ac_ids"])
+                else:
+                    covered.clear()
+            if ordered and required_ids <= covered:
+                records.append(
+                    {
+                        "check": check,
+                        "result": "PASS",
+                        "ac_ids": sorted(covered),
+                        "reason": "Reused executed evidence with current revision and log hashes",
+                    }
+                )
+                continue
+            records.append(
+                {
+                    "check": check,
+                    "result": "NOT RUN",
+                    "reason": "Use focused --path/--ac; registry presence is not execution proof",
+                }
+            )
+            continue
+        ac_ids = [ac["id"] for ac in snapshot["spec"]["acceptance"] if check in ac["verification"]]
+        record = run_check(
+            root,
+            argparse.Namespace(
+                issue=str(number), check=check, path=None, ac=ac_ids, timeout=args.timeout
+            ),
+        )
+        records.append(
+            {key: record[key] for key in ("check", "result", "exit_code", "ac_ids", "log_path")}
+        )
+        if record["result"] != "PASS":
+            break
+    results = [record["result"] for record in records]
+    result = (
+        "FAIL"
+        if "FAIL" in results
+        else "BLOCKED"
+        if "BLOCKED" in results
+        else ("NOT RUN" if not results or "NOT RUN" in results else "PASS")
+    )
+    summary = {
+        "result": result,
+        "issue": number,
+        "identity": code,
+        "full": args.full,
+        "checks": records,
+        "state": "implemented",
+        "next": "Run ready with current AC/full-gate evidence; CI/review still required",
+    }
+    write_json(
+        root, f"{active['directory']}/{uuid.uuid4().hex}.verify.json", summary, exclusive=True
+    )
+    return summary
+
+
 def hook(root: Path, provider: str, event: str, payload: dict[str, Any]) -> dict[str, Any]:
     if provider not in ("codex", "claude") or payload.get("hook_event_name") != event:
         return {"systemMessage": "V-EV harness: unsupported hook payload; run doctor manually"}
+    if event == "PreToolUse":
+        assets = agent_assets()
+        policy = load_policy(root)
+        spec = None
+        if inside(root, ".harness/active.json").is_file():
+            try:
+                active, snapshot = active_task(root)
+                policy = {**policy, **load_policy(root, active["base"], active["bootstrap"])}
+                spec = {**snapshot["spec"], "issue": active["issue"]}
+            except HarnessError:
+                # A stale task cannot disable common push/generated/secret guards.
+                pass
+        action = assets.normalize(root, payload)
+        violations = assets.evaluate(root, action, policy, branch(root), spec)
+        if violations:
+            return {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "; ".join(
+                        f"{item['rule']}: {item['reason']}" for item in violations
+                    ),
+                }
+            }
+        if assets.canary_command(root, action, provider):
+            assets.stamp_canary(root, provider, payload, resolve(root, "HEAD"))
+        return {}
     if event == "Stop" and payload.get("stop_hook_active"):
         return {}
     if not inside(root, ".harness/active.json").is_file():
@@ -892,9 +1067,18 @@ def self_check(root: Path) -> dict[str, Any]:
         skill = inside(root, f"{tool}/skills/vev-issue/SKILL.md").read_text(encoding="utf-8")
         if "docs/harness/workflow.md" not in skill or "harness.py" not in skill:
             raise HarnessError(f"Workflow adapter drift: {tool}", "FAIL")
+    assets = agent_assets()
+    assets.budgets(root)
+    synchronized = assets.synchronize(root, check=True)
+    if synchronized["result"] != "PASS":
+        raise HarnessError("Generated assets drift: " + ", ".join(synchronized["drift"]), "FAIL")
+    for filename in git(root, "ls-files", "-z").split(b"\0"):
+        basename = Path(filename.decode()).name
+        if re.fullmatch(r"\.env(?:\..+)?", basename) and not basename.endswith(".example"):
+            raise HarnessError("Real environment files must remain untracked", "FAIL")
     for config in (".codex/hooks.json", ".claude/settings.json"):
         settings = read_json(inside(root, config))
-        if set(settings["hooks"]) != {"SessionStart", "Stop"}:
+        if set(settings["hooks"]) != {"SessionStart", "Stop", "PreToolUse"}:
             raise HarnessError(f"Unexpected hook events: {config}", "FAIL")
         for groups in settings["hooks"].values():
             for group in groups:
@@ -965,6 +1149,15 @@ def parser() -> argparse.ArgumentParser:
     commands.add_parser("doctor")
     commands.add_parser("self-check")
     commands.add_parser("smoke-preflight")
+    sync_parser = commands.add_parser("sync")
+    sync_parser.add_argument("--check", action="store_true")
+    canary_parser = commands.add_parser("canary")
+    canary_parser.add_argument("--provider", choices=("codex", "claude"), required=True)
+    canary_parser.add_argument("--session")
+    verify_parser = commands.add_parser("verify")
+    verify_parser.add_argument("--issue", required=True)
+    verify_parser.add_argument("--full", action="store_true")
+    verify_parser.add_argument("--timeout", type=int, default=900)
     for name in ("start", "scope", "run", "handoff", "ready"):
         command = commands.add_parser(name)
         command.add_argument("--issue", required=True)
@@ -986,7 +1179,7 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument("--timeout", type=int, default=900)
     hooks = commands.add_parser("hook")
     hooks.add_argument("--provider", choices=("codex", "claude"), required=True)
-    hooks.add_argument("--event", choices=("SessionStart", "Stop"), required=True)
+    hooks.add_argument("--event", choices=("SessionStart", "Stop", "PreToolUse"), required=True)
     ci_parser = commands.add_parser("ci")
     ci_parser.add_argument("--event-file", required=True)
     return result
@@ -1001,6 +1194,13 @@ def main(argv: list[str] | None = None) -> int:
                 raise HarnessError("Hook needs cwd")
             root = repository(payload["cwd"])
             output = hook(root, args.provider, args.event, payload)
+            if (
+                args.event == "PreToolUse"
+                and output.get("hookSpecificOutput", {}).get("permissionDecision") == "deny"
+            ):
+                print(output["hookSpecificOutput"]["permissionDecisionReason"], file=sys.stderr)
+                print(json.dumps(output))
+                return 2
         else:
             root = repository(args.root)
             if args.command == "doctor":
@@ -1009,6 +1209,16 @@ def main(argv: list[str] | None = None) -> int:
                 output = start(root, args)
             elif args.command == "self-check":
                 output = self_check(root)
+            elif args.command == "sync":
+                output = agent_assets().synchronize(root, check=args.check)
+            elif args.command == "canary":
+                output = agent_assets().consume_canary(
+                    root,
+                    args.provider,
+                    resolve(root, "HEAD"),
+                    args.session,
+                    load_policy(root)["limits"]["canary_ttl_seconds"],
+                )
             elif args.command == "smoke-preflight":
                 smoke_ports()
                 output = {"result": "PASS", "ports": [8000, 4173]}
@@ -1022,6 +1232,8 @@ def main(argv: list[str] | None = None) -> int:
                     output = handoff(root, number)
                 elif args.command == "ready":
                     output = ready(root, number)
+                elif args.command == "verify":
+                    output = verify(root, args)
                 else:
                     active, snapshot = active_task(root, number)
                     if args.lane and args.lane != snapshot["spec"]["lane"]:

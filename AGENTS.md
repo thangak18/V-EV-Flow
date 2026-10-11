@@ -6,11 +6,11 @@ V-EV Flow is a specification-first modular monolith with a Phase 0 mock vertical
 
 Read `README.md`, `app/SPEC.md`, every `AGENTS.md` applying to the paths you will change, the nearest module `SPEC.md`, and the assigned owner plan. Starting at the root does not guarantee that subtree instructions have been loaded. Shared interfaces are `app/backend/contracts`, generated OpenAPI/types, `docs/DATA_CONTRACT.md`, and `docs/API_CONTRACT.md`.
 
-For issue work, read [harness workflow](docs/harness/workflow.md). [Harness policy](docs/harness/policy.json) is the single source for owner paths, branch names, protected files, Foundation origin, and gates. Do not duplicate or weaken it in tool adapters. Codex and Claude use the same workflow; personal plugins are optional.
+For issue work, read [harness workflow](docs/harness/workflow.md). [Harness policy](docs/harness/policy.json) is the single source for owner paths, branch names, protected files, Foundation origin, and gates. Do not duplicate or weaken it in tool adapters. Codex and Claude use the same workflow; personal plugins are optional. [Run one issue](docs/harness/RUN_AN_ISSUE.md) gives the human walkthrough; [.agents/README.md](.agents/README.md) identifies canonical skill, role and hook sources. Never hand-edit generated tool assets.
 
 ## Build and verification
 
-Copy `.env.example` to `.env` locally; never commit `.env`. Install frozen dependencies with `make setup`. Makefile defines checks: `lint`, `test`, `build`, `contract-check`, `smoke`, `security`, `harness-check`, and aggregate `ci`. Record executed commands, results, tested HEAD/base and logs; use `NOT RUN` or `BLOCKED` for checks without successful execution. A completed handoff requires fresh `make ci` exit 0 on a clean revision; a partial checkpoint must be labeled partial.
+Copy `.env.example` to `.env` locally; never commit `.env`. Install frozen dependencies with `make setup`. Makefile defines checks: `lint`, `test`, `build`, `contract-check`, `smoke`, `security`, `harness-check`, and aggregate `ci`. The harness `verify --issue N` selects scoped Make gates for intermediate feedback; `verify --issue N --full` records fresh `make ci`. Record executed commands, results, tested HEAD/base and logs; use `NOT RUN` or `BLOCKED` for checks without successful execution. A completed handoff requires fresh `make ci` exit 0 on a clean revision; a partial checkpoint must be labeled partial.
 
 ## Style and boundaries
 
@@ -21,3 +21,5 @@ Python 3.11+: four spaces, type hints, `snake_case` functions/modules, `PascalCa
 Keep four owner branches: `feat/data-simulator`, `feat/ml-predict`, `feat/recommend-api`, `feat/web-map`, originating at the accepted Foundation SHA in policy. One issue and one writer per lane at a time. Harness bootstrap uses `codex/harness-bootstrap`; subsequent tooling/contract work uses policy branches and separate PRs. Integrate prerequisites from `main` by merge; do not force-push or reset another person's work.
 
 Use concise imperative commit subjects and small PRs. Include owner, AC evidence, scope, contract impact, data origin, limitations, rollback, and screenshots for UI. Contract changes update models, examples, generated artifacts, tests, and docs in one separate reviewed PR. Humans assign issues, start sessions, independently review, and decide merge; never fabricate approval. Never commit credentials, partner data, generated histories, caches, model binaries, or local `.harness/` logs.
+
+Canonical skills route to the shared workflow. Start/ship require a human request for a specific assigned issue. Review/QA roles are read-only and advisory; agent verdicts do not count as human approval. Hooks provide context and a supplementary heuristic guard; unavailable hooks or named roles use the documented CLI/prompt fallback and never replace scope, evidence or CI gates.
