@@ -24,6 +24,7 @@ from typing import Any
 
 POLICY_PATH = "docs/harness/policy.json"
 SCHEMA_PATH = "docs/harness/schemas/evidence.schema.json"
+INTEGRATION_REF = "refs/remotes/origin/main"
 CHECKS = (
     "setup",
     "lint",
@@ -210,6 +211,34 @@ def github_json(root: Path, argv: list[str]) -> Any:
         return json.loads(execute(root, ["gh", *argv], timeout=30))
     except ValueError as exc:
         raise HarnessError("GitHub returned invalid JSON") from exc
+
+
+def integration_main(root: Path, refresh: bool = False) -> str:
+    """Use one canonical source, regardless of the caller's SHA or alias."""
+    try:
+        base = resolve(root, INTEGRATION_REF)
+    except HarnessError as exc:
+        raise HarnessError("Missing local origin/main; fetch origin main before starting") from exc
+    if refresh:
+        remote = github_json(root, ["api", f"repos/{origin(root)}/commits/main"])["sha"]
+        if remote != base:
+            raise HarnessError("Remote integration base changed; fetch, integrate and reverify")
+    return base
+
+
+def require_integrated_main(root: Path, base: str) -> None:
+    try:
+        git(root, "merge-base", "--is-ancestor", base, "HEAD")
+    except HarnessError as exc:
+        raise HarnessError(
+            "Integration main is not in this checkout; merge main before starting"
+        ) from exc
+
+
+def validate_task_base(root: Path, active: dict[str, Any], refresh: bool = False) -> None:
+    if integration_main(root, refresh) != active["base"]:
+        raise HarnessError("Integration base changed or unconfirmed; restart and reverify")
+    require_integrated_main(root, active["base"])
 
 
 def fetch_issue(root: Path, number: int) -> dict[str, Any]:
@@ -414,8 +443,7 @@ def active_task(root: Path, number: int | None = None) -> tuple[dict[str, Any], 
 def task_scope(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     number = issue_number(root, args.issue)
     active, snapshot = active_task(root, number)
-    if resolve(root, active.get("base_ref", active["base"])) != active["base"]:
-        raise HarnessError("Integration base changed; restart and reverify")
+    validate_task_base(root, active)
     if args.base and resolve(root, args.base) != active["base"]:
         raise HarnessError("Scope --base differs from the recorded integration base", "FAIL")
     if args.bootstrap and not active["bootstrap"]:
@@ -479,7 +507,10 @@ def start(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     issue = read_json(Path(args.snapshot)) if args.snapshot else fetch_issue(root, number)
     snapshot = normalize_issue(root, issue, number)
     spec = snapshot["spec"]
-    base = resolve(root, args.base)
+    base = integration_main(root, refresh=not args.snapshot)
+    if resolve(root, args.base) != base:
+        raise HarnessError("Start --base must match the confirmed integration main", "FAIL")
+    require_integrated_main(root, base)
     policy = load_policy(root, base, args.bootstrap)
     if spec["lane"] not in ("tooling", "contract"):
         foundation = policy["foundation"]
@@ -509,7 +540,8 @@ def start(root: Path, args: argparse.Namespace) -> dict[str, Any]:
         "directory": directory,
         "branch": branch(root),
         "base": base,
-        "base_ref": args.base,
+        "base_ref": INTEGRATION_REF,
+        "requested_base": args.base,
         "bootstrap": args.bootstrap,
         "started_at": now(),
         "initial_identity": identity(root, base),
@@ -634,6 +666,7 @@ def verification_process(root: Path, argv: list[str], timeout: int) -> tuple[int
 def run_check(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     number = issue_number(root, args.issue)
     active, snapshot = active_task(root, number)
+    validate_task_base(root, active)
     policy = load_policy(root, active["base"], active["bootstrap"])
     scope_check(root, policy, snapshot["spec"], number, active["base"])
     known = {ac["id"]: ac for ac in snapshot["spec"]["acceptance"]}
@@ -862,16 +895,12 @@ def read_handoff(
 
 def ready(root: Path, number: int, refresh: bool = True) -> dict[str, Any]:
     active, snapshot = active_task(root, number)
-    if resolve(root, active.get("base_ref", active["base"])) != active["base"]:
-        raise HarnessError("Integration base changed; restart and reverify")
+    validate_task_base(root, active)
     if refresh:
         current = normalize_issue(root, fetch_issue(root, number), number)
         if current["issue_hash"] != snapshot["issue_hash"]:
             raise HarnessError("Issue changed; refresh snapshot and reassess ACs")
-        if active.get("base_ref") == "origin/main":
-            remote_base = github_json(root, ["api", f"repos/{origin(root)}/commits/main"])["sha"]
-            if remote_base != active["base"]:
-                raise HarnessError("Remote integration base changed; fetch, integrate and reverify")
+        validate_task_base(root, active, refresh=True)
         dependencies_ready(root, snapshot["spec"])
     policy = load_policy(root, active["base"], active["bootstrap"])
     scope_check(root, policy, snapshot["spec"], number, active["base"])
@@ -962,6 +991,7 @@ def verification_plan(changed: list[str], spec: dict[str, Any], full: bool = Fal
 def verify(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     number = issue_number(root, args.issue)
     active, snapshot = active_task(root, number)
+    validate_task_base(root, active)
     policy = load_policy(root, active["base"], active["bootstrap"])
     scope = scope_check(root, policy, snapshot["spec"], number, active["base"])
     code = identity(root, active["base"])
@@ -1243,7 +1273,7 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument(
                 "--base",
                 default="origin/main" if name == "start" else None,
-                help="Integration base at start; scope only accepts the recorded base SHA",
+                help="Assert confirmed main at start or the recorded main SHA at scope",
             )
             command.add_argument("--bootstrap", action="store_true")
         if name == "start":

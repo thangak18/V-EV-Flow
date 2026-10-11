@@ -33,6 +33,15 @@ python3 .github/scripts/harness.py handoff --issue 123
 
 `123` và `<integration-base-sha>` là placeholders, không phải issue hoặc SHA đã nghiệm thu. Chạy từ checkout đang làm việc; hooks cũng hỗ trợ subdirectory/worktree. `start` không claim issue hay tạo nhánh. `--snapshot FILE` chỉ dùng replay/offline fixture; phải đánh dấu provenance và không thay lần đối chiếu GitHub khi review-ready.
 
+Integration main local canonical là `refs/remotes/origin/main`. Live start/CLI
+ready luôn so với GitHub main, không bỏ remote check vì `--base` là alias/SHA;
+start coi flag là assertion cùng confirmed main và từ chối private feature SHA.
+Main phải là ancestor của checkout. Khi main tiến lên: fetch/merge prerequisites,
+restart và reverify, không đổi base để giấu diff; start thất bại giữ active snapshot.
+Scope/run/verify/ready kiểm tra canonical main với recorded base. Offline snapshot
+chỉ replay local main, không chứng minh independent remote readiness. Local
+operator vẫn sửa được refs/files; đây không là security boundary chống owner.
+
 `scope` dùng recorded active base; `--base` chỉ assertion cùng SHA, không đổi
 comparison để bỏ committed paths. Evidence v2 có runner HMAC seal để phát hiện
 metadata edits; new `<uuid>.v2.evidence.json` records yêu cầu v2/seal và không

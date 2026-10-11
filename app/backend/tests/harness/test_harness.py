@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -83,7 +84,7 @@ def issue(root: Path, verification: str = "test") -> dict:
     }
 
 
-def activate(root: Path, verification: str = "test") -> dict:
+def activate(root: Path, verification: str = "test", base: str = "origin/main") -> dict:
     snapshot = root / ".harness/input.json"
     snapshot.parent.mkdir(exist_ok=True)
     snapshot.write_text(json.dumps(issue(root, verification)))
@@ -92,7 +93,7 @@ def activate(root: Path, verification: str = "test") -> dict:
         argparse.Namespace(
             issue="9",
             snapshot=str(snapshot),
-            base="origin/main",
+            base=base,
             bootstrap=False,
             tool="manual",
             surface="cli",
@@ -363,6 +364,188 @@ def test_scope_cli_rejects_head_that_hides_committed_protected_change(
         scoped(repo)
     assert harness.main(["--root", str(repo), "scope", "--issue", "9", "--base", "HEAD"]) == 1
     assert "integration base" in json.loads(capsys.readouterr().out)["reason"]
+
+
+@pytest.mark.parametrize("requested", ["feature-sha", "HEAD", "feat/web-map"])
+def test_restart_cannot_replace_main_base_with_protected_feature_commit(
+    repo: Path, requested: str
+) -> None:
+    activate(repo)
+    active_before = (repo / ".harness/active.json").read_bytes()
+    (repo / "app/frontend/src/types/api.generated.ts").write_text("protected feature commit\n")
+    feature_sha = commit(repo)
+    with pytest.raises(harness.HarnessError, match="Scope violation"):
+        scoped(repo)
+    with pytest.raises(harness.HarnessError, match="integration main"):
+        harness.start(
+            repo,
+            argparse.Namespace(
+                issue="9",
+                snapshot=str(repo / ".harness/input.json"),
+                base=feature_sha if requested == "feature-sha" else requested,
+                bootstrap=False,
+                tool="manual",
+                surface="cli",
+            ),
+        )
+    assert (repo / ".harness/active.json").read_bytes() == active_before
+    with pytest.raises(harness.HarnessError, match="Scope violation"):
+        harness.task_scope(
+            repo, argparse.Namespace(issue="9", base=None, bootstrap=False, lane=None)
+        )
+    with pytest.raises(harness.HarnessError, match="Scope violation"):
+        harness.ready(repo, 9, refresh=False)
+
+
+@pytest.mark.parametrize("requested", ["origin/main", "main-sha", "HEAD", "main-alias"])
+def test_start_accepts_only_aliases_or_sha_matching_canonical_main(
+    repo: Path, requested: str
+) -> None:
+    main = harness.resolve(repo, "refs/remotes/origin/main")
+    if requested == "main-alias":
+        command(repo, "git", "branch", "main-alias", main)
+    requested = main if requested == "main-sha" else requested
+    assert activate(repo, base=requested)["base"] == main
+    active, _ = harness.active_task(repo)
+    assert active["base_ref"] == "refs/remotes/origin/main"
+    assert active["requested_base"] == requested
+
+
+@pytest.mark.parametrize("requested", ["origin/main", "main-sha"])
+def test_live_start_confirms_main_for_ref_and_sha_assertions(
+    repo: Path, requested: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    main = harness.resolve(repo, "origin/main")
+    calls = []
+    monkeypatch.setattr(harness, "fetch_issue", lambda *args: issue(repo))
+
+    def response(root: Path, argv: list[str]) -> dict:
+        calls.append(argv)
+        if argv == ["api", "repos/example/fixture/commits/main"]:
+            return {"sha": main}
+        assert argv == ["api", "user"]
+        return {"login": "owner"}
+
+    monkeypatch.setattr(harness, "github_json", response)
+    result = harness.start(
+        repo,
+        argparse.Namespace(
+            issue="9",
+            snapshot=None,
+            base=main if requested == "main-sha" else requested,
+            bootstrap=False,
+            tool="manual",
+            surface="cli",
+        ),
+    )
+    assert result["result"] == "PASS" and result["base"] == main
+    assert ["api", "repos/example/fixture/commits/main"] in calls
+
+
+def test_live_restart_blocks_stale_local_main_without_overwriting_active(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    activate(repo)
+    before = (repo / ".harness/active.json").read_bytes()
+    monkeypatch.setattr(harness, "fetch_issue", lambda *args: issue(repo))
+    monkeypatch.setattr(harness, "github_json", lambda *args: {"sha": "f" * 40})
+    with pytest.raises(harness.HarnessError, match="Remote integration base changed"):
+        harness.start(
+            repo,
+            argparse.Namespace(
+                issue="9",
+                snapshot=None,
+                base=harness.resolve(repo, "origin/main"),
+                bootstrap=False,
+                tool="manual",
+                surface="cli",
+            ),
+        )
+    assert (repo / ".harness/active.json").read_bytes() == before
+
+
+def test_main_advance_requires_merge_restart_and_fresh_evidence(repo: Path) -> None:
+    activate(repo)
+    finish_handoff(repo)
+    run(repo)
+    run(repo, "ci", ac=False)
+    command(repo, "git", "switch", "main")
+    (repo / "app/frontend/src/feature.ts").write_text("accepted prerequisite\n")
+    new_main = commit(repo, "accepted main prerequisite")
+    command(repo, "git", "update-ref", "refs/remotes/origin/main", new_main)
+    command(repo, "git", "switch", "feat/web-map")
+    before = (repo / ".harness/active.json").read_bytes()
+    with pytest.raises(harness.HarnessError, match="Integration main is not in this checkout"):
+        activate(repo, base=new_main)
+    assert (repo / ".harness/active.json").read_bytes() == before
+    command(repo, "git", "merge", "--no-edit", "main")
+    assert activate(repo, base=new_main)["base"] == new_main
+    path = repo / "docs/harness/handoffs/9.md"
+    text = path.read_text()
+    match = re.search(r"```json\n(.*?)\n```", text, re.DOTALL)
+    assert match
+    original = match[1]
+    checkpoint = json.loads(original)
+    checkpoint.update(base=new_main, head=harness.resolve(repo, "HEAD"))
+    path.write_text(text.replace(original, json.dumps(checkpoint, indent=2)))
+    commit(repo, "checkpoint after integrating main")
+    with pytest.raises(harness.HarnessError, match="verification missing"):
+        harness.ready(repo, 9, refresh=False)
+    run(repo)
+    run(repo, "ci", ac=False)
+    assert harness.ready(repo, 9, refresh=False)["result"] == "PASS"
+
+
+@pytest.mark.parametrize("gate", ["scope", "run", "verify", "ready"])
+def test_legacy_feature_base_is_rejected_by_every_local_gate(
+    repo: Path, gate: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    activate(repo)
+    (repo / "app/frontend/src/types/api.generated.ts").write_text("legacy protected commit\n")
+    feature = commit(repo)
+    # Simulate an active task persisted by the pre-fix start/restart implementation.
+    path = repo / ".harness/active.json"
+    old = json.loads(path.read_text())
+    old.update(base=feature, base_ref=feature)
+    path.write_text(json.dumps(old))
+    monkeypatch.setattr(harness, "verification_process", lambda *a: pytest.fail("gate ran checks"))
+    with pytest.raises(harness.HarnessError, match="Integration base changed or unconfirmed"):
+        if gate == "scope":
+            harness.task_scope(
+                repo, argparse.Namespace(issue="9", base=None, bootstrap=False, lane=None)
+            )
+        elif gate == "run":
+            run(repo)
+        elif gate == "verify":
+            harness.verify(repo, argparse.Namespace(issue="9", full=True, timeout=10))
+        else:
+            harness.ready(repo, 9, refresh=False)
+
+
+def test_ready_checks_remote_main_even_when_start_used_a_main_sha(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    activate(repo)
+    main_sha = harness.resolve(repo, "origin/main")
+    harness.start(
+        repo,
+        argparse.Namespace(
+            issue="9",
+            snapshot=str(repo / ".harness/input.json"),
+            base=main_sha,
+            bootstrap=False,
+            tool="manual",
+            surface="cli",
+        ),
+    )
+    finish_handoff(repo)
+    run(repo)
+    run(repo, "ci", ac=False)
+    assert harness.ready(repo, 9, refresh=False)["result"] == "PASS"
+    monkeypatch.setattr(harness, "fetch_issue", lambda *args: issue(repo))
+    monkeypatch.setattr(harness, "github_json", lambda *args: {"sha": "f" * 40})
+    with pytest.raises(harness.HarnessError, match="Remote integration base changed"):
+        harness.ready(repo, 9, refresh=True)
 
 
 @pytest.mark.parametrize("base", [None, "origin/main", "sha-alias"])
@@ -735,7 +918,7 @@ def test_changing_branch_after_committed_handoff_can_start_new_task(repo: Path) 
         argparse.Namespace(
             issue="10",
             snapshot=str(snapshot),
-            base="HEAD",
+            base="origin/main",
             bootstrap=False,
             tool="manual",
             surface="cli",

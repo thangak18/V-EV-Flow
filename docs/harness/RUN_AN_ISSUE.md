@@ -61,6 +61,17 @@ Claude CLI dùng `--tool claude --surface cli`; desktop ghi surface thực tế.
 snapshot dùng cho replay/test, không thay readiness GitHub. `BLOCKED` nêu rõ
 đầu vào cần giải quyết; không chuyển sang issue khác tự động.
 
+Canonical local main là `refs/remotes/origin/main`. Live `start` và CLI `ready`
+luôn so SHA với GitHub `main`, dù `--base` là alias hoặc SHA; ở start, flag chỉ
+assert đúng confirmed main. Không dùng private feature HEAD làm base. Main đã
+xác nhận phải nằm trong ancestry của checkout; tích hợp prerequisites trước.
+
+Nếu main tiến lên, fetch rồi merge `refs/remotes/origin/main`, kiểm tra issue/
+dependencies, restart và chạy lại evidence trên base mới. Không reset base để
+giấu diff. Startup failure giữ active snapshot cũ. Offline `--snapshot` chỉ replay
+trên canonical local main; chưa là independent remote readiness. Ref/files vẫn
+do operator kiểm soát, nên không có bảo đảm security chống checkout owner.
+
 ## 3. Chốt plan và triển khai
 
 Plan ngắn nêu files được sửa, mỗi AC sẽ được chứng minh bằng check/assertion/
@@ -109,7 +120,8 @@ invalid ngoài sessions discovery, giữ lý do/history rồi rerun. Log mất/�
 restore đúng hash hoặc archive record lỗi; rerun đơn thuần không chữa seal/log
 mismatch. Không downgrade manifest hoặc thay key để ép PASS.
 Scope dùng recorded active base; `--base` chỉ assertion đúng SHA, không phải
-override để giấu committed paths. Base ref chuyển cần restart/reverify.
+override để giấu committed paths. `scope/run/verify/ready` đối chiếu canonical
+local main; main ref chuyển cần fetch/merge prerequisites rồi restart/reverify.
 
 Sau khi code và checkpoint đã commit, working tree sạch:
 

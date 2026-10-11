@@ -34,6 +34,21 @@ Chạy `doctor`, đọc AGENTS/SPEC/contracts/plan cần cho issue, rồi `start
 
 Foundation origin là SHA immutable ở policy, integration base là SHA `main` đã tích hợp prerequisites hiện tại. Một issue/một writer mỗi lane; integrator điều phối giữa máy, local active-task không khóa toàn nhóm. Chỉ tạo bốn owner branches từ Foundation đã accepted, rồi merge tooling/dependency prerequisites từ `main`. Bootstrap/tooling/contract dùng ngoại lệ nhánh ở policy. Không reset/stash tự động thay đổi người khác.
 
+Integration main local chỉ là `refs/remotes/origin/main`. Live `start` và CLI
+`ready` luôn đối chiếu SHA này với GitHub `main`, kể cả người dùng đưa alias/SHA
+qua `--base`; flag ở `start` chỉ assertion đúng confirmed main, không chọn base
+khác. Feature-only SHA bị từ chối. Confirmed main phải là ancestor của checkout:
+fetch/merge prerequisites trước khi start, không bỏ integration để đạt gate.
+Active state giữ canonical `base_ref` và `requested_base` chỉ để audit input.
+
+Khi main tiến lên hợp lệ, fetch và merge `refs/remotes/origin/main`, đối chiếu
+issue/dependencies, restart rồi reverify trên base mới. Không restart với private
+feature SHA để giấu committed diff; start thất bại giữ active snapshot trước đó.
+`scope`, `run`, `verify`, `ready` kiểm tra recorded base với canonical local main.
+Offline `--snapshot` chỉ dùng canonical local main cho replay; nó không chứng
+minh independent remote readiness. Ref/files vẫn do checkout owner kiểm soát;
+validation này không là security boundary chống người sở hữu checkout.
+
 Plan ngắn ghi files được sửa, mỗi AC → check/assertion/artifact, data/contract
 impact, câu hỏi còn mở và bước tiếp theo trong checkpoint. Không tự post plan
 comment lên GitHub nếu chưa có yêu cầu. Hook canary là optional diagnostic cho
@@ -63,7 +78,7 @@ flowchart TD
   Review -->|Chấp nhận revision cuối| Merge[Integrator merge thủ công]
 ```
 
-`scope --issue N` dùng integration base/bootstrap đã ghi trong active session và kiểm tra cả committed/staged/unstaged/untracked paths; rename xét cả nguồn và đích. `--base SHA` tùy chọn chỉ là assertion phải resolve đúng recorded base, không đổi comparison base để giấu committed paths; base ref đã chuyển là BLOCKED và cần restart/reverify. Protected denylist ưu tiên allowlist; policy đọc từ base đáng tin cậy, feature branch không tự cấp quyền. Owner chỉ được sửa handoff đúng số issue mình.
+`scope --issue N` dùng integration base/bootstrap đã ghi trong active session và kiểm tra cả committed/staged/unstaged/untracked paths; rename xét cả nguồn và đích. `--base SHA` tùy chọn chỉ là assertion phải resolve đúng recorded canonical main, không đổi comparison base để giấu committed paths; main ref đã chuyển là BLOCKED và cần fetch/merge, restart/reverify. Protected denylist ưu tiên allowlist; policy đọc từ confirmed main base, feature branch không tự cấp quyền. Owner chỉ được sửa handoff đúng số issue mình.
 
 Sửa một lát cắt có test hành vi, mapping mỗi AC tới lệnh/artifact. `run --issue N --check NAME --ac AC-01` chỉ gọi gate được định nghĩa; `--ac` lặp được. Runner hỗ trợ focused IDs `backend-test`, `frontend-test`, `e2e-test` với `--path` là test file trong repo. Ví dụ: `run --issue N --check frontend-test --path app/frontend/src/services/api.test.ts --ac AC-01`. Chạy lệnh tập trung trực tiếp để debug được, nhưng evidence readiness cần ghi qua runner.
 
