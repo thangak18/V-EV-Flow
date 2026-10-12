@@ -224,5 +224,5 @@ for deliberately controlled alternate-seed experiments on other timelines.
 Synthetic CLI smoke tests demonstrate workflow correctness, not road accuracy.
 
 Verification: `uv run pytest app/backend/modules/prediction -q` and
-`PYTEST_ADDOPTS='app/backend/modules/prediction/tests' make ci` include domain
+`make ci` include domain
 unit tests alongside the foundation checks without changing shared tooling.

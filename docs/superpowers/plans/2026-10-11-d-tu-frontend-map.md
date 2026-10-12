@@ -1,6 +1,6 @@
 # D/Tú Frontend and Map Implementation Plan
 
-> **For agentic workers:** Use the repository-owned [harness workflow](../../harness/workflow.md), applicable AGENTS/SPEC and assigned issue AC. Track task checkboxes as implementation notes; no external skill/plugin is required. Evidence and handoff follow the common workflow.
+> **For agentic workers:** Read applicable AGENTS/SPEC and this plan. Implement within the assigned owner paths, run the focused checks and `make ci`, and record actual results in the PR. No external skill/plugin is required.
 
 **Goal:** Deliver a responsive Driver experience and an Operator pressure/simulation experience that work against the frozen OpenAPI mock before real backend integration.
 

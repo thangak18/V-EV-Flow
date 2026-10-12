@@ -1,8 +1,8 @@
 # Backend agent instructions
 
-Read [root instructions](../../AGENTS.md), [app instructions](../AGENTS.md), [backend SPEC](SPEC.md), [contracts SPEC](contracts/SPEC.md), and the assigned [owner plan](../../docs/superpowers/plans/README.md). [Harness policy](../../docs/harness/policy.json) controls exact paths; [workflow](../../docs/harness/workflow.md) controls issue/evidence/handoff.
+Read [root instructions](../../AGENTS.md), [app instructions](../AGENTS.md), [backend SPEC](SPEC.md), [contracts SPEC](contracts/SPEC.md), and the assigned [owner plan](../../docs/superpowers/plans/README.md). [CONTRIBUTING](../../CONTRIBUTING.md) and module specs define ownership; Makefile defines verification commands.
 
-Use contracts/ports across module boundaries. Kiên's additional infrastructure, dependency composition and route/test permissions are enumerated by policy. Shared models, OpenAPI/types, root tooling, lockfiles and other owners' code require a separate contract/tooling PR.
+Use contracts/ports across module boundaries. Kiên owns infrastructure, dependency composition, API routes and their tests. Shared models, OpenAPI/types, root tooling, lockfiles and other owners' code require a separate contract/tooling PR.
 
 Start the mock API with `uv run uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port 8000`; check `/api/health`. Canonical checks come from Makefile. Colocated backend tests must be included in `make test`.
 
