@@ -226,3 +226,17 @@ Synthetic CLI smoke tests demonstrate workflow correctness, not road accuracy.
 Verification: `uv run pytest app/backend/modules/prediction -q` and
 `make ci` include domain
 unit tests alongside the foundation checks without changing shared tooling.
+
+## Predictor handoff and synthetic integration demo
+
+See `HANDOFF.md` for composition binding, exact lag/scenario requirements,
+requests, CLI smoke and proposed HTTP error mapping for the backend owner.
+`python -m app.backend.modules.prediction.demo` generates ignored synthetic
+fixtures and a calibrated demo artifact with per-port timers; it is not the
+stateful queue/strategy simulator owned by Bảo. `DEMO_REPORT.md` records a
+reviewable example; binaries/histories stay in ignored `artifacts/`.
+
+`EvaluationMetrics.log_loss` adds binary natural-log loss with explicit labels
+[0,1] and float64 endpoint clipping. Fresh reports include it in all four
+model/baseline summaries. Legacy reports use None and remain loadable without
+inventing missing evaluation scores. No shared contract/API change.

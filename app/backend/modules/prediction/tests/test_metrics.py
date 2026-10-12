@@ -203,3 +203,15 @@ def test_hourly_baseline_rejects_missing_or_naive_eta() -> None:
     missing.loc[0, "eta"] = pd.NaT
     with pytest.raises(ValueError, match="eta"):
         model.predict_proba(missing)
+
+
+def test_binary_log_loss_known_values_and_single_class() -> None:
+    assert evaluate_probabilities([0, 1], [0.25, 0.75]).log_loss == pytest.approx(-np.log(0.75))
+    assert evaluate_probabilities([1, 1], [0.8, 0.8]).log_loss == pytest.approx(-np.log(0.8))
+
+
+def test_log_loss_clips_confident_endpoints_without_changing_brier() -> None:
+    result = evaluate_probabilities([0, 1], [1.0, 0.0])
+    assert result.log_loss is not None and np.isfinite(result.log_loss)
+    assert result.log_loss > 30
+    assert result.brier_score == 1.0
