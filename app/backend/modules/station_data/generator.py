@@ -6,7 +6,8 @@ resulting ``FixtureBundle`` is immutable input shared by all strategies, so
 strategies never touch the RNG.
 
 ``PortEvent.ports_delta`` is ``-1`` when a port breaks and ``+1`` when one is
-repaired.
+repaired. ``holiday_multiplier`` is informational: holiday demand is already
+expressed through ``arrival_multiplier`` and the day coefficients.
 """
 
 from collections.abc import Sequence
@@ -25,7 +26,7 @@ from app.backend.contracts.stations import Station
 from app.backend.modules.station_data.loaders import ScenarioSpec
 
 # Mean background arrivals per port per hour before coefficients (assumption).
-BASE_ARRIVALS_PER_PORT_HOUR = 0.35
+BASE_ARRIVALS_PER_PORT_HOUR = 0.5
 _BATTERY_KWH = (42.0, 60.0, 75.0, 82.0)
 _DAY_NAMES = ("weekday", "weekday", "weekday", "weekday", "weekday", "saturday", "sunday")
 
@@ -58,7 +59,7 @@ def _arrival_rates(spec: ScenarioSpec, times: Sequence[datetime], stations: Sequ
             for station in stations
         ]
     )
-    scale = spec.arrival_multiplier * spec.holiday_multiplier * step_hours
+    scale = spec.arrival_multiplier * step_hours
     return scale * np.outer(time_factor, station_factor)
 
 
