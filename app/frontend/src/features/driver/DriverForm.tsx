@@ -49,6 +49,7 @@ export function DriverForm({
     RecommendationRequest,
     "request_id"
   > | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const parsedSoc = parseLocaleNumber(socPct);
   const parsedBattery = parseLocaleNumber(batteryKwh);
@@ -60,6 +61,8 @@ export function DriverForm({
   const consumptionInvalid =
     parsedConsumption === null || parsedConsumption <= 0;
   const connectorInvalid = connector.trim().length === 0;
+  const advancedInvalid = timeInvalid || batteryInvalid || consumptionInvalid;
+  const detailsOpen = advancedOpen || advancedInvalid;
 
   const invalid = useMemo(() => {
     return (
@@ -165,7 +168,19 @@ export function DriverForm({
         </div>
       </div>
 
-      <details className="driver-advanced">
+      <details
+        className="driver-advanced"
+        open={detailsOpen}
+        onToggle={(event) => {
+          const next = event.currentTarget.open;
+          // Keep advanced open while its fields are invalid so errors stay visible.
+          if (advancedInvalid && !next) {
+            setAdvancedOpen(true);
+            return;
+          }
+          setAdvancedOpen(next);
+        }}
+      >
         <summary>Battery, consumption &amp; demo time</summary>
         <div className="driver-advanced-fields">
           <label>

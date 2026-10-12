@@ -201,4 +201,25 @@ describe("DriverForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  test("opens Advanced when battery or demo time becomes invalid", () => {
+    renderForm();
+    const details = document.querySelector("details.driver-advanced");
+    expect(details).toBeTruthy();
+    expect(details).not.toHaveAttribute("open");
+
+    fireEvent.change(screen.getByLabelText("Battery kWh"), {
+      target: { value: "0" },
+    });
+    expect(details).toHaveAttribute("open");
+
+    fireEvent.change(screen.getByLabelText("Battery kWh"), {
+      target: { value: "60" },
+    });
+    fireEvent.change(screen.getByLabelText(/Demo time/i), {
+      target: { value: "not-a-time" },
+    });
+    expect(details).toHaveAttribute("open");
+    expect(screen.getByRole("alert")).toHaveTextContent(/timezone/i);
+  });
 });

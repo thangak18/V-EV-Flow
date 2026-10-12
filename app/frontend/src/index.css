@@ -10,6 +10,10 @@
   --amber-soft: #fff4df;
   --danger: #9b2c1f;
   --warn: #c27803;
+  /* Keep in sync with features/operator/pressureColors.ts */
+  --pressure-low: #1f7a5c;
+  --pressure-mid: #c27803;
+  --pressure-high: #c23b22;
   --font-display: "Sora", "Segoe UI", sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
   font-family: var(--font-body);
@@ -555,15 +559,15 @@ input[aria-invalid="true"] {
 }
 
 .swatch--low {
-  background: #146c52;
+  background: var(--pressure-low);
 }
 
 .swatch--mid {
-  background: #b45309;
+  background: var(--pressure-mid);
 }
 
 .swatch--high {
-  background: #b91c1c;
+  background: var(--pressure-high);
 }
 
 .strategy-comparison {

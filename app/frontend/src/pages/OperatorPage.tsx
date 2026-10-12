@@ -9,6 +9,7 @@ import type {
   MapPoint,
   UnlocatedMapPoint,
 } from "../components/map/types";
+import { pressureColor } from "../features/operator/pressureColors";
 import { PressureLegend } from "../features/operator/PressureLegend";
 import { ScenarioSelector } from "../features/operator/ScenarioSelector";
 import { SimulationControls } from "../features/operator/SimulationControls";
@@ -16,12 +17,6 @@ import { StrategyComparison } from "../features/operator/StrategyComparison";
 import { usePressure } from "../hooks/usePressure";
 import { useSimulationComparison } from "../hooks/useSimulationComparison";
 import type { Scenario, Station } from "../services/api";
-
-function pressureColor(score: number): string {
-  if (score >= 0.66) return "#c23b22";
-  if (score >= 0.33) return "#c27803";
-  return "#1f7a5c";
-}
 
 export function OperatorPage() {
   const client = useApiClient();
