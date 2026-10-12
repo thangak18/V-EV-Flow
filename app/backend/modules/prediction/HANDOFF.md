@@ -1,5 +1,9 @@
 # Bàn giao Predictor cho Kiên
 
+**Artifact khuyên dùng hiện tại:** [model từ simulator Bảo](SIMULATOR_HANDOFF.md),
+14 trạm và 14 ngày/kịch bản. Phần demo synthetic bên dưới giữ để chạy smoke
+nhỏ; không dùng nó thay model simulator khi tích hợp mới.
+
 Module này cung cấp mô hình và shared `Predictor` port. Kiên tích hợp vào
 composition root/API; tài liệu này không đổi DTO, OpenAPI hay route handlers.
 Backend trên main vẫn chọn fake predictor cho đến khi Kiên thay binding.

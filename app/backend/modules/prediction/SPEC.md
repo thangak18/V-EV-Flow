@@ -240,3 +240,13 @@ reviewable example; binaries/histories stay in ignored `artifacts/`.
 [0,1] and float64 endpoint clipping. Fresh reports include it in all four
 model/baseline summaries. Legacy reports use None and remain loadable without
 inventing missing evaluation scores. No shared contract/API change.
+
+## Stateful simulator model handoff
+
+`SIMULATOR_HANDOFF.md` reproduces the file-bridge from Bảo’s station_data and
+simulation CLIs into the existing ML train/evaluate/predict commands.
+`SIMULATOR_REPORT.md` records schema/history integrity, fixed time splits,
+four-way test/later-seed metrics and public-port smoke. Generated histories,
+joblib, manifests and ZIP delivery remain ignored under artifacts/simulator-v1.
+Source is bao-stateful-simulator and data_type remains simulated. Runner/API
+binding and ETA bucket/fallback policy remain the backend owner’s responsibility.
