@@ -10,6 +10,7 @@ scenarios:
       by_day: {weekday: 1.0, saturday: 1.10, sunday: 0.90}
       by_station_type: {urban: 1.10, highway: 0.90}
     holiday_multiplier: 1.0
+    history_days: 14
     charging_minutes: [20, 45]
     fault_probability: 0.01
     repair_probability: 0.10
@@ -25,6 +26,7 @@ scenarios:
       by_day: {weekday: 1.20, saturday: 1.30, sunday: 1.10}
       by_station_type: {urban: 1.15, highway: 1.25}
     holiday_multiplier: 1.30
+    history_days: 14
     charging_minutes: [20, 45]
     fault_probability: 0.01
     repair_probability: 0.10
@@ -40,6 +42,7 @@ scenarios:
       by_day: {weekday: 1.30, saturday: 1.50, sunday: 1.20}
       by_station_type: {urban: 1.20, highway: 1.35}
     holiday_multiplier: 1.50
+    history_days: 14
     charging_minutes: [20, 45]
     fault_probability: 0.01
     repair_probability: 0.10
