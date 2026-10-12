@@ -362,6 +362,19 @@ async def test_rejects_malformed_present_polyline(tmp_path: Path) -> None:
             await make_provider(tmp_path, client).get_routes(valid_request())
 
 
+@pytest.mark.asyncio
+async def test_rejects_empty_present_polyline(tmp_path: Path) -> None:
+    payload = valid_route()
+    payload["overview_polyline"] = {"points": ""}
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"routes": [payload]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(RouteUnavailableError, match="Goong route service unavailable"):
+            await make_provider(tmp_path, client).get_routes(valid_request())
+
+
 def test_rejects_non_ascii_polyline_bytes() -> None:
     from app.backend.infrastructure.routing.goong import _decode_polyline
 

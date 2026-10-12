@@ -176,6 +176,8 @@ def _parse_geometry(raw_route: dict[str, Any]) -> tuple[Coordinate, ...] | None:
     encoded = raw_polyline.get("points")
     if not isinstance(encoded, str):
         raise ValueError("overview polyline points must be a string")
+    if not encoded:
+        raise ValueError("overview polyline points must not be empty")
     return _decode_polyline(encoded)
 
 

@@ -38,6 +38,12 @@ def now() -> datetime:
     return datetime(2026, 10, 13, 8, tzinfo=UTC_PLUS_7)
 
 
+@pytest.mark.parametrize("ttl", [timedelta(0), timedelta(seconds=-1)])
+def test_rejects_non_positive_ttl_at_construction(tmp_path: Path, ttl: timedelta) -> None:
+    with pytest.raises(ValueError, match="ttl"):
+        RouteCache(tmp_path / "route-cache", ttl)
+
+
 def test_key_is_stable_and_direction_time_sensitive(cache: RouteCache) -> None:
     forward = route_request(origin=(10.7, 106.6), destination=(10.8, 106.8), hour=8)
     repeated = route_request(origin=(10.7, 106.6), destination=(10.8, 106.8), hour=8)

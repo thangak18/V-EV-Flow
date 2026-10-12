@@ -18,6 +18,8 @@ class RouteCache:
     """Persist validated route alternatives under stable, versioned keys."""
 
     def __init__(self, directory: Path, ttl: timedelta) -> None:
+        if ttl <= timedelta(0):
+            raise ValueError("cache ttl must be positive")
         self.directory = directory
         self._ttl = ttl
 
