@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 import numpy as np
-from sklearn.metrics import brier_score_loss, roc_auc_score
+from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,7 @@ class CalibrationBin:
 
 @dataclass(frozen=True)
 class EvaluationMetrics:
-    """Brier/AUC and reliability diagnostics for a single held-out partition."""
+    """Brier/Log Loss/AUC and reliability diagnostics for a single held-out partition."""
 
     sample_count: int
     positive_count: int
@@ -28,6 +28,7 @@ class EvaluationMetrics:
     auc: float | None
     calibration: tuple[CalibrationBin, ...]
     ece: float
+    log_loss: float | None = None  # None only for legacy artifact reports.
 
 
 def _vector(value: object, name: str) -> np.ndarray:
@@ -46,8 +47,10 @@ def evaluate_probabilities(
     """Evaluate aligned outcome/probability vectors with fixed calibration bins.
 
     Every observed target must be exactly 0 or 1 and every prediction a
-    finite number in [0, 1]. AUC is None for single-class evaluation; Brier
-    and calibration remain defined. ECE is the count-weighted absolute gap
+    finite number in [0, 1]. AUC is None for single-class evaluation; Brier,
+    Log Loss and calibration remain defined. Log Loss declares both binary
+    classes and clips probability endpoints using float64 machine epsilon.
+    ECE is the count-weighted absolute gap
     between average prediction and observed rate in nonempty bins.
 
     Bin intervals are [lower, upper), with p=1 included in the final bin.
@@ -103,6 +106,7 @@ def evaluate_probabilities(
         positive_count=int(truth.sum()),
         positive_rate=float(truth.mean()),
         brier_score=float(brier_score_loss(truth, predicted)),
+        log_loss=float(log_loss(truth, predicted, labels=[0, 1])),
         auc=auc,
         calibration=tuple(calibration),
         ece=ece,
