@@ -5,9 +5,4 @@
 /pyproject.toml @thangak18
 /uv.lock @thangak18
 /Makefile @thangak18
-/docs/harness/ @thangak18
-/.agents/ @thangak18
-/.claude/ @thangak18
-/.codex/ @thangak18
 /AGENTS.md @thangak18
-/CLAUDE.md @thangak18

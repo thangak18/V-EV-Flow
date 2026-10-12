@@ -27,8 +27,6 @@ Dự báo và điều phối nhu cầu sạc xe điện trên hành lang cao t�
 | [Hai giao diện](docs/UI_SPEC.md) | Driver/Operator, bố cục và thứ tự dựng |
 | [Demo và checklist](docs/DEMO.md) | Demo 20% pin, 100 xe, dự phòng và việc hỏi mentor |
 | [Làm việc chung](CONTRIBUTING.md) | Nhánh, PR, integration và quy tắc repo |
-| [Harness Codex/Claude](docs/harness/README.md) | Issue, workflow, evidence, adapters và pilot |
-| [Chạy một issue](docs/harness/RUN_AN_ISSUE.md) | Onboarding, stage skills, checkpoint, checks và manual review |
 | [Phase 0 handoff](docs/runbooks/phase-0-handoff.md) | Đọc theo thứ tự, gates, OpenAPI và tạo nhánh owner |
 
 ## Cấu trúc
@@ -61,7 +59,7 @@ cd V-EV-Flow
 cp .env.example .env
 ```
 
-Repo private nên thành viên cần được cấp quyền trước khi clone. Foundation snapshot cần reviewer độc lập chấp nhận theo runbook; survey ghi CI xanh nhưng chưa có bằng chứng approval. Sau khi gate đó và tooling prerequisites đạt, Bảo/Thắng/Kiên/Tú tạo nhánh từ Foundation origin trong policy rồi tích hợp `main`. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế trong tài liệu module.
+Repo private nên thành viên cần được cấp quyền trước khi clone. Foundation snapshot đã được review độc lập theo [handoff runbook](docs/runbooks/phase-0-handoff.md). Bảo/Thắng/Kiên/Tú làm trên nhánh owner và tích hợp prerequisites từ `main` bằng merge. Khi thêm code, owner cập nhật hướng dẫn cài và chạy thực tế trong tài liệu module.
 
 ## Lệnh canonical và trạng thái xác minh
 
@@ -74,18 +72,10 @@ make test
 make build
 make contract-check
 make smoke
-make harness-check
 make ci
 ```
 
-Foundation snapshot có historical CI success trên `27d421265fe57736d3070c241544e3756772e52b`; xem [record](docs/runbooks/phase-0-handoff.md). Đó không thay kết quả mới trên commit hiện tại. Harness bootstrap ghi kết quả local/CI bằng lệnh, exit, SHA/base và logs trong PR; independent review và pilot vẫn cần người thật. Chỉ hoàn tất handoff khi fresh `make ci` exit 0 và working tree sạch.
-
-Harness có canonical skills/roles/hooks trong [.agents](.agents/README.md), sinh
-adapter Codex/Claude bằng `python3 .github/scripts/harness.py sync`; CI kiểm tra
-drift. `verify --issue N` chọn fixed scoped Make gates để phản hồi nhanh,
-`verify --issue N --full` ghi final `make ci`. Con người vẫn giao issue, bắt đầu
-phiên, review và merge. Hooks/roles có fallback bằng CLI/shared prompt; runtime
-status thực tế nằm trong [compatibility](docs/harness/compatibility.md).
+Foundation acceptance và CI lịch sử được ghi trong [record](docs/runbooks/phase-0-handoff.md). Mỗi PR mới ghi lệnh, kết quả, tested SHA và CI link của chính revision đó. Hoàn tất handoff sau fresh `make ci` exit 0 trên working tree sạch; reviewer và integrator quyết định merge.
 
 Mock backend và frontend có thể chạy độc lập để kiểm tra vertical slice:
 
@@ -94,6 +84,6 @@ uv run uvicorn app.backend.api.main:create_app --factory --host 127.0.0.1 --port
 npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Backend health check là `http://127.0.0.1:8000/api/health`; frontend mở `http://127.0.0.1:5173/`. Các gate canonical được định nghĩa trong Makefile; xem workflow để ghi evidence và bàn giao.
+Backend health check là `http://127.0.0.1:8000/api/health`; frontend mở `http://127.0.0.1:5173/`. Các gate canonical được định nghĩa trong Makefile; ghi kết quả kiểm tra và bàn giao trong PR.
 
 Proposal và kế hoạch mới do nhóm có sẵn được giữ nguyên ở root. Kế hoạch 7 ngày ban đầu được lưu tại [docs/reference](docs/reference/README.md). Khi có khác biệt, dùng bộ tài liệu triển khai hiện tại ở README này; lịch BTC và dữ liệu đối tác vẫn cần nhóm xác nhận.

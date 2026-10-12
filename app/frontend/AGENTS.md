@@ -1,6 +1,6 @@
 # Frontend agent instructions
 
-Read [root instructions](../../AGENTS.md), [app instructions](../AGENTS.md), [frontend SPEC](SPEC.md), [API contract](../../docs/API_CONTRACT.md), [contracts SPEC](../backend/contracts/SPEC.md), and [frontend plan](../../docs/superpowers/plans/2026-10-11-d-tu-frontend-map.md). [Harness policy](../../docs/harness/policy.json) defines permitted files; [workflow](../../docs/harness/workflow.md) defines evidence and handoff.
+Read [root instructions](../../AGENTS.md), [app instructions](../AGENTS.md), [frontend SPEC](SPEC.md), [API contract](../../docs/API_CONTRACT.md), [contracts SPEC](../backend/contracts/SPEC.md), and [frontend plan](../../docs/superpowers/plans/2026-10-11-d-tu-frontend-map.md). [CONTRIBUTING](../../CONTRIBUTING.md) and the frontend plan define ownership and PR requirements.
 
 Feature code/tests/e2e and module docs use committed API types. Backend code/contracts, generated `src/types/api.generated.ts`, dependency manifests/lockfiles, root tooling, CI and build/test configuration require separate reviewed contract/tooling changes. A missing package is a tooling prerequisite; do not install it on `feat/web-map`.
 
