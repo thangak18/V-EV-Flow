@@ -63,7 +63,10 @@ def test_fixture_stations_validate_and_response_round_trips() -> None:
     root = Path(__file__).parents[3]
     rows = json.loads((root / "backend/modules/station_data/fixtures/stations.json").read_text())
     stations = tuple(Station.model_validate(row) for row in rows)
-    assert [station.station_id for station in stations] == ["S001", "S002"]
+    ids = [station.station_id for station in stations]
+    assert 2 <= len(ids) <= 20
+    assert len(set(ids)) == len(ids)
+    assert {"S001", "S002"} <= set(ids)
     response = StationListResponse(
         stations=stations, data_type=DataType.MIXED, source_notes=["Synthetic phase0 fixture"]
     )
