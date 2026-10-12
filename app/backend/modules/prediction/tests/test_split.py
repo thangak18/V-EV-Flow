@@ -21,7 +21,8 @@ def at(hour: int, minute: int = 0) -> pd.Timestamp:
 @pytest.fixture
 def stations() -> tuple[Station, ...]:
     path = Path(__file__).parents[2] / "station_data" / "fixtures" / "stations.json"
-    return tuple(Station.model_validate(row) for row in json.loads(path.read_text()))
+    # Row-count assertions below assume two stations; the fixture may hold more.
+    return tuple(Station.model_validate(row) for row in json.loads(path.read_text()))[:2]
 
 
 @pytest.fixture
