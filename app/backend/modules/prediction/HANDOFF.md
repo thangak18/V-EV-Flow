@@ -6,6 +6,10 @@ Backend trên main vẫn chọn fake predictor cho đến khi Kiên thay binding
 
 ## Model demo và cách tạo lại
 
+Dùng source cùng phiên bản artifact trên nhánh `feat/ml-predict` của PR bàn
+giao này (hoặc main sau khi PR đó merge). Main trước PR chưa có Log Loss
+trong report metadata, nên không dùng loader cũ để đọc bundle mới.
+
 Từ root repo sau `make setup`:
 
 ```bash
