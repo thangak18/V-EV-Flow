@@ -1,10 +1,10 @@
 # Phase 0 Foundation Implementation Plan
 
-> **For agentic workers:** Use the repository-owned [harness workflow](../../harness/workflow.md), applicable AGENTS/SPEC and assigned issue AC. Track task checkboxes as implementation notes; no external skill/plugin is required. Evidence and handoff follow the common workflow.
+> **For agentic workers:** Read applicable AGENTS/SPEC and this plan. Implement within the assigned owner paths, run the focused checks and `make ci`, and record actual results in the PR. No external skill/plugin is required.
 
 **Historical plan:** Foundation code already exists; do not rerun scaffolding/install snippets against the frozen checkout. Current commands, policy and handoff workflow are authoritative; new dependency changes require tooling review.
 
-> Foundation checklist is historical. The current Makefile and shared harness workflow control checks; do not restore obsolete tooling from code examples below.
+> Foundation checklist is historical. The current Makefile and CI workflow control checks; do not restore obsolete tooling from code examples below.
 
 **Goal:** Build the shared, tested modular-monolith baseline that must merge before the four owner branches begin.
 
@@ -923,7 +923,7 @@ Expected: exit 0; all runtime work remains under `app/`.
 
 - [ ] **Step 3: Replace planned-command wording with verified commands**
 
-Document Makefile canonical targets (including build and harness checks added by tooling), plus mock backend/frontend start commands actually verified. Record exact results/SHA; historical expected outcomes are not evidence.
+Document Makefile canonical targets (including production build), plus mock backend/frontend start commands actually verified. Record exact results/SHA; historical expected outcomes are not evidence.
 
 - [ ] **Step 4: Run the complete gate from a clean checkout or disposable worktree**
 

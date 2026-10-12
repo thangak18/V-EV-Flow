@@ -9,7 +9,3 @@ The source proposals explain product intent. The approved design, module specs, 
 Documentation must distinguish implemented behavior from planned behavior, mock/simulated data from real data, and examples from measured results. Commands are documented as runnable only after verification. Contract changes update data/API docs, examples, OpenAPI, generated frontend types, and affected module specs together.
 
 Each module `SPEC.md` states objective, ownership, inputs/outputs, boundaries, invariants, tests, non-goals, and Definition of Done. Implementation plans use exact paths, commands, expected outcomes, dependency fakes, and PR checkpoints so coding agents do not need to invent cross-project decisions.
-
-## Harness records
-
-[Harness workflow](harness/workflow.md) is the shared execution source; [policy](harness/policy.json) owns paths/branches/gates. GitHub issues own AC/backlog, tracked per-issue handoffs own checkpoint decisions, ignored evidence/PR/CI own execution results. Tool adapters reference these sources. Documentation must not assert Foundation approval, live hooks or pilot PASS without real evidence.

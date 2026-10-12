@@ -1,6 +1,6 @@
 # A/Bảo Data and Simulation Implementation Plan
 
-> **For agentic workers:** Use the repository-owned [harness workflow](../../harness/workflow.md), applicable AGENTS/SPEC and assigned issue AC. Track task checkboxes as implementation notes; no external skill/plugin is required. Evidence and handoff follow the common workflow.
+> **For agentic workers:** Read applicable AGENTS/SPEC and this plan. Implement within the assigned owner paths, run the focused checks and `make ci`, and record actual results in the PR. No external skill/plugin is required.
 
 **Goal:** Produce validated corridor data, deterministic scenarios, a stateful charging simulator, and a fair 100-vehicle comparison runner.
 

@@ -1,6 +1,6 @@
 # B/Thắng ML Prediction Implementation Plan
 
-> **For agentic workers:** Use the repository-owned [harness workflow](../../harness/workflow.md), applicable AGENTS/SPEC and assigned issue AC. Track task checkboxes as implementation notes; no external skill/plugin is required. Evidence and handoff follow the common workflow.
+> **For agentic workers:** Read applicable AGENTS/SPEC and this plan. Implement within the assigned owner paths, run the focused checks and `make ci`, and record actual results in the PR. No external skill/plugin is required.
 
 **Goal:** Build a leakage-safe, calibrated ETA-availability prediction pipeline and expose it through the shared `Predictor` port.
 

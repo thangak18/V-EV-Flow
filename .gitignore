@@ -3,7 +3,6 @@
 .env.*
 !.env.example
 .DS_Store
-.harness/
 .claude/settings.local.json
 # Python
 __pycache__/
