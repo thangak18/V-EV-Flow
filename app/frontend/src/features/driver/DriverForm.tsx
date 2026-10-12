@@ -115,8 +115,7 @@ export function DriverForm({
 
   return (
     <form className="driver-form" onSubmit={handleSubmit} noValidate>
-      <fieldset>
-        <legend>Corridor preset</legend>
+      <div className="driver-primary-fields">
         <label>
           Route
           <select
@@ -143,62 +142,66 @@ export function DriverForm({
             <option value="tet">Tết</option>
           </select>
         </label>
-        <label>
-          Demo time (+07:00)
-          <input
-            className="input-datetime"
-            type="text"
-            value={demoTime}
-            onChange={(event) => setDemoTime(event.target.value)}
-            aria-invalid={timeInvalid}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
-      </fieldset>
+        <div className="driver-primary-row">
+          <label>
+            SOC %
+            <input
+              type="text"
+              inputMode="decimal"
+              value={socPct}
+              onChange={onDraftNumberChange(setSocPct)}
+              aria-invalid={socInvalid}
+            />
+          </label>
+          <label>
+            Connector
+            <input
+              type="text"
+              value={connector}
+              onChange={(event) => setConnector(event.target.value)}
+              aria-invalid={connectorInvalid}
+            />
+          </label>
+        </div>
+      </div>
 
-      <fieldset>
-        <legend>Vehicle</legend>
-        <label>
-          SOC %
-          <input
-            type="text"
-            inputMode="decimal"
-            value={socPct}
-            onChange={onDraftNumberChange(setSocPct)}
-            aria-invalid={socInvalid}
-          />
-        </label>
-        <label>
-          Battery kWh
-          <input
-            type="text"
-            inputMode="decimal"
-            value={batteryKwh}
-            onChange={onDraftNumberChange(setBatteryKwh)}
-            aria-invalid={batteryInvalid}
-          />
-        </label>
-        <label>
-          Consumption kWh/km
-          <input
-            type="text"
-            inputMode="decimal"
-            value={consumption}
-            onChange={onDraftNumberChange(setConsumption)}
-            aria-invalid={consumptionInvalid}
-          />
-        </label>
-        <label>
-          Connector
-          <input
-            type="text"
-            value={connector}
-            onChange={(event) => setConnector(event.target.value)}
-            aria-invalid={connectorInvalid}
-          />
-        </label>
-      </fieldset>
+      <details className="driver-advanced">
+        <summary>Battery, consumption &amp; demo time</summary>
+        <div className="driver-advanced-fields">
+          <label>
+            Battery kWh
+            <input
+              type="text"
+              inputMode="decimal"
+              value={batteryKwh}
+              onChange={onDraftNumberChange(setBatteryKwh)}
+              aria-invalid={batteryInvalid}
+            />
+          </label>
+          <label>
+            Consumption kWh/km
+            <input
+              type="text"
+              inputMode="decimal"
+              value={consumption}
+              onChange={onDraftNumberChange(setConsumption)}
+              aria-invalid={consumptionInvalid}
+            />
+          </label>
+          <label>
+            Demo time (+07:00)
+            <input
+              className="input-datetime"
+              type="text"
+              value={demoTime}
+              onChange={(event) => setDemoTime(event.target.value)}
+              aria-invalid={timeInvalid}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+        </div>
+      </details>
 
       {invalid ? (
         <p className="field-error" role="alert">

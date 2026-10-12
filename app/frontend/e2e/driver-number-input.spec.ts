@@ -5,6 +5,12 @@ test("driver numeric fields keep empty draft and accept comma/dot decimals", asy
 }) => {
   await page.goto("/driver");
 
+  await page
+    .locator("details.driver-advanced")
+    .evaluate((el) => {
+      (el as HTMLDetailsElement).open = true;
+    });
+
   const soc = page.getByLabel("SOC %");
   const battery = page.getByLabel("Battery kWh");
   const consumption = page.getByLabel("Consumption kWh/km");

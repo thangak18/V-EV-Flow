@@ -38,11 +38,13 @@ for (const width of [375, 390] as const) {
       const header = page.locator(".operator-header");
       const headerBox = await header.boundingBox();
       expect(headerBox).toBeTruthy();
-      // Title + badge only — no tall empty flex-basis gap in column layout.
-      expect(headerBox!.height).toBeLessThan(140);
+      // Title + badge only — no tall empty flex-basis gap (~232px) in column layout.
+      expect(headerBox!.height).toBeLessThan(170);
 
       await page.getByRole("button", { name: /Compare 3 strategies/i }).click();
-      await expect(page.getByText("Nearest")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole("heading", { name: "Nearest" })).toBeVisible({
+        timeout: 30_000,
+      });
       await expect(page.locator(".table-wrap")).toBeVisible();
 
       await assertNoDocumentHorizontalOverflow(page);

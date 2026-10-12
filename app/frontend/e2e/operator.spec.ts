@@ -12,7 +12,13 @@ test("operator loads pressure and compares three strategies", async ({
   });
 
   await page.getByRole("button", { name: /Compare 3 strategies/i }).click();
-  await expect(page.getByText("Nearest")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Currently available")).toBeVisible();
-  await expect(page.getByText("AI allocation")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Nearest" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByRole("heading", { name: "Currently available" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "AI allocation" }),
+  ).toBeVisible();
 });

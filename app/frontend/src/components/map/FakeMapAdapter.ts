@@ -55,7 +55,7 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
 
   const badge = document.createElement("p");
   badge.className = "schematic-map__badge";
-  badge.textContent = `Schematic map · ${model.points.length} points`;
+  badge.textContent = `HCM–VT corridor · ${model.points.length} points`;
   wrapper.appendChild(badge);
 
   const svg = el("svg", {
