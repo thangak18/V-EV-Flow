@@ -149,6 +149,50 @@ async def test_rejects_non_finite_upstream_numeric_values(tmp_path: Path) -> Non
 
 
 @pytest.mark.asyncio
+async def test_normalizes_numeric_conversion_overflow(tmp_path: Path) -> None:
+    payload = {
+        "routes": [
+            {"legs": [{"distance": {"value": 10**400}, "duration": {"value": 1}}]}
+        ]
+    }
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(RouteUnavailableError, match="Goong route service unavailable"):
+            await make_provider(tmp_path, client).get_routes(valid_request())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("field", ["distance", "duration"])
+async def test_normalizes_overflow_when_summing_finite_legs(tmp_path: Path, field: str) -> None:
+    overflowing: dict[str, float] = {"distance": 1, "duration": 1}
+    overflowing[field] = 1e308
+    leg = {
+        "distance": {"value": overflowing["distance"]},
+        "duration": {"value": overflowing["duration"]},
+    }
+    payload = {
+        "routes": [
+            {
+                "legs": [
+                    leg,
+                    leg,
+                ]
+            }
+        ]
+    }
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(RouteUnavailableError, match="Goong route service unavailable"):
+            await make_provider(tmp_path, client).get_routes(valid_request())
+
+
+@pytest.mark.asyncio
 async def test_rejects_malformed_present_polyline(tmp_path: Path) -> None:
     payload = valid_route()
     payload["overview_polyline"] = {"points": "\x7f"}
@@ -159,6 +203,13 @@ async def test_rejects_malformed_present_polyline(tmp_path: Path) -> None:
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with pytest.raises(RouteUnavailableError, match="Goong route service unavailable"):
             await make_provider(tmp_path, client).get_routes(valid_request())
+
+
+def test_rejects_non_ascii_polyline_bytes() -> None:
+    from app.backend.infrastructure.routing.goong import _decode_polyline
+
+    with pytest.raises(ValueError, match="invalid character"):
+        _decode_polyline("\x7f\x7f")
 
 
 @pytest.mark.asyncio

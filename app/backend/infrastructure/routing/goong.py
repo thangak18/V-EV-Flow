@@ -55,7 +55,7 @@ class GoongRouteProvider:
             )
             response.raise_for_status()
             return _parse_routes(response.json())
-        except (httpx.HTTPError, TypeError, ValueError):
+        except (httpx.HTTPError, OverflowError, TypeError, ValueError):
             raise RouteUnavailableError(_UNAVAILABLE_MESSAGE) from None
 
 
@@ -85,14 +85,22 @@ def _parse_routes(payload: Any) -> tuple[RouteResult, ...]:
         for raw_leg in raw_legs:
             if not isinstance(raw_leg, dict):
                 raise ValueError("route leg must be an object")
-            distance_m += _nonnegative_number(raw_leg.get("distance"), "distance")
-            duration_s += _nonnegative_number(raw_leg.get("duration"), "duration")
+            distance_m = _add_finite(
+                distance_m, _nonnegative_number(raw_leg.get("distance"), "distance"), "distance"
+            )
+            duration_s = _add_finite(
+                duration_s, _nonnegative_number(raw_leg.get("duration"), "duration"), "duration"
+            )
 
         geometry = _parse_geometry(raw_route)
+        distance_km = distance_m / 1000
+        duration_minutes = duration_s / 60
+        if not math.isfinite(distance_km) or not math.isfinite(duration_minutes):
+            raise ValueError("route units must convert to finite values")
         routes.append(
             RouteResult(
-                distance_km=distance_m / 1000,
-                duration_minutes=duration_s / 60,
+                distance_km=distance_km,
+                duration_minutes=duration_minutes,
                 geometry=geometry,
                 source="goong-directions-v2",
             )
@@ -110,6 +118,13 @@ def _nonnegative_number(container: Any, field_name: str) -> float:
     if not math.isfinite(converted) or converted < 0:
         raise ValueError(f"route {field_name} must be finite and non-negative")
     return converted
+
+
+def _add_finite(total: float, value: float, field_name: str) -> float:
+    combined = total + value
+    if not math.isfinite(combined):
+        raise ValueError(f"route {field_name} total must be finite")
+    return combined
 
 
 def _parse_geometry(raw_route: dict[str, Any]) -> tuple[Coordinate, ...] | None:
@@ -149,10 +164,11 @@ def _decode_polyline_value(encoded: str, index: int) -> tuple[int, int]:
     while True:
         if index >= len(encoded):
             raise ValueError("unterminated encoded polyline value")
-        chunk = ord(encoded[index]) - 63
+        code_point = ord(encoded[index])
         index += 1
-        if chunk < 0:
+        if not 63 <= code_point <= 126:
             raise ValueError("encoded polyline has an invalid character")
+        chunk = code_point - 63
         result |= (chunk & 0x1F) << shift
         shift += 5
         if shift > 60:
