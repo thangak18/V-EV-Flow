@@ -59,9 +59,11 @@ describe("StrategyComparison", () => {
         meta={{ scenario: "tet", seed: 42, vehicleCount: 100 }}
       />,
     );
-    expect(screen.getByText("Nearest")).toBeInTheDocument();
-    expect(screen.getByText("90.0%")).toBeInTheDocument();
-    expect(screen.getByText(/Failed: timeout/)).toBeInTheDocument();
+    expect(screen.getAllByText("Nearest").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("90.0%").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Failed: timeout/).length,
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/No hard-coded winner/)).toBeInTheDocument();
     expect(screen.getByText("10")).toBeInTheDocument();
   });

@@ -42,6 +42,12 @@ export function DriverPage() {
     return () => controller.abort();
   }, [client]);
 
+  const stationNames = useMemo(() => {
+    return Object.fromEntries(
+      stations.map((station) => [station.station_id, station.name]),
+    );
+  }, [stations]);
+
   const mapModel = useMemo<MapModel>(() => {
     const corridor = CORRIDOR_PRESETS[presetId];
     const index = new Map(
@@ -70,19 +76,20 @@ export function DriverPage() {
       role: "primary" | "backup",
     ): void => {
       const meta = index.get(stationId);
+      const label = meta?.name ?? stationId;
       if (meta) {
         points.push({
           id: stationId,
           lat: meta.lat,
           lng: meta.lng,
-          label: stationId,
+          label,
           role,
         });
         return;
       }
       unlocated.push({
         id: stationId,
-        label: stationId,
+        label,
         role,
       });
     };
@@ -106,7 +113,8 @@ export function DriverPage() {
             <p className="eyebrow">Driver</p>
             <h2>Plan a charging stop</h2>
             <p className="subtitle">
-              Explicit submit only — `/recommend` is never called on render.
+              Chọn hành lang, SOC và đầu cắm — chỉ gọi `/recommend` khi bạn bấm
+              tìm kế hoạch.
             </p>
           </div>
           <DataTypeBadge dataType={result?.data_type ?? "mock"} />
@@ -133,7 +141,9 @@ export function DriverPage() {
           errorMessage={error ?? "Unable to build a plan."}
           onRetry={retry}
         >
-          {result ? <PlanSummary result={result} /> : null}
+          {result ? (
+            <PlanSummary result={result} stationNames={stationNames} />
+          ) : null}
         </AsyncState>
       </section>
 

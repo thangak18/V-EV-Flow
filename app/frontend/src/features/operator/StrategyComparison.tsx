@@ -29,6 +29,50 @@ export function StrategyComparison({ rows, meta }: Props) {
           vehicles. No hard-coded winner — numbers come from `/simulate`.
         </p>
       ) : null}
+
+      <div className="strategy-cards">
+        {rows.map((row) =>
+          row.status === "success" ? (
+            <article
+              key={row.strategy}
+              className="strategy-card"
+              data-strategy={row.strategy}
+            >
+              <h3>{LABELS[row.strategy] ?? row.strategy}</h3>
+              <p className="strategy-card__rate">
+                {(row.result.metrics.success_rate * 100).toFixed(1)}%
+              </p>
+              <span
+                className="metric-bar metric-bar--card"
+                style={{
+                  width: `${row.result.metrics.success_rate * 100}%`,
+                }}
+                aria-hidden
+              />
+              <dl className="strategy-card__metrics">
+                <div>
+                  <dt>Detour</dt>
+                  <dd>{row.result.metrics.mean_detour_km.toFixed(2)} km</dd>
+                </div>
+                <div>
+                  <dt>Wait</dt>
+                  <dd>{row.result.metrics.mean_wait_minutes.toFixed(2)} min</dd>
+                </div>
+              </dl>
+            </article>
+          ) : (
+            <article
+              key={row.strategy}
+              className="strategy-card strategy-card--error"
+              data-strategy={row.strategy}
+            >
+              <h3>{LABELS[row.strategy] ?? row.strategy}</h3>
+              <p className="strategy-card__error">Failed: {row.message}</p>
+            </article>
+          ),
+        )}
+      </div>
+
       <div className="table-wrap">
         <table>
           <thead>

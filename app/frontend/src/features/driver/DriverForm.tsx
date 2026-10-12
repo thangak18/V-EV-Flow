@@ -49,6 +49,7 @@ export function DriverForm({
     RecommendationRequest,
     "request_id"
   > | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const parsedSoc = parseLocaleNumber(socPct);
   const parsedBattery = parseLocaleNumber(batteryKwh);
@@ -60,6 +61,14 @@ export function DriverForm({
   const consumptionInvalid =
     parsedConsumption === null || parsedConsumption <= 0;
   const connectorInvalid = connector.trim().length === 0;
+  const advancedInvalid = timeInvalid || batteryInvalid || consumptionInvalid;
+  // Stay open while invalid; field edits also sticky-open so mid-typing
+  // (e.g. "0,1" → valid) does not collapse and remount inputs.
+  const detailsOpen = advancedInvalid || advancedOpen;
+
+  function touchAdvanced() {
+    setAdvancedOpen(true);
+  }
 
   const invalid = useMemo(() => {
     return (
@@ -115,8 +124,7 @@ export function DriverForm({
 
   return (
     <form className="driver-form" onSubmit={handleSubmit} noValidate>
-      <fieldset>
-        <legend>Corridor preset</legend>
+      <div className="driver-primary-fields">
         <label>
           Route
           <select
@@ -143,62 +151,101 @@ export function DriverForm({
             <option value="tet">Tết</option>
           </select>
         </label>
-        <label>
-          Demo time (+07:00)
-          <input
-            className="input-datetime"
-            type="text"
-            value={demoTime}
-            onChange={(event) => setDemoTime(event.target.value)}
-            aria-invalid={timeInvalid}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
-      </fieldset>
+        <div className="driver-primary-row">
+          <label>
+            SOC %
+            <input
+              type="text"
+              inputMode="decimal"
+              value={socPct}
+              onChange={onDraftNumberChange(setSocPct)}
+              aria-invalid={socInvalid}
+            />
+          </label>
+          <label>
+            Connector
+            <input
+              type="text"
+              value={connector}
+              onChange={(event) => setConnector(event.target.value)}
+              aria-invalid={connectorInvalid}
+            />
+          </label>
+        </div>
+      </div>
 
-      <fieldset>
-        <legend>Vehicle</legend>
-        <label>
-          SOC %
-          <input
-            type="text"
-            inputMode="decimal"
-            value={socPct}
-            onChange={onDraftNumberChange(setSocPct)}
-            aria-invalid={socInvalid}
-          />
-        </label>
-        <label>
-          Battery kWh
-          <input
-            type="text"
-            inputMode="decimal"
-            value={batteryKwh}
-            onChange={onDraftNumberChange(setBatteryKwh)}
-            aria-invalid={batteryInvalid}
-          />
-        </label>
-        <label>
-          Consumption kWh/km
-          <input
-            type="text"
-            inputMode="decimal"
-            value={consumption}
-            onChange={onDraftNumberChange(setConsumption)}
-            aria-invalid={consumptionInvalid}
-          />
-        </label>
-        <label>
-          Connector
-          <input
-            type="text"
-            value={connector}
-            onChange={(event) => setConnector(event.target.value)}
-            aria-invalid={connectorInvalid}
-          />
-        </label>
-      </fieldset>
+      <details
+        className={
+          advancedInvalid
+            ? "driver-advanced driver-advanced--locked"
+            : "driver-advanced"
+        }
+        open={detailsOpen}
+        onToggle={(event) => {
+          if (advancedInvalid) {
+            // Ignore collapse attempts while Advanced fields are invalid.
+            event.currentTarget.open = true;
+            setAdvancedOpen(true);
+            return;
+          }
+          setAdvancedOpen(event.currentTarget.open);
+        }}
+      >
+        <summary
+          aria-disabled={advancedInvalid || undefined}
+          onClick={(event) => {
+            if (advancedInvalid) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          }}
+        >
+          Battery, consumption &amp; demo time
+        </summary>
+        <div className="driver-advanced-fields">
+          <label>
+            Battery kWh
+            <input
+              type="text"
+              inputMode="decimal"
+              value={batteryKwh}
+              onChange={(event) => {
+                touchAdvanced();
+                onDraftNumberChange(setBatteryKwh)(event);
+              }}
+              aria-invalid={batteryInvalid}
+            />
+          </label>
+          <label>
+            Consumption kWh/km
+            <input
+              type="text"
+              inputMode="decimal"
+              value={consumption}
+              onChange={(event) => {
+                touchAdvanced();
+                onDraftNumberChange(setConsumption)(event);
+              }}
+              aria-invalid={consumptionInvalid}
+            />
+          </label>
+          <label>
+            Demo time (+07:00)
+            <input
+              className="input-datetime"
+              type="text"
+              value={demoTime}
+              onChange={(event) => {
+                touchAdvanced();
+                setDemoTime(event.target.value);
+              }}
+              aria-invalid={timeInvalid}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+        </div>
+      </details>
 
       {invalid ? (
         <p className="field-error" role="alert">

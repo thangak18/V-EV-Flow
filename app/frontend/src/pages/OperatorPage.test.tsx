@@ -66,7 +66,7 @@ describe("OperatorPage", () => {
       screen.getByRole("button", { name: /Compare 3 strategies/i }),
     );
     await waitFor(() => expect(simulate).toHaveBeenCalledTimes(3));
-    expect(screen.getByText("Nearest")).toBeInTheDocument();
+    expect(screen.getAllByText("Nearest").length).toBeGreaterThanOrEqual(1);
   });
 
   test("keeps pressure stations textual when directory lacks coordinates", async () => {
