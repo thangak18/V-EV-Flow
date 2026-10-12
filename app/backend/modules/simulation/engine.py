@@ -57,6 +57,39 @@ class SimulationEngine:
             raise ValueError("service_minutes must be positive")
         self._pending[station_id].append(QueuedVehicle(vehicle_id, service_minutes))
 
+    def arrive_now(self, vehicle_id: str, station_id: str, service_minutes: float) -> bool:
+        """Place a vehicle at the current step. True when it starts charging at once.
+
+        Otherwise it joins the queue tail. Call only after ``step``.
+        """
+        if self._last_ts is None:
+            raise ValueError("arrive_now requires a completed step")
+        if service_minutes <= 0:
+            raise ValueError("service_minutes must be positive")
+        state = self._states[station_id]
+        state.queue.append(QueuedVehicle(vehicle_id, service_minutes))
+        self._admit(state, self._last_ts)
+        return any(item.vehicle_id == vehicle_id for item in state.sessions)
+
+    def free_ports(self, station_id: str) -> int:
+        return self._states[station_id].free
+
+    def is_charging(self, vehicle_id: str) -> bool:
+        return any(
+            item.vehicle_id == vehicle_id
+            for state in self._states.values()
+            for item in state.sessions
+        )
+
+    def cancel(self, vehicle_id: str) -> bool:
+        """Remove a waiting vehicle from its queue; False if it is not queued."""
+        for state in self._states.values():
+            for index, item in enumerate(state.queue):
+                if item.vehicle_id == vehicle_id:
+                    del state.queue[index]
+                    return True
+        return False
+
     def step(self, ts: datetime) -> StepSnapshot:
         if self._last_ts is not None and ts <= self._last_ts:
             raise ValueError("steps must advance in time")
