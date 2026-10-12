@@ -1,5 +1,6 @@
 """Goong Directions V2 implementation of the frozen route-provider port."""
 
+import asyncio
 import math
 from collections.abc import Callable
 from datetime import datetime
@@ -38,8 +39,47 @@ class GoongRouteProvider:
         self._endpoint = endpoint
         self._clock = clock
         self._timeout = timeout
+        self._locks: dict[str, asyncio.Lock] = {}
+        self._lock_users: dict[str, int] = {}
 
     async def get_routes(self, request: RouteRequest) -> tuple[RouteResult, ...]:
+        key = self._cache.key_for(request)
+        cached = self._cache.get(key, self._clock())
+        if cached is not None:
+            return cached
+
+        lock = self._lock_for(key)
+        try:
+            async with lock:
+                cached = self._cache.get(key, self._clock())
+                if cached is not None:
+                    return cached
+
+                routes = await self._fetch_routes(request)
+                now = self._clock()
+                try:
+                    self._cache.put(key, routes, now, now + self._cache.ttl)
+                except OSError:
+                    pass
+                return routes
+        finally:
+            self._release_lock(key, lock)
+
+    def _lock_for(self, key: str) -> asyncio.Lock:
+        lock = self._locks.setdefault(key, asyncio.Lock())
+        self._lock_users[key] = self._lock_users.get(key, 0) + 1
+        return lock
+
+    def _release_lock(self, key: str, lock: asyncio.Lock) -> None:
+        remaining_users = self._lock_users[key] - 1
+        if remaining_users:
+            self._lock_users[key] = remaining_users
+            return
+        self._lock_users.pop(key)
+        if not lock.locked() and self._locks.get(key) is lock:
+            self._locks.pop(key)
+
+    async def _fetch_routes(self, request: RouteRequest) -> tuple[RouteResult, ...]:
         origin = _coordinate_text(request.origin)
         destination = _coordinate_text(request.destination)
         try:

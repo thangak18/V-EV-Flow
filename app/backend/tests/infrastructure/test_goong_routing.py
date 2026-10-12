@@ -1,5 +1,6 @@
 """Behavior tests for the Goong Directions V2 routing adapter."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -10,7 +11,7 @@ import pytest
 from app.backend.contracts.common import Coordinate
 from app.backend.contracts.errors import RouteUnavailableError
 from app.backend.contracts.ports import RouteProvider
-from app.backend.contracts.recommendation import RouteRequest, Vehicle
+from app.backend.contracts.recommendation import RouteRequest, RouteResult, Vehicle
 from app.backend.infrastructure.routing.cache import RouteCache
 from app.backend.infrastructure.services import FakeRouteProvider
 
@@ -45,15 +46,178 @@ def valid_request() -> RouteRequest:
     )
 
 
-def make_provider(tmp_path: Path, client: httpx.AsyncClient):
+def make_provider(
+    tmp_path: Path,
+    client: httpx.AsyncClient,
+    *,
+    cache: RouteCache | None = None,
+    clock: Callable[[], datetime] = lambda: NOW,
+):
     from app.backend.infrastructure.routing.goong import GoongRouteProvider
 
     return GoongRouteProvider(
         api_key=SECRET,
         client=client,
-        cache=RouteCache(tmp_path / "route-cache", timedelta(minutes=5)),
-        clock=lambda: NOW,
+        cache=cache or RouteCache(tmp_path / "route-cache", timedelta(minutes=5)),
+        clock=clock,
     )
+
+
+@pytest.mark.asyncio
+async def test_cached_route_avoids_second_upstream_call(tmp_path: Path) -> None:
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"routes": [valid_route()]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = make_provider(tmp_path, client)
+        first = await provider.get_routes(valid_request())
+        second = await provider.get_routes(valid_request())
+
+    assert first == second
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_expired_route_is_fetched_again(tmp_path: Path) -> None:
+    calls = 0
+    current_time = [NOW]
+    cache = RouteCache(tmp_path / "route-cache", timedelta(minutes=5))
+    request = valid_request()
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"routes": [valid_route(distance_m=1000 * calls)]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = make_provider(tmp_path, client, cache=cache, clock=lambda: current_time[0])
+        first = await provider.get_routes(request)
+        assert cache.get(cache.key_for(request), NOW) == first
+        current_time[0] += timedelta(minutes=5)
+        second = await provider.get_routes(request)
+
+    assert first[0].distance_km == 1
+    assert second[0].distance_km == 2
+    assert calls == 2
+
+
+@pytest.mark.asyncio
+async def test_corrupted_route_is_replaced_from_upstream(tmp_path: Path) -> None:
+    calls = 0
+    cache = RouteCache(tmp_path / "route-cache", timedelta(minutes=5))
+    request = valid_request()
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"routes": [valid_route()]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = make_provider(tmp_path, client, cache=cache)
+        entry = cache.directory / f"{cache.key_for(request)}.json"
+        cache.put(
+            cache.key_for(request),
+            (),
+            NOW,
+            NOW + cache.ttl,
+        )
+        entry.write_text("{broken json", encoding="utf-8")
+
+        replacement = await provider.get_routes(request)
+
+    assert replacement[0].distance_km == pytest.approx(1.25)
+    assert cache.get(cache.key_for(request), NOW) == replacement
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_failed_upstream_response_is_not_cached(tmp_path: Path) -> None:
+    calls = 0
+    cache = RouteCache(tmp_path / "route-cache", timedelta(minutes=5))
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(503, text="unavailable")
+        return httpx.Response(200, json={"routes": [valid_route()]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = make_provider(tmp_path, client, cache=cache)
+        with pytest.raises(RouteUnavailableError, match="Goong route service unavailable"):
+            await provider.get_routes(valid_request())
+        assert list(cache.directory.glob("*.json")) == []
+        recovered = await provider.get_routes(valid_request())
+        cached = await provider.get_routes(valid_request())
+
+    assert recovered == cached
+    assert calls == 2
+
+
+@pytest.mark.asyncio
+async def test_identical_concurrent_requests_share_one_call(tmp_path: Path) -> None:
+    calls = 0
+    entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        entered.set()
+        await release.wait()
+        return httpx.Response(200, json={"routes": [valid_route()]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = make_provider(tmp_path, client)
+        first = asyncio.create_task(provider.get_routes(valid_request()))
+        await entered.wait()
+        second = asyncio.create_task(provider.get_routes(valid_request()))
+        release.set()
+
+        assert (await first) == (await second)
+
+    assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_cache_write_failure_returns_route_and_next_request_refetches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = 0
+    cache = RouteCache(tmp_path / "route-cache", timedelta(minutes=5))
+    original_put = cache.put
+    put_attempts = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"routes": [valid_route()]})
+
+    def fail_first_put(
+        key: str,
+        routes: tuple[RouteResult, ...],
+        collected_at: datetime,
+        expires_at: datetime,
+    ) -> None:
+        nonlocal put_attempts
+        put_attempts += 1
+        if put_attempts == 1:
+            raise OSError("disk unavailable")
+        original_put(key, routes, collected_at, expires_at)
+
+    monkeypatch.setattr(cache, "put", fail_first_put)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = make_provider(tmp_path, client, cache=cache)
+        first = await provider.get_routes(valid_request())
+        second = await provider.get_routes(valid_request())
+        third = await provider.get_routes(valid_request())
+
+    assert first == second == third
+    assert calls == 2
 
 
 @pytest.mark.asyncio
@@ -135,10 +299,7 @@ async def test_rejects_unusable_upstream_payload(
 
 @pytest.mark.asyncio
 async def test_rejects_non_finite_upstream_numeric_values(tmp_path: Path) -> None:
-    content = (
-        b'{"routes":[{"legs":[{"distance":{"value":NaN},'
-        b'"duration":{"value":Infinity}}]}]}'
-    )
+    content = b'{"routes":[{"legs":[{"distance":{"value":NaN},"duration":{"value":Infinity}}]}]}'
 
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=content)
@@ -150,11 +311,7 @@ async def test_rejects_non_finite_upstream_numeric_values(tmp_path: Path) -> Non
 
 @pytest.mark.asyncio
 async def test_normalizes_numeric_conversion_overflow(tmp_path: Path) -> None:
-    payload = {
-        "routes": [
-            {"legs": [{"distance": {"value": 10**400}, "duration": {"value": 1}}]}
-        ]
-    }
+    payload = {"routes": [{"legs": [{"distance": {"value": 10**400}, "duration": {"value": 1}}]}]}
 
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=payload)
