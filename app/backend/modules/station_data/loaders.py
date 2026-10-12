@@ -96,6 +96,23 @@ class ScenarioSpec(StrictModel):
             raise ValueError("start must be before end")
         return self
 
+    def history_spec(self, days: int | None = None, end: datetime | None = None) -> "ScenarioSpec":
+        """Same scenario, window of ``days`` days ending at ``end``.
+
+        ``days`` defaults to ``history_days``; ``end`` defaults to the scenario
+        end. Passing one common ``end`` for every scenario puts them on a shared
+        calendar window, which global temporal train/calibration/test splits
+        need so each scenario appears in every partition.
+        """
+        count = self.history_days if days is None else days
+        if count < 1:
+            raise ValueError("history days must be at least 1")
+        last = self.end if end is None else end
+        if last.utcoffset() != _OFFSET:
+            raise ValueError("history end must carry +07:00")
+        start = last + timedelta(minutes=self.step_minutes) - timedelta(days=count)
+        return self.model_copy(update={"start": start, "end": last, "history_days": count})
+
     def to_config(self) -> ScenarioConfig:
         return ScenarioConfig(
             scenario=self.scenario,
