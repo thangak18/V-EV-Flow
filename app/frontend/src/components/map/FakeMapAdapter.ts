@@ -1,14 +1,24 @@
 import type { MapAdapter, MapModel, MapPoint } from "./types";
 
 const NS = "http://www.w3.org/2000/svg";
+const MAX_LABEL_CHARS = 18;
+const LABEL_CHAR_PX = 6.5;
+const LABEL_HEIGHT = 14;
 
 const ROLE_COLOR: Record<MapPoint["role"], string> = {
   origin: "#0f766e",
   destination: "#1d4ed8",
   primary: "#146c52",
   backup: "#b45309",
-  pressure: "#b91c1c",
+  pressure: "#c23b22",
 };
+
+/** Short marker text for schematic SVG; full names stay in Station text list. */
+export function schematicMarkerLabel(point: MapPoint): string {
+  if (point.role === "pressure") return point.id;
+  if (point.label.length <= MAX_LABEL_CHARS) return point.label;
+  return `${point.label.slice(0, MAX_LABEL_CHARS - 1)}…`;
+}
 
 function project(points: MapPoint[], width: number, height: number) {
   if (points.length === 0) return [];
@@ -30,6 +40,51 @@ function project(points: MapPoint[], width: number, height: number) {
   });
 }
 
+function boxesOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+): boolean {
+  return !(
+    a.x + a.w < b.x ||
+    b.x + b.w < a.x ||
+    a.y + a.h < b.y ||
+    b.y + b.h < a.y
+  );
+}
+
+function placeLabels(
+  projected: Array<{ point: MapPoint; x: number; y: number }>,
+  width: number,
+  height: number,
+) {
+  const placed: Array<{ x: number; y: number; w: number; h: number }> = [];
+
+  return projected.map(({ point, x, y }) => {
+    const text = schematicMarkerLabel(point);
+    const w = Math.max(text.length * LABEL_CHAR_PX, 12);
+    let labelX = Math.min(x + 12, width - w - 4);
+    let labelY = y + 4;
+
+    for (let step = 0; step < 12; step += 1) {
+      const box = { x: labelX, y: labelY - 10, w, h: LABEL_HEIGHT };
+      const hits = placed.some((other) => boxesOverlap(box, other));
+      if (!hits && labelY < height - 4 && labelY > 12) {
+        placed.push(box);
+        return { point, x, y, labelX, labelY, text };
+      }
+      labelY += LABEL_HEIGHT;
+      if (labelY > height - 8) {
+        labelY = y + 4 - LABEL_HEIGHT * (step + 1);
+        labelX = Math.max(4, x - w - 8);
+      }
+    }
+
+    const fallback = { x: labelX, y: labelY - 10, w, h: LABEL_HEIGHT };
+    placed.push(fallback);
+    return { point, x, y, labelX, labelY, text };
+  });
+}
+
 function el<K extends keyof SVGElementTagNameMap>(
   name: K,
   attrs: Record<string, string | number> = {},
@@ -45,6 +100,7 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
   const width = Math.max(container.clientWidth || 480, 320);
   const height = Math.max(container.clientHeight || 280, 220);
   const projected = project(model.points, width, height);
+  const labeled = placeLabels(projected, width, height);
 
   container.dataset.mapAdapter = "schematic";
   container.replaceChildren();
@@ -112,8 +168,11 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
     );
   }
 
-  for (const { point, x, y } of projected) {
+  for (const { point, x, y, labelX, labelY, text } of labeled) {
     const group = el("g");
+    const title = el("title");
+    title.textContent = point.label;
+    group.appendChild(title);
     group.appendChild(
       el("circle", {
         cx: x,
@@ -125,13 +184,14 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
       }),
     );
     const label = el("text", {
-      x: x + 12,
-      y: y + 4,
-      "font-size": 12,
-      "font-family": "Segoe UI,sans-serif",
+      class: "schematic-map__label",
+      x: labelX,
+      y: labelY,
+      "font-size": 11,
+      "font-family": "IBM Plex Sans,Segoe UI,sans-serif",
       fill: "#17221f",
     });
-    label.textContent = point.label;
+    label.textContent = text;
     group.appendChild(label);
     svg.appendChild(group);
   }

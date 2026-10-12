@@ -202,24 +202,30 @@ describe("DriverForm", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  test("opens Advanced when battery or demo time becomes invalid", () => {
+  test("keeps Advanced open when battery invalid even if user toggles summary", () => {
     renderForm();
-    const details = document.querySelector("details.driver-advanced");
-    expect(details).toBeTruthy();
-    expect(details).not.toHaveAttribute("open");
-
-    fireEvent.change(screen.getByLabelText("Battery kWh"), {
-      target: { value: "0" },
-    });
+    const details = document.querySelector(
+      "details.driver-advanced",
+    ) as HTMLDetailsElement;
+    const summary = screen.getByText("Battery, consumption & demo time");
+    fireEvent.click(summary);
     expect(details).toHaveAttribute("open");
 
     fireEvent.change(screen.getByLabelText("Battery kWh"), {
-      target: { value: "60" },
+      target: { value: "" },
     });
-    fireEvent.change(screen.getByLabelText(/Demo time/i), {
-      target: { value: "not-a-time" },
-    });
+    expect(details).toHaveClass("driver-advanced--locked");
     expect(details).toHaveAttribute("open");
-    expect(screen.getByRole("alert")).toHaveTextContent(/timezone/i);
+    expect(screen.getByLabelText("Battery kWh")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
+    ).toBeDisabled();
+
+    // Simulate a collapse attempt while invalid (Playwright regression).
+    details.open = false;
+    details.dispatchEvent(new Event("toggle", { bubbles: true }));
+    expect(details.open).toBe(true);
+    expect(details).toHaveAttribute("open");
+    expect(screen.getByLabelText("Battery kWh")).toBeVisible();
   });
 });

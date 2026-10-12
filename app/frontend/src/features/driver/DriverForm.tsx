@@ -62,7 +62,13 @@ export function DriverForm({
     parsedConsumption === null || parsedConsumption <= 0;
   const connectorInvalid = connector.trim().length === 0;
   const advancedInvalid = timeInvalid || batteryInvalid || consumptionInvalid;
-  const detailsOpen = advancedOpen || advancedInvalid;
+  // Stay open while invalid; field edits also sticky-open so mid-typing
+  // (e.g. "0,1" → valid) does not collapse and remount inputs.
+  const detailsOpen = advancedInvalid || advancedOpen;
+
+  function touchAdvanced() {
+    setAdvancedOpen(true);
+  }
 
   const invalid = useMemo(() => {
     return (
@@ -169,19 +175,33 @@ export function DriverForm({
       </div>
 
       <details
-        className="driver-advanced"
+        className={
+          advancedInvalid
+            ? "driver-advanced driver-advanced--locked"
+            : "driver-advanced"
+        }
         open={detailsOpen}
         onToggle={(event) => {
-          const next = event.currentTarget.open;
-          // Keep advanced open while its fields are invalid so errors stay visible.
-          if (advancedInvalid && !next) {
+          if (advancedInvalid) {
+            // Ignore collapse attempts while Advanced fields are invalid.
+            event.currentTarget.open = true;
             setAdvancedOpen(true);
             return;
           }
-          setAdvancedOpen(next);
+          setAdvancedOpen(event.currentTarget.open);
         }}
       >
-        <summary>Battery, consumption &amp; demo time</summary>
+        <summary
+          aria-disabled={advancedInvalid || undefined}
+          onClick={(event) => {
+            if (advancedInvalid) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          }}
+        >
+          Battery, consumption &amp; demo time
+        </summary>
         <div className="driver-advanced-fields">
           <label>
             Battery kWh
@@ -189,7 +209,10 @@ export function DriverForm({
               type="text"
               inputMode="decimal"
               value={batteryKwh}
-              onChange={onDraftNumberChange(setBatteryKwh)}
+              onChange={(event) => {
+                touchAdvanced();
+                onDraftNumberChange(setBatteryKwh)(event);
+              }}
               aria-invalid={batteryInvalid}
             />
           </label>
@@ -199,7 +222,10 @@ export function DriverForm({
               type="text"
               inputMode="decimal"
               value={consumption}
-              onChange={onDraftNumberChange(setConsumption)}
+              onChange={(event) => {
+                touchAdvanced();
+                onDraftNumberChange(setConsumption)(event);
+              }}
               aria-invalid={consumptionInvalid}
             />
           </label>
@@ -209,7 +235,10 @@ export function DriverForm({
               className="input-datetime"
               type="text"
               value={demoTime}
-              onChange={(event) => setDemoTime(event.target.value)}
+              onChange={(event) => {
+                touchAdvanced();
+                setDemoTime(event.target.value);
+              }}
               aria-invalid={timeInvalid}
               autoComplete="off"
               spellCheck={false}
