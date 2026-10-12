@@ -7,10 +7,17 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from app.backend.api.errors import domain_error_handler
 from app.backend.contracts.enums import Scenario
-from app.backend.contracts.errors import DataSourceUnavailableError, StationNotFoundError
+from app.backend.contracts.errors import (
+    DataSourceUnavailableError,
+    DomainError,
+    StationNotFoundError,
+)
 from app.backend.contracts.ports import StationRepository, StatusRepository
 from app.backend.tests.conformance.repository_contract import StationRepositoryContract
 
@@ -161,6 +168,29 @@ def test_parquet_status_repository_returns_only_exact_requested_scenario_window(
     assert all(item.ts <= observed and item.station_id == "S001" for item in result.statuses)
 
 
+@pytest.mark.parametrize("column", ["station_id", "scenario"])
+def test_parquet_status_repository_accepts_dictionary_encoded_text_columns(
+    tmp_path: Path, column: str
+) -> None:
+    files = _files_module()
+    stations = files.FileStationRepository(
+        _write_stations(tmp_path / "stations.json", [_station("S001")])
+    )
+    observed = datetime(2026, 10, 12, 10, 0, tzinfo=UTC_PLUS_7)
+    history = tmp_path / "status.parquet"
+    frame = pd.DataFrame([_status_row("S001", observed)])
+    frame[column] = frame[column].astype("category")
+    frame.to_parquet(history, index=False)
+
+    repository = files.ParquetStatusRepository(history, stations, Scenario.NORMAL)
+
+    result = repository.window("S001", observed, (0,))
+
+    assert [(item.station_id, item.scenario, item.ts) for item in result.statuses] == [
+        ("S001", Scenario.NORMAL, observed)
+    ]
+
+
 @pytest.mark.parametrize(
     "rows",
     [
@@ -185,8 +215,33 @@ def test_parquet_status_repository_rejects_invalid_or_duplicate_selected_statuse
             files.ParquetStatusRepository(history, stations, Scenario.NORMAL)
     else:
         repository = files.ParquetStatusRepository(history, stations, Scenario.NORMAL)
-        with pytest.raises((DataSourceUnavailableError, ValueError)):
+        with pytest.raises(DataSourceUnavailableError):
             repository.window("S001", datetime(2026, 10, 12, 10, 0, tzinfo=UTC_PLUS_7), (0,))
+
+
+def test_parquet_status_repository_invalid_selected_data_maps_to_503(
+    tmp_path: Path,
+) -> None:
+    files = _files_module()
+    stations = files.FileStationRepository(
+        _write_stations(tmp_path / "stations.json", [_station("S001")])
+    )
+    observed = datetime(2026, 10, 12, 10, 0, tzinfo=UTC_PLUS_7)
+    history = _write_statuses(
+        tmp_path / "status.parquet", [_status_row("S001", observed, free=2, busy=1)]
+    )
+    repository = files.ParquetStatusRepository(history, stations, Scenario.NORMAL)
+    app = FastAPI()
+    app.add_exception_handler(DomainError, domain_error_handler)
+
+    @app.get("/status")
+    def status() -> object:
+        return repository.window("S001", observed, (0,))
+
+    response = TestClient(app, raise_server_exceptions=False).get("/status")
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "DATA_SOURCE_UNAVAILABLE"
 
 
 def test_parquet_status_repository_rejects_unknown_station_missing_snapshot_and_bad_observed_time(

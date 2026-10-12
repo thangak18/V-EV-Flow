@@ -11,6 +11,7 @@ from numbers import Integral
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
 import pyarrow.dataset as ds
 import pyarrow.types as pa_types
 from pydantic import ValidationError
@@ -110,7 +111,10 @@ class ParquetStatusRepository:
                 f"no {self._scenario.value} status data for {station_id} in requested window"
             )
 
-        normalized = self._validate_rows(frame, station)
+        try:
+            normalized = self._validate_rows(frame, station)
+        except ValueError as exc:
+            raise DataSourceUnavailableError(f"invalid status data: {self._path}") from exc
         records: dict[datetime, dict[str, object]] = {}
         for row in normalized.to_dict(orient="records"):
             timestamp = row["ts"]
@@ -181,10 +185,7 @@ class ParquetStatusRepository:
         invalid = {
             name
             for name in text_fields
-            if not (
-                pa_types.is_string(schema.field(name).type)
-                or pa_types.is_large_string(schema.field(name).type)
-            )
+            if not ParquetStatusRepository._is_text_type(schema.field(name).type)
         }
         invalid.update(
             name for name in count_fields if not pa_types.is_integer(schema.field(name).type)
@@ -193,6 +194,16 @@ class ParquetStatusRepository:
         if not pa_types.is_timestamp(timestamp_type) or timestamp_type.tz is None:
             invalid.add("ts")
         return invalid
+
+    @staticmethod
+    def _is_text_type(data_type: pa.DataType) -> bool:
+        """Accept Arrow strings and dictionary-encoded string columns only."""
+        if pa_types.is_string(data_type) or pa_types.is_large_string(data_type):
+            return True
+        return bool(
+            pa_types.is_dictionary(data_type)
+            and ParquetStatusRepository._is_text_type(data_type.value_type)
+        )
 
     def _validate_rows(self, frame: pd.DataFrame, station: Station) -> pd.DataFrame:
         """Validate only the predicate-selected rows; never materialize full history."""
