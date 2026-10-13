@@ -1,5 +1,15 @@
-"""Public entry points for pure, pre-prediction recommendation feasibility."""
+"""Public entry points for pure recommendation feasibility and ranking."""
 
+from .ranking import (
+    RankingBreakdown,
+    RankingConfig,
+    RankingInput,
+    normalize_soc_risk,
+    normalize_travel_time,
+    normalize_virtual_load,
+    rank_candidates,
+    score_candidate,
+)
 from .soc import (
     FeasibilityResult,
     FeasibleRouteCandidate,
@@ -19,9 +29,17 @@ __all__ = [
     "RejectedCandidate",
     "RejectionReason",
     "RouteCandidate",
+    "RankingBreakdown",
+    "RankingConfig",
+    "RankingInput",
     "arrival_soc_pct",
     "connector_compatible",
     "evaluate_feasibility",
     "filter_feasible",
+    "normalize_soc_risk",
+    "normalize_travel_time",
+    "normalize_virtual_load",
+    "rank_candidates",
+    "score_candidate",
     "working_ports",
 ]
