@@ -14,7 +14,7 @@ import {
   type CorridorPresetId,
 } from "../features/driver/corridorPresets";
 import { DriverForm } from "../features/driver/DriverForm";
-import { PlanSummary } from "../features/driver/PlanSummary";
+import { PlanEmptyState, PlanSummary } from "../features/driver/PlanSummary";
 import { useRecommendation } from "../hooks/useRecommendation";
 import type { Station } from "../services/api";
 
@@ -58,14 +58,14 @@ export function DriverPage() {
         id: "origin",
         lat: corridor.origin.lat,
         lng: corridor.origin.lng,
-        label: "Origin",
+        label: corridor.originLabel,
         role: "origin",
       },
       {
         id: "destination",
         lat: corridor.destination.lat,
         lng: corridor.destination.lng,
-        label: "Destination",
+        label: corridor.destinationLabel,
         role: "destination",
       },
     ];
@@ -105,52 +105,62 @@ export function DriverPage() {
     clear();
   }
 
+  function focusMap() {
+    document
+      .querySelector<HTMLElement>('[data-testid="map-canvas"]')
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   return (
     <main className="driver-page">
-      <section className="driver-panel">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Driver</p>
-            <h2>Plan a charging stop</h2>
-            <p className="subtitle">
-              Chọn hành lang, SOC và đầu cắm — chỉ gọi `/recommend` khi bạn bấm
-              tìm kế hoạch.
-            </p>
-          </div>
-          <DataTypeBadge dataType={result?.data_type ?? "mock"} />
-        </div>
-
-        <DriverForm
-          pending={status === "loading"}
-          presetId={presetId}
-          onPresetChange={handlePresetChange}
-          onSubmit={submit}
-        />
-
-        {directoryFailed ? (
-          <p className="status-message" role="status">
-            Station directory unavailable — map markers need directory
-            coordinates.
-          </p>
-        ) : null}
-
-        <AsyncState
-          status={status === "empty" ? "success" : status}
-          loadingMessage="Building charging plan…"
-          emptyMessage="No feasible station for this trip."
-          errorMessage={error ?? "Unable to build a plan."}
-          onRetry={retry}
-        >
-          {result ? (
-            <PlanSummary result={result} stationNames={stationNames} />
-          ) : null}
-        </AsyncState>
-      </section>
-
-      <MapView
-        model={mapModel}
-        preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
+      <DriverForm
+        pending={status === "loading"}
+        presetId={presetId}
+        onPresetChange={handlePresetChange}
+        onSubmit={submit}
       />
+
+      {directoryFailed ? (
+        <p className="status-message" role="status">
+          Không tải được danh mục trạm — bản đồ có thể thiếu vị trí trạm.
+        </p>
+      ) : null}
+
+      <div className="driver-workspace">
+        <aside className="driver-sidebar">
+          {result ? (
+            <div className="sidebar-badge-row">
+              <DataTypeBadge dataType={result.data_type} />
+            </div>
+          ) : null}
+          {status === "idle" ? (
+            <PlanEmptyState />
+          ) : (
+            <AsyncState
+              status={status === "empty" ? "success" : status}
+              loadingMessage="Đang tìm kế hoạch sạc…"
+              emptyMessage="Không có trạm khả thi cho chuyến này."
+              errorMessage={error ?? "Không tạo được kế hoạch."}
+              onRetry={retry}
+            >
+              {result ? (
+                <PlanSummary
+                  result={result}
+                  stationNames={stationNames}
+                  onFocusMap={focusMap}
+                />
+              ) : null}
+            </AsyncState>
+          )}
+        </aside>
+
+        <section className="driver-map">
+          <MapView
+            model={mapModel}
+            preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
+          />
+        </section>
+      </div>
     </main>
   );
 }

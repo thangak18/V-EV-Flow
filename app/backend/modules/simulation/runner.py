@@ -290,3 +290,20 @@ def compare_strategies(
     strategies: Mapping[Strategy, AllocationStrategy],
 ) -> tuple[SimulationResult, ...]:
     return runner.compare(request, strategies)
+
+
+def strategy_for(
+    runner: DefaultSimulationRunner,
+    name: Strategy,
+    ai_strategy: AllocationStrategy | None = None,
+) -> AllocationStrategy:
+    """Map a ``Strategy`` enum to the strategy object a run should use.
+
+    ``ai_allocation`` has no built-in implementation: the caller injects it, and
+    a missing one is an error rather than a silent fallback to a baseline.
+    """
+    if name is Strategy.AI_ALLOCATION:
+        if ai_strategy is None:
+            raise ValueError("ai_allocation requires an injected AllocationStrategy")
+        return ai_strategy
+    return runner.baseline_strategies()[name]

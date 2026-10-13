@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
 import type { RecommendationResult } from "../../services/api";
-import { PlanSummary } from "./PlanSummary";
+import { formatEtaTime, PlanEmptyState, PlanSummary } from "./PlanSummary";
 
 const base: RecommendationResult = {
   request_id: "demo-001",
@@ -33,17 +33,35 @@ const base: RecommendationResult = {
 };
 
 describe("PlanSummary", () => {
-  test("renders primary backup probability and assumptions", () => {
-    render(<PlanSummary result={base} />);
-    expect(screen.getByText("Primary")).toBeInTheDocument();
-    expect(screen.getByText("Backup")).toBeInTheDocument();
-    expect(screen.getByText("S012")).toBeInTheDocument();
-    expect(screen.getByText("85%")).toBeInTheDocument();
-    expect(screen.getByText(/15\.5%/)).toBeInTheDocument();
-    expect(screen.getByText(/independent_stations/)).toBeInTheDocument();
-    expect(screen.getByText("Mock data")).toBeInTheDocument();
+  test("renders hero focus primary backup and hides tech until details open", () => {
+    render(
+      <PlanSummary
+        result={base}
+        stationNames={{ S012: "Trạm Long Thành", S015: "Trạm Phú Mỹ" }}
+      />,
+    );
+    expect(screen.getByTestId("plan-hero")).toBeInTheDocument();
+    expect(screen.getByText("Trạm Long Thành")).toBeInTheDocument();
+    expect(screen.getAllByText("85%").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Xem trạm trên bản đồ/i)).toBeInTheDocument();
+    expect(screen.getByText("Trạm dự phòng")).toBeInTheDocument();
+    expect(screen.getByText(/15,5%/)).toBeInTheDocument();
     expect(screen.getByText("Đủ pin để tới trạm chính")).toBeInTheDocument();
+    expect(
+      screen.getByText(/giả định independent_stations/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/16:40/)).toBeInTheDocument();
+
+    const details = screen.getByText("Chi tiết kỹ thuật").closest("details");
+    expect(details).not.toHaveAttribute("open");
+    details?.setAttribute("open", "");
     expect(screen.getByText(/example-v1/)).toBeInTheDocument();
+  });
+
+  test("formats ETA in Asia/Ho_Chi_Minh regardless of host timezone", () => {
+    expect(formatEtaTime("2026-10-13T16:40:00+07:00")).toMatch(/16:40/);
+    // Same instant in UTC must still render Vietnam local clock.
+    expect(formatEtaTime("2026-10-13T09:40:00Z")).toMatch(/16:40/);
   });
 
   test("handles missing backup and no-plan reasons", () => {
@@ -58,7 +76,13 @@ describe("PlanSummary", () => {
         }}
       />,
     );
-    expect(screen.getByText(/No feasible station/i)).toBeInTheDocument();
+    expect(screen.getByText(/Không có trạm khả thi/i)).toBeInTheDocument();
     expect(screen.getByText("Không còn trạm khả thi")).toBeInTheDocument();
+  });
+
+  test("empty state copy matches dashboard idle", () => {
+    render(<PlanEmptyState />);
+    expect(screen.getByText("Chưa tìm trạm sạc")).toBeInTheDocument();
+    expect(screen.getByText(/Kết quả sẽ hiện tại đây/i)).toBeInTheDocument();
   });
 });

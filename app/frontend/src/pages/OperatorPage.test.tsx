@@ -54,19 +54,19 @@ describe("OperatorPage", () => {
       </ApiProvider>,
     );
 
-    fireEvent.change(screen.getByLabelText("Scenario"), {
+    fireEvent.change(screen.getByLabelText("Kịch bản"), {
       target: { value: "tet" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Apply scenario/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Áp dụng kịch bản/i }));
     await waitFor(() => expect(getPressure).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText(/pressure 0\.60/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("Pressure legend")).toBeInTheDocument();
+    expect(await screen.findByText(/áp lực 0\.60/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Chú thích áp lực")).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: /Compare 3 strategies/i }),
+      screen.getByRole("button", { name: /So sánh 3 chiến lược/i }),
     );
     await waitFor(() => expect(simulate).toHaveBeenCalledTimes(3));
-    expect(screen.getAllByText("Nearest").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Gần nhất").length).toBeGreaterThanOrEqual(1);
   });
 
   test("keeps pressure stations textual when directory lacks coordinates", async () => {
@@ -101,10 +101,8 @@ describe("OperatorPage", () => {
       </ApiProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Apply scenario/i }));
-    expect(
-      await screen.findByText(/location unavailable/i),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Áp dụng kịch bản/i }));
+    expect(await screen.findByText(/chưa có tọa độ/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Station text list")).toHaveTextContent(
       "UNKNOWN",
     );

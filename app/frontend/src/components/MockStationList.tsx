@@ -51,10 +51,10 @@ export function MockStationList({ client }: Props) {
     <section className="station-panel" aria-labelledby="station-list-title">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Station directory</p>
-          <h2 id="station-list-title">Available stations</h2>
+          <p className="eyebrow">Danh mục trạm</p>
+          <h2 id="station-list-title">Trạm khả dụng</h2>
         </div>
-        <span className="data-badge">Mock data</span>
+        <span className="data-badge">Dữ liệu minh họa</span>
       </div>
 
       {status === "loading" && (
@@ -66,7 +66,7 @@ export function MockStationList({ client }: Props) {
         <div className="status-message error" role="alert">
           <p>{error}</p>
           <button type="button" onClick={loadStations}>
-            Try again
+            Thử lại
           </button>
         </div>
       )}

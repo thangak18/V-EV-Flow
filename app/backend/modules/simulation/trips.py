@@ -18,7 +18,7 @@ from app.backend.contracts.simulation import FixtureBundle, ScenarioConfig
 HCM = Coordinate(lat=10.78, lng=106.70)
 VUNG_TAU = Coordinate(lat=10.38, lng=107.08)
 _SPREAD_DEG = {"hcm": 0.04, "vung_tau": 0.03}
-DEPART_WINDOW = timedelta(hours=20)  # last 24h of the window minus a 4h arrival margin
+ARRIVAL_MARGIN = timedelta(hours=4)  # departures stop this long before the window end
 _SALT = 7919  # keeps the trip stream separate from the fixture generator stream
 
 
@@ -46,7 +46,7 @@ def build_trips(
         raise ValueError(f"bundle holds {len(bundle.vehicles)} vehicles, {vehicle_count} requested")
     step = timedelta(minutes=config.step_minutes)
     window_start = max(config.start, config.end - timedelta(hours=24) + step)
-    depart_steps = int((config.end - DEPART_WINDOW - window_start) / step) + 1
+    depart_steps = int((config.end - ARRIVAL_MARGIN - window_start) / step) + 1
     if depart_steps < 1:
         raise ValueError("scenario window is too short for vehicle departures")
     rng = np.random.default_rng([bundle.seed, _SALT])

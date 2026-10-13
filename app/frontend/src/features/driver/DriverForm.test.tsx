@@ -22,10 +22,10 @@ describe("DriverForm", () => {
     const { onSubmit } = renderForm();
 
     expect(screen.getByDisplayValue("TP.HCM → Vũng Tàu")).toBeInTheDocument();
-    expect(screen.getByLabelText("SOC %")).toHaveValue("20");
-    expect(screen.getByLabelText("Battery kWh")).toHaveValue("60");
-    expect(screen.getByLabelText("Consumption kWh/km")).toHaveValue("0.18");
-    expect(screen.getByLabelText("Connector")).toHaveValue("CCS2");
+    expect(screen.getByLabelText(/SOC %/)).toHaveValue("20");
+    expect(screen.getByLabelText(/Dung lượng pin/)).toHaveValue("60");
+    expect(screen.getByLabelText(/Tiêu hao/)).toHaveValue("0.18");
+    expect(screen.getByLabelText("Đầu cắm")).toHaveValue("CCS2");
 
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -39,9 +39,9 @@ describe("DriverForm", () => {
 
   test("keeps numeric fields empty after clear and blocks submit", () => {
     const { onSubmit } = renderForm();
-    const soc = screen.getByLabelText("SOC %");
-    const battery = screen.getByLabelText("Battery kWh");
-    const consumption = screen.getByLabelText("Consumption kWh/km");
+    const soc = screen.getByLabelText(/SOC %/);
+    const battery = screen.getByLabelText(/Dung lượng pin/);
+    const consumption = screen.getByLabelText(/Tiêu hao/);
 
     fireEvent.change(soc, { target: { value: "" } });
     fireEvent.change(battery, { target: { value: "" } });
@@ -53,7 +53,7 @@ describe("DriverForm", () => {
     expect(
       screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
     ).toBeDisabled();
-    expect(screen.getByRole("alert")).toHaveTextContent(/Empty numeric/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Không để trống số/i);
 
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     expect(onSubmit).not.toHaveBeenCalled();
@@ -61,7 +61,7 @@ describe("DriverForm", () => {
 
   test("allows retyping after clear without forcing a leading zero", () => {
     renderForm();
-    const soc = screen.getByLabelText("SOC %");
+    const soc = screen.getByLabelText(/SOC %/);
 
     fireEvent.change(soc, { target: { value: "" } });
     expect(soc).toHaveValue("");
@@ -74,8 +74,8 @@ describe("DriverForm", () => {
 
   test("keeps trailing decimal separators while typing with dot or comma", () => {
     renderForm();
-    const soc = screen.getByLabelText("SOC %");
-    const consumption = screen.getByLabelText("Consumption kWh/km");
+    const soc = screen.getByLabelText(/SOC %/);
+    const consumption = screen.getByLabelText(/Tiêu hao/);
 
     fireEvent.change(soc, { target: { value: "30" } });
     fireEvent.change(soc, { target: { value: "30." } });
@@ -96,13 +96,13 @@ describe("DriverForm", () => {
   test("normalizes comma decimals into API numbers on submit", () => {
     const { onSubmit } = renderForm();
 
-    fireEvent.change(screen.getByLabelText("SOC %"), {
+    fireEvent.change(screen.getByLabelText(/SOC %/), {
       target: { value: "30,5" },
     });
-    fireEvent.change(screen.getByLabelText("Battery kWh"), {
+    fireEvent.change(screen.getByLabelText(/Dung lượng pin/), {
       target: { value: "55" },
     });
-    fireEvent.change(screen.getByLabelText("Consumption kWh/km"), {
+    fireEvent.change(screen.getByLabelText(/Tiêu hao/), {
       target: { value: "0,18" },
     });
 
@@ -117,10 +117,10 @@ describe("DriverForm", () => {
   test("normalizes dot decimals into API numbers on submit", () => {
     const { onSubmit } = renderForm();
 
-    fireEvent.change(screen.getByLabelText("SOC %"), {
+    fireEvent.change(screen.getByLabelText(/SOC %/), {
       target: { value: "40.25" },
     });
-    fireEvent.change(screen.getByLabelText("Consumption kWh/km"), {
+    fireEvent.change(screen.getByLabelText(/Tiêu hao/), {
       target: { value: "0.18" },
     });
 
@@ -143,7 +143,7 @@ describe("DriverForm", () => {
         onSubmit={onSubmit}
       />,
     );
-    fireEvent.change(screen.getByLabelText("SOC %"), {
+    fireEvent.change(screen.getByLabelText(/SOC %/), {
       target: { value: "120" },
     });
     expect(
@@ -158,41 +158,39 @@ describe("DriverForm", () => {
         onSubmit={onSubmit}
       />,
     );
-    fireEvent.change(screen.getByLabelText("SOC %"), {
+    fireEvent.change(screen.getByLabelText(/SOC %/), {
       target: { value: "20" },
     });
-    expect(
-      screen.getByRole("button", { name: /Finding plan/i }),
-    ).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: /Finding plan/i }));
+    expect(screen.getByRole("button", { name: /Đang tìm/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /Đang tìm/i }));
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
   test("rejects demo time without timezone", () => {
     const { onSubmit } = renderForm();
-    fireEvent.change(screen.getByLabelText(/Demo time/i), {
+    fireEvent.change(screen.getByLabelText(/Giờ demo/i), {
       target: { value: "abc" },
     });
     expect(
       screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
     ).toBeDisabled();
-    expect(screen.getByRole("alert")).toHaveTextContent(/timezone/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/múi giờ/i);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
   test("rejects battery and consumption of zero", () => {
     const { onSubmit } = renderForm();
-    fireEvent.change(screen.getByLabelText("Battery kWh"), {
+    fireEvent.change(screen.getByLabelText(/Dung lượng pin/), {
       target: { value: "0" },
     });
     expect(
       screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
     ).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Battery kWh"), {
+    fireEvent.change(screen.getByLabelText(/Dung lượng pin/), {
       target: { value: "60" },
     });
-    fireEvent.change(screen.getByLabelText("Consumption kWh/km"), {
+    fireEvent.change(screen.getByLabelText(/Tiêu hao/), {
       target: { value: "0" },
     });
     expect(
@@ -207,16 +205,16 @@ describe("DriverForm", () => {
     const details = document.querySelector(
       "details.driver-advanced",
     ) as HTMLDetailsElement;
-    const summary = screen.getByText("Battery, consumption & demo time");
+    const summary = screen.getByText("Thông số xe");
     fireEvent.click(summary);
     expect(details).toHaveAttribute("open");
 
-    fireEvent.change(screen.getByLabelText("Battery kWh"), {
+    fireEvent.change(screen.getByLabelText(/Dung lượng pin/), {
       target: { value: "" },
     });
     expect(details).toHaveClass("driver-advanced--locked");
     expect(details).toHaveAttribute("open");
-    expect(screen.getByLabelText("Battery kWh")).toBeVisible();
+    expect(screen.getByLabelText(/Dung lượng pin/)).toBeVisible();
     expect(
       screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
     ).toBeDisabled();
@@ -226,6 +224,6 @@ describe("DriverForm", () => {
     details.dispatchEvent(new Event("toggle", { bubbles: true }));
     expect(details.open).toBe(true);
     expect(details).toHaveAttribute("open");
-    expect(screen.getByLabelText("Battery kWh")).toBeVisible();
+    expect(screen.getByLabelText(/Dung lượng pin/)).toBeVisible();
   });
 });

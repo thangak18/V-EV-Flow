@@ -23,29 +23,29 @@ describe("routes and shared status UI", () => {
   test("defaults to driver route", () => {
     renderApp("/");
     expect(
-      screen.getByRole("heading", { name: /plan a charging stop/i }),
+      screen.getByRole("heading", { name: /Chưa tìm trạm sạc/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Driver" })).toHaveClass(
+    expect(screen.getByRole("link", { name: "Tài xế" })).toHaveClass(
       "nav-link--active",
     );
   });
 
   test("marks operator nav active", () => {
     renderApp("/operator");
-    expect(screen.getByRole("link", { name: "Operator" })).toHaveClass(
+    expect(screen.getByRole("link", { name: "Điều hành" })).toHaveClass(
       "nav-link--active",
     );
   });
 
   test("badge copy covers mock simulated real mixed", () => {
     const { rerender } = render(<DataTypeBadge dataType="mock" />);
-    expect(screen.getByText("Mock data")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu minh họa")).toBeInTheDocument();
     rerender(<DataTypeBadge dataType="simulated" />);
-    expect(screen.getByText("Simulated data")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu mô phỏng")).toBeInTheDocument();
     rerender(<DataTypeBadge dataType="real" />);
-    expect(screen.getByText("Real data")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu thật")).toBeInTheDocument();
     rerender(<DataTypeBadge dataType="mixed" />);
-    expect(screen.getByText("Mixed data")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu hỗn hợp")).toBeInTheDocument();
   });
 
   test("async state exposes status role retry and empty copy", () => {
@@ -58,7 +58,7 @@ describe("routes and shared status UI", () => {
     rerender(
       <AsyncState status="error" errorMessage="Failed" onRetry={onRetry} />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
 
     rerender(<AsyncState status="empty" emptyMessage="No feasible station." />);

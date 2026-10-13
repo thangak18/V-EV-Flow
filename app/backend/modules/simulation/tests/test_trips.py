@@ -23,3 +23,14 @@ def test_different_seed_changes_trips_and_compliance_rate_is_respected() -> None
     assert not any(
         t.complies for t in build_trips(make_bundle(make_vehicles(5)), make_config(0.0), 5)
     )
+
+
+def test_departures_spread_over_twenty_hours_and_leave_four_hours_to_arrive() -> None:
+    bundle, config = make_bundle(make_vehicles(200)), make_config()
+    departures = [t.depart_at for t in build_trips(bundle, config, 200)]
+    first_allowed = config.end - timedelta(hours=24) + timedelta(minutes=config.step_minutes)
+    last_allowed = config.end - timedelta(hours=4)
+    assert min(departures) >= first_allowed
+    assert max(departures) <= last_allowed
+    assert max(departures) - min(departures) >= timedelta(hours=18)
+    assert len({d.hour for d in departures}) >= 15
