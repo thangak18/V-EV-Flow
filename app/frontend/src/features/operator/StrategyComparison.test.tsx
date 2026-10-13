@@ -52,19 +52,25 @@ const rows: StrategyRow[] = [
 ];
 
 describe("StrategyComparison", () => {
-  test("shows metrics and preserves partial failures", () => {
+  test("shows cards with delta and keeps tech details collapsed", () => {
     render(
       <StrategyComparison
         rows={rows}
         meta={{ scenario: "tet", seed: 42, vehicleCount: 100 }}
       />,
     );
-    expect(screen.getAllByText("Nearest").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Gần nhất").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("90.0%").length).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByText(/Failed: timeout/).length,
-    ).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/No hard-coded winner/)).toBeInTheDocument();
+    expect(screen.getByTestId("strategy-delta")).toHaveTextContent(
+      /Phân bổ AI/i,
+    );
+    expect(screen.getAllByText(/Lỗi: timeout/).length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(screen.getByText(/Không chọn sẵn người thắng/)).toBeInTheDocument();
     expect(screen.getByText("10")).toBeInTheDocument();
+    const tech = screen.getByText("Chi tiết mô phỏng").closest("details");
+    expect(tech).not.toHaveAttribute("open");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 });

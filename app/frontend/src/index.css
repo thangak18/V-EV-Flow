@@ -244,10 +244,7 @@ h3 {
 
 .driver-panel,
 .operator-controls,
-.operator-map,
-.plan-summary,
-.strategy-comparison,
-.map-panel {
+.strategy-comparison {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -258,8 +255,39 @@ h3 {
   box-shadow: 0 0.75rem 1.75rem #14201a12;
 }
 
+.operator-map,
+.map-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.map-panel {
+  width: min(100%, 390px);
+}
+
 .driver-panel {
   width: min(100%, 390px);
+}
+
+/* Avoid card-in-card: plan sits in the same panel with spacing only. */
+.driver-panel .plan-summary {
+  margin-top: 1.25rem;
+  padding: 1rem 0 0;
+  border: none;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.operator-map .map-panel {
+  width: 100%;
 }
 
 .driver-form,
@@ -316,8 +344,94 @@ h3 {
 
 .plan-summary--hero {
   animation: plan-in 280ms ease-out;
-  border-color: #d8b56a;
-  background: linear-gradient(180deg, #fffaf0 0%, #fff 42%);
+}
+
+.plan-hero {
+  margin: 0 0 1rem;
+  padding: 1rem 0 0.25rem;
+}
+
+.plan-hero__label {
+  margin: 0 0 0.25rem;
+  color: var(--amber-ink, #8a6a1a);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.plan-hero__name {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  line-height: 1.15;
+}
+
+.plan-hero__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 0.85rem;
+  text-align: left;
+}
+
+.plan-hero__metrics dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.plan-hero__metrics dd {
+  margin: 0.2rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.plan-hero__next {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-left: 3px solid var(--amber);
+  color: var(--ink);
+  background: #fff8e8;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.tech-details {
+  margin-top: 0.85rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.tech-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tech-details__body {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.tech-details__body p {
+  margin: 0;
+}
+
+.map-station-details {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.map-station-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.35rem 0;
+}
+
+.map-coord {
+  color: var(--muted);
+  font-size: 0.85em;
 }
 
 @keyframes plan-in {
@@ -463,18 +577,15 @@ input[aria-invalid="true"] {
   font-weight: 500;
 }
 
-.map-panel {
-  width: min(100%, 390px);
-}
-
 .map-mode-banner {
   margin: 0 0 0.75rem;
-  padding: 0.7rem 0.85rem;
-  border-radius: 0.6rem;
-  color: #7c2d12;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  font-size: 0.9rem;
+  padding: 0.55rem 0;
+  border-radius: 0;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.88rem;
 }
 
 .map-mode-banner--live {
@@ -490,9 +601,10 @@ input[aria-invalid="true"] {
 .map-canvas {
   min-height: 280px;
   border-radius: 0.75rem;
+  border: 1px solid var(--line);
   background:
     linear-gradient(135deg, #cfdcd5 0%, #e4ebe7 45%, #efe6d4 100%), #d7dfda;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
   overflow: hidden;
 }
 
@@ -591,12 +703,26 @@ input[aria-invalid="true"] {
   margin: 0 0 1rem;
 }
 
+.strategy-delta {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid var(--amber);
+  background: #fff8e8;
+  line-height: 1.45;
+}
+
 .strategy-card {
   border: 1px solid var(--line);
   border-radius: 0.65rem;
   padding: 0.9rem 1rem;
   background: #f8faf9;
   animation: plan-in 280ms ease-out;
+}
+
+.strategy-card--best {
+  border-color: #c9a24a;
+  box-shadow: inset 3px 0 0 var(--amber);
+  background: #fffaf0;
 }
 
 .strategy-card h3 {
@@ -610,6 +736,12 @@ input[aria-invalid="true"] {
   font-size: 1.65rem;
   font-weight: 700;
   letter-spacing: -0.03em;
+}
+
+.strategy-card__rate-label {
+  margin: 0.1rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .strategy-card__metrics {
@@ -755,9 +887,8 @@ dd {
     justify-items: stretch;
   }
 
-  .map-panel {
+  .driver-page .map-panel {
     width: 100%;
-    min-height: 100%;
   }
 
   .map-canvas {
@@ -765,8 +896,16 @@ dd {
   }
 
   .operator-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+    grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
     align-items: start;
+  }
+
+  .operator-controls {
+    order: 1;
+  }
+
+  .operator-map {
+    order: 2;
   }
 
   .strategy-cards {
@@ -801,9 +940,22 @@ dd {
   }
 
   .operator-controls,
-  .operator-map,
   .strategy-comparison {
     padding: 1rem;
+  }
+
+  .operator-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Mobile/tablet: controls + results before the long map/station stack. */
+  .operator-controls {
+    order: 1;
+  }
+
+  .operator-map {
+    order: 2;
   }
 
   /* Tablet band: Operator map must fill the panel (not stay capped at 390px). */
@@ -861,7 +1013,8 @@ dd {
     flex-direction: column;
   }
 
-  .plan-metrics {
+  .plan-metrics,
+  .plan-hero__metrics {
     grid-template-columns: 1fr;
   }
 

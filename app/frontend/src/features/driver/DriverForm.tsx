@@ -126,7 +126,7 @@ export function DriverForm({
     <form className="driver-form" onSubmit={handleSubmit} noValidate>
       <div className="driver-primary-fields">
         <label>
-          Route
+          Hành lang
           <select
             value={presetId}
             onChange={(event) =>
@@ -141,19 +141,19 @@ export function DriverForm({
           </select>
         </label>
         <label>
-          Scenario
+          Kịch bản
           <select
             value={scenario}
             onChange={(event) => setScenario(event.target.value as Scenario)}
           >
-            <option value="normal">Normal day</option>
-            <option value="holiday_30_4">30/4 holiday</option>
+            <option value="normal">Ngày thường</option>
+            <option value="holiday_30_4">Lễ 30/4</option>
             <option value="tet">Tết</option>
           </select>
         </label>
         <div className="driver-primary-row">
           <label>
-            SOC %
+            Pin hiện tại (SOC %)
             <input
               type="text"
               inputMode="decimal"
@@ -163,7 +163,7 @@ export function DriverForm({
             />
           </label>
           <label>
-            Connector
+            Đầu cắm
             <input
               type="text"
               value={connector}
@@ -200,11 +200,11 @@ export function DriverForm({
             }
           }}
         >
-          Battery, consumption &amp; demo time
+          Pin xe, tiêu hao &amp; giờ demo
         </summary>
         <div className="driver-advanced-fields">
           <label>
-            Battery kWh
+            Dung lượng pin (kWh)
             <input
               type="text"
               inputMode="decimal"
@@ -217,7 +217,7 @@ export function DriverForm({
             />
           </label>
           <label>
-            Consumption kWh/km
+            Tiêu hao (kWh/km)
             <input
               type="text"
               inputMode="decimal"
@@ -230,7 +230,7 @@ export function DriverForm({
             />
           </label>
           <label>
-            Demo time (+07:00)
+            Giờ demo (+07:00)
             <input
               className="input-datetime"
               type="text"
@@ -250,13 +250,13 @@ export function DriverForm({
       {invalid ? (
         <p className="field-error" role="alert">
           {timeInvalid
-            ? "Demo time must be ISO-8601 with timezone (e.g. 2026-10-13T16:00:00+07:00)."
-            : "Check SOC (0–100), battery > 0, consumption > 0, and connector. Empty numeric fields are not allowed."}
+            ? "Giờ demo phải là ISO-8601 có múi giờ (ví dụ 2026-10-13T16:00:00+07:00)."
+            : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
         </p>
       ) : null}
 
       <button type="submit" disabled={pending || invalid}>
-        {pending ? "Finding plan…" : "Tìm kế hoạch sạc"}
+        {pending ? "Đang tìm…" : "Tìm kế hoạch sạc"}
       </button>
     </form>
   );

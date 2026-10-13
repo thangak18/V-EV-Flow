@@ -6,27 +6,96 @@ type Props = {
 };
 
 const LABELS: Record<string, string> = {
-  nearest: "Nearest",
-  currently_available: "Currently available",
-  ai_allocation: "AI allocation",
+  nearest: "Gần nhất",
+  currently_available: "Đang trống",
+  ai_allocation: "Phân bổ AI",
 };
+
+type SuccessRow = Extract<StrategyRow, { status: "success" }>;
+
+function formatPct(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatDeltaPct(value: number): string {
+  const signed =
+    value >= 0 ? `+${(value * 100).toFixed(1)}` : (value * 100).toFixed(1);
+  return `${signed} điểm %`;
+}
+
+function formatDeltaKm(value: number): string {
+  const signed = value >= 0 ? `+${value.toFixed(2)}` : value.toFixed(2);
+  return `${signed} km`;
+}
+
+function formatDeltaMin(value: number): string {
+  const signed = value >= 0 ? `+${value.toFixed(2)}` : value.toFixed(2);
+  return `${signed} phút`;
+}
+
+function bestSuccess(rows: SuccessRow[]): SuccessRow | null {
+  if (rows.length === 0) return null;
+  return rows.reduce((best, row) =>
+    row.result.metrics.success_rate > best.result.metrics.success_rate
+      ? row
+      : best,
+  );
+}
 
 export function StrategyComparison({ rows, meta }: Props) {
   if (rows.length === 0) {
     return (
       <p className="status-message" role="status">
-        Run a comparison to see metrics for all three strategies.
+        Chạy so sánh để xem chỉ số của ba chiến lược.
       </p>
     );
   }
 
+  const successRows = rows.filter(
+    (row): row is SuccessRow => row.status === "success",
+  );
+  const baseline =
+    successRows.find((row) => row.strategy === "nearest") ??
+    successRows[0] ??
+    null;
+  const winner = bestSuccess(successRows);
+
   return (
     <section className="strategy-comparison" aria-labelledby="strategy-title">
-      <h2 id="strategy-title">Strategy comparison</h2>
+      <h2 id="strategy-title">So sánh chiến lược</h2>
       {meta ? (
         <p className="strategy-meta">
-          Scenario {meta.scenario} · seed {meta.seed} · {meta.vehicleCount}{" "}
-          vehicles. No hard-coded winner — numbers come from `/simulate`.
+          Kịch bản {meta.scenario} · {meta.vehicleCount} xe · seed {meta.seed}.
+          Không chọn sẵn người thắng — số liệu từ mô phỏng.
+        </p>
+      ) : null}
+
+      {winner && baseline && winner.strategy !== baseline.strategy ? (
+        <p className="strategy-delta" data-testid="strategy-delta">
+          So với{" "}
+          <strong>{LABELS[baseline.strategy] ?? baseline.strategy}</strong>:{" "}
+          <strong>{LABELS[winner.strategy] ?? winner.strategy}</strong> cao hơn{" "}
+          {formatDeltaPct(
+            winner.result.metrics.success_rate -
+              baseline.result.metrics.success_rate,
+          )}
+          , đường vòng{" "}
+          {formatDeltaKm(
+            winner.result.metrics.mean_detour_km -
+              baseline.result.metrics.mean_detour_km,
+          )}
+          , chờ{" "}
+          {formatDeltaMin(
+            winner.result.metrics.mean_wait_minutes -
+              baseline.result.metrics.mean_wait_minutes,
+          )}
+          .
+        </p>
+      ) : winner ? (
+        <p className="strategy-delta" data-testid="strategy-delta">
+          Hiện tại <strong>{LABELS[winner.strategy] ?? winner.strategy}</strong>{" "}
+          có tỷ lệ thành công cao nhất (
+          {formatPct(winner.result.metrics.success_rate)}).
         </p>
       ) : null}
 
@@ -35,13 +104,18 @@ export function StrategyComparison({ rows, meta }: Props) {
           row.status === "success" ? (
             <article
               key={row.strategy}
-              className="strategy-card"
+              className={
+                winner?.strategy === row.strategy
+                  ? "strategy-card strategy-card--best"
+                  : "strategy-card"
+              }
               data-strategy={row.strategy}
             >
               <h3>{LABELS[row.strategy] ?? row.strategy}</h3>
               <p className="strategy-card__rate">
-                {(row.result.metrics.success_rate * 100).toFixed(1)}%
+                {formatPct(row.result.metrics.success_rate)}
               </p>
+              <p className="strategy-card__rate-label">Tỷ lệ thành công</p>
               <span
                 className="metric-bar metric-bar--card"
                 style={{
@@ -51,13 +125,30 @@ export function StrategyComparison({ rows, meta }: Props) {
               />
               <dl className="strategy-card__metrics">
                 <div>
-                  <dt>Detour</dt>
+                  <dt>Đường vòng</dt>
                   <dd>{row.result.metrics.mean_detour_km.toFixed(2)} km</dd>
                 </div>
                 <div>
-                  <dt>Wait</dt>
-                  <dd>{row.result.metrics.mean_wait_minutes.toFixed(2)} min</dd>
+                  <dt>Chờ trung bình</dt>
+                  <dd>
+                    {row.result.metrics.mean_wait_minutes.toFixed(2)} phút
+                  </dd>
                 </div>
+                <div>
+                  <dt>Thất bại</dt>
+                  <dd>{row.result.metrics.failed_count}</dd>
+                </div>
+                {baseline && row.strategy !== baseline.strategy ? (
+                  <div>
+                    <dt>Δ thành công</dt>
+                    <dd>
+                      {formatDeltaPct(
+                        row.result.metrics.success_rate -
+                          baseline.result.metrics.success_rate,
+                      )}
+                    </dd>
+                  </div>
+                ) : null}
               </dl>
             </article>
           ) : (
@@ -67,57 +158,23 @@ export function StrategyComparison({ rows, meta }: Props) {
               data-strategy={row.strategy}
             >
               <h3>{LABELS[row.strategy] ?? row.strategy}</h3>
-              <p className="strategy-card__error">Failed: {row.message}</p>
+              <p className="strategy-card__error">Lỗi: {row.message}</p>
             </article>
           ),
         )}
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Strategy</th>
-              <th scope="col">Success rate</th>
-              <th scope="col">Mean detour km</th>
-              <th scope="col">Mean wait min</th>
-              <th scope="col">Failed</th>
-              <th scope="col">Model / fixture</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) =>
-              row.status === "success" ? (
-                <tr key={row.strategy}>
-                  <th scope="row">{LABELS[row.strategy] ?? row.strategy}</th>
-                  <td>
-                    {(row.result.metrics.success_rate * 100).toFixed(1)}%
-                    <span
-                      className="metric-bar"
-                      style={{
-                        width: `${row.result.metrics.success_rate * 100}%`,
-                      }}
-                      aria-hidden
-                    />
-                  </td>
-                  <td>{row.result.metrics.mean_detour_km.toFixed(2)}</td>
-                  <td>{row.result.metrics.mean_wait_minutes.toFixed(2)}</td>
-                  <td>{row.result.metrics.failed_count}</td>
-                  <td>
-                    {row.result.model_version} ·{" "}
-                    {row.result.fixture_hash.slice(0, 8)}
-                  </td>
-                </tr>
-              ) : (
-                <tr key={row.strategy} className="row-error">
-                  <th scope="row">{LABELS[row.strategy] ?? row.strategy}</th>
-                  <td colSpan={5}>Failed: {row.message}</td>
-                </tr>
-              ),
-            )}
-          </tbody>
-        </table>
-      </div>
+      <details className="tech-details">
+        <summary>Chi tiết mô phỏng</summary>
+        <div className="tech-details__body">
+          {successRows.map((row) => (
+            <p key={row.strategy}>
+              {LABELS[row.strategy] ?? row.strategy}: {row.result.model_version}{" "}
+              · fixture {row.result.fixture_hash.slice(0, 8)}
+            </p>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }

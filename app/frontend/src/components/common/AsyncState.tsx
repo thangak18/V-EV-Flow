@@ -42,7 +42,7 @@ export function AsyncState({
         <p>{errorMessage}</p>
         {onRetry ? (
           <button type="button" onClick={onRetry}>
-            Try again
+            Thử lại
           </button>
         ) : null}
       </div>
@@ -60,7 +60,7 @@ export function AsyncState({
   if (status === "idle") {
     return (
       <p className="status-message" role="status">
-        Submit a request to begin.
+        Điền form và bấm tìm để bắt đầu.
       </p>
     );
   }

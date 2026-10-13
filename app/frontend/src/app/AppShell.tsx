@@ -9,14 +9,14 @@ export function AppShell() {
           <h1 className="brand-title">V-EV Flow</h1>
           <p className="brand-tagline">Hành lang sạc TP.HCM → Vũng Tàu</p>
         </div>
-        <nav className="app-nav" aria-label="Primary">
+        <nav className="app-nav" aria-label="Chính">
           <NavLink
             to="/driver"
             className={({ isActive }) =>
               isActive ? "nav-link nav-link--active" : "nav-link"
             }
           >
-            Driver
+            Tài xế
           </NavLink>
           <NavLink
             to="/operator"
@@ -24,7 +24,7 @@ export function AppShell() {
               isActive ? "nav-link nav-link--active" : "nav-link"
             }
           >
-            Operator
+            Điều hành
           </NavLink>
         </nav>
       </header>

@@ -58,12 +58,12 @@ describe("DriverPage", () => {
     expect(screen.getByLabelText("Station text list")).toHaveTextContent(
       "10.7800",
     );
-    fireEvent.change(screen.getByLabelText("Route"), {
+    fireEvent.change(screen.getByLabelText("Hành lang"), {
       target: { value: "vt_hcm" },
     });
     await waitFor(() => {
       const list = screen.getByLabelText("Station text list");
-      expect(list).toHaveTextContent("origin");
+      expect(list).toHaveTextContent("Điểm đi");
       expect(list.textContent).toMatch(/10\.3500/);
       expect(list.textContent).toMatch(/107\.0800/);
     });
@@ -82,9 +82,7 @@ describe("DriverPage", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
-    expect(
-      await screen.findByText(/location unavailable/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/chưa có tọa độ/i)).toBeInTheDocument();
     const list = screen.getByLabelText("Station text list");
     expect(list.textContent).toContain("S012");
     expect(list.textContent).not.toMatch(/10\.5500/);
@@ -106,14 +104,12 @@ describe("DriverPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     expect(await screen.findByText("S012")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Route"), {
+    fireEvent.change(screen.getByLabelText("Hành lang"), {
       target: { value: "vt_hcm" },
     });
     await waitFor(() => {
       expect(screen.queryByText("S012")).not.toBeInTheDocument();
-      expect(
-        screen.getByText(/Submit a request to begin/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Điền form và bấm tìm/i)).toBeInTheDocument();
     });
   });
 
@@ -131,7 +127,7 @@ describe("DriverPage", () => {
     );
 
     expect(
-      await screen.findByText(/Station directory unavailable/i),
+      await screen.findByText(/Không tải được danh mục trạm/i),
     ).toBeInTheDocument();
   });
 });

@@ -4,21 +4,19 @@ test("operator loads pressure and compares three strategies", async ({
   page,
 }) => {
   await page.goto("/operator");
-  await page.getByLabel("Scenario").selectOption("tet");
-  await page.getByRole("button", { name: /Apply scenario/i }).click();
-  await expect(page.getByLabel("Pressure legend")).toBeVisible();
-  await expect(page.getByLabel("Station text list")).toBeVisible({
+  await page.getByLabel("Kịch bản").selectOption("tet");
+  await page.getByRole("button", { name: /Áp dụng kịch bản/i }).click();
+  await expect(page.getByLabel("Chú thích áp lực")).toBeVisible();
+  await expect(page.getByText(/Danh sách điểm trên bản đồ/i)).toBeVisible({
     timeout: 15_000,
   });
+  await page.getByText(/Danh sách điểm trên bản đồ/i).click();
+  await expect(page.getByLabel("Station text list")).toBeVisible();
 
-  await page.getByRole("button", { name: /Compare 3 strategies/i }).click();
-  await expect(page.getByRole("heading", { name: "Nearest" })).toBeVisible({
+  await page.getByRole("button", { name: /So sánh 3 chiến lược/i }).click();
+  await expect(page.getByRole("heading", { name: "Gần nhất" })).toBeVisible({
     timeout: 15_000,
   });
-  await expect(
-    page.getByRole("heading", { name: "Currently available" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "AI allocation" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Đang trống" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Phân bổ AI" })).toBeVisible();
 });

@@ -53,7 +53,7 @@ export function SimulationControls({
   return (
     <form className="simulation-controls" onSubmit={handleSubmit}>
       <div className="simulation-field">
-        <label htmlFor="sim-seed">Seed</label>
+        <label htmlFor="sim-seed">Seed (mầm ngẫu nhiên)</label>
         <input
           id="sim-seed"
           type="text"
@@ -75,7 +75,7 @@ export function SimulationControls({
         ) : null}
       </div>
       <div className="simulation-field">
-        <label htmlFor="sim-vehicles">Vehicles</label>
+        <label htmlFor="sim-vehicles">Số xe</label>
         <input
           id="sim-vehicles"
           type="text"
@@ -96,7 +96,7 @@ export function SimulationControls({
         ) : null}
       </div>
       <button type="submit" disabled={pending || invalid}>
-        {pending ? "Running…" : "Compare 3 strategies"}
+        {pending ? "Đang chạy…" : "So sánh 3 chiến lược"}
       </button>
     </form>
   );

@@ -5,7 +5,7 @@ test.describe("operator map width on tablet", () => {
 
   test("map-panel fills operator-map width", async ({ page }) => {
     await page.goto("/operator");
-    await page.getByRole("button", { name: /Apply scenario/i }).click();
+    await page.getByRole("button", { name: /Áp dụng kịch bản/i }).click();
     await expect(page.locator(".operator-map .map-panel")).toBeVisible({
       timeout: 30_000,
     });

@@ -25,9 +25,11 @@ for (const width of [375, 390] as const) {
     }) => {
       await page.goto("/operator");
 
-      await expect(page.getByRole("heading", { name: "V-EV Flow" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Driver" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Operator" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "V-EV Flow" }),
+      ).toBeVisible();
+      await expect(page.getByRole("link", { name: "Tài xế" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Điều hành" })).toBeVisible();
 
       const frame = page.locator(".app-frame");
       await expect(frame).toBeVisible();
@@ -41,15 +43,17 @@ for (const width of [375, 390] as const) {
       // Title + badge only — no tall empty flex-basis gap (~232px) in column layout.
       expect(headerBox!.height).toBeLessThan(170);
 
-      await page.getByRole("button", { name: /Compare 3 strategies/i }).click();
-      await expect(page.getByRole("heading", { name: "Nearest" })).toBeVisible({
-        timeout: 30_000,
-      });
-      await expect(page.locator(".table-wrap")).toBeVisible();
+      await page.getByRole("button", { name: /So sánh 3 chiến lược/i }).click();
+      await expect(page.getByRole("heading", { name: "Gần nhất" })).toBeVisible(
+        {
+          timeout: 30_000,
+        },
+      );
+      await expect(page.getByTestId("strategy-delta")).toBeVisible();
 
       await assertNoDocumentHorizontalOverflow(page);
 
-      const wrapBox = await page.locator(".table-wrap").boundingBox();
+      const wrapBox = await page.getByTestId("strategy-delta").boundingBox();
       expect(wrapBox).toBeTruthy();
       expect(wrapBox!.width).toBeLessThanOrEqual(width);
     });
@@ -59,10 +63,10 @@ for (const width of [375, 390] as const) {
     }) => {
       await page.goto("/operator");
 
-      const seed = page.getByLabel("Seed");
-      const vehicles = page.getByLabel("Vehicles");
+      const seed = page.getByLabel(/Seed/);
+      const vehicles = page.getByLabel(/Số xe/);
       const compare = page.getByRole("button", {
-        name: /Compare 3 strategies/i,
+        name: /So sánh 3 chiến lược/i,
       });
 
       await seed.fill("");
@@ -87,10 +91,10 @@ for (const width of [375, 390] as const) {
     }) => {
       await page.goto("/operator");
 
-      const seed = page.getByLabel("Seed");
-      const vehicles = page.getByLabel("Vehicles");
+      const seed = page.getByLabel(/Seed/);
+      const vehicles = page.getByLabel(/Số xe/);
       const compare = page.getByRole("button", {
-        name: /Compare 3 strategies/i,
+        name: /So sánh 3 chiến lược/i,
       });
 
       await seed.fill("");
@@ -134,8 +138,8 @@ test.describe("operator error row on phone", () => {
     });
 
     await page.goto("/operator");
-    await page.getByRole("button", { name: /Compare 3 strategies/i }).click();
-    await expect(page.getByText(/Failed:/i).first()).toBeVisible({
+    await page.getByRole("button", { name: /So sánh 3 chiến lược/i }).click();
+    await expect(page.getByText(/Lỗi:/i).first()).toBeVisible({
       timeout: 30_000,
     });
     await assertNoDocumentHorizontalOverflow(page);
@@ -147,8 +151,10 @@ test.describe("driver phone shell", () => {
 
   test("keeps form column and map text list", async ({ page }) => {
     await page.goto("/driver");
-    await expect(page.getByRole("heading", { name: "V-EV Flow" })).toBeVisible();
-    await expect(page.getByLabel("SOC %")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "V-EV Flow" }),
+    ).toBeVisible();
+    await expect(page.getByLabel(/SOC %/)).toBeVisible();
     await expect(page.getByLabel("Station text list")).toBeVisible();
 
     const panel = page.locator(".driver-panel");

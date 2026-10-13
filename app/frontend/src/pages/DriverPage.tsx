@@ -58,14 +58,14 @@ export function DriverPage() {
         id: "origin",
         lat: corridor.origin.lat,
         lng: corridor.origin.lng,
-        label: "Origin",
+        label: "Điểm đi",
         role: "origin",
       },
       {
         id: "destination",
         lat: corridor.destination.lat,
         lng: corridor.destination.lng,
-        label: "Destination",
+        label: "Điểm đến",
         role: "destination",
       },
     ];
@@ -105,16 +105,18 @@ export function DriverPage() {
     clear();
   }
 
+  const hasResult = status === "success" && result != null;
+
   return (
-    <main className="driver-page">
+    <main className={`driver-page${hasResult ? " driver-page--has-plan" : ""}`}>
       <section className="driver-panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Driver</p>
-            <h2>Plan a charging stop</h2>
+            <p className="eyebrow">Tài xế</p>
+            <h2>Lên kế hoạch dừng sạc</h2>
             <p className="subtitle">
-              Chọn hành lang, SOC và đầu cắm — chỉ gọi `/recommend` khi bạn bấm
-              tìm kế hoạch.
+              Chọn hành lang, pin hiện tại và đầu cắm — bấm tìm để nhận trạm đề
+              xuất.
             </p>
           </div>
           <DataTypeBadge dataType={result?.data_type ?? "mock"} />
@@ -129,16 +131,15 @@ export function DriverPage() {
 
         {directoryFailed ? (
           <p className="status-message" role="status">
-            Station directory unavailable — map markers need directory
-            coordinates.
+            Không tải được danh mục trạm — bản đồ có thể thiếu vị trí trạm.
           </p>
         ) : null}
 
         <AsyncState
           status={status === "empty" ? "success" : status}
-          loadingMessage="Building charging plan…"
-          emptyMessage="No feasible station for this trip."
-          errorMessage={error ?? "Unable to build a plan."}
+          loadingMessage="Đang tìm kế hoạch sạc…"
+          emptyMessage="Không có trạm khả thi cho chuyến này."
+          errorMessage={error ?? "Không tạo được kế hoạch."}
           onRetry={retry}
         >
           {result ? (

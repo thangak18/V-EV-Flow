@@ -7,8 +7,25 @@ type Props = {
   stationNames?: Record<string, string>;
 };
 
+function formatPct(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function formatEta(value: string): string {
+  return new Date(value).toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
 export function PlanSummary({ result, stationNames = {} }: Props) {
   const hasPlan = result.primary != null || result.backup != null;
+  const primary = result.primary;
+  const primaryName = primary
+    ? (stationNames[primary.station_id] ?? primary.station_id)
+    : null;
 
   return (
     <section
@@ -17,61 +34,95 @@ export function PlanSummary({ result, stationNames = {} }: Props) {
     >
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Charging plan</p>
-          <h2 id="plan-summary-title">Recommendation</h2>
+          <p className="eyebrow">Kế hoạch sạc</p>
+          <h2 id="plan-summary-title">Trạm đề xuất</h2>
         </div>
         <DataTypeBadge dataType={result.data_type} />
       </div>
 
       {!hasPlan ? (
         <p className="status-message" role="status">
-          No feasible station for this trip.
+          Không có trạm khả thi cho chuyến này.
         </p>
       ) : (
-        <div className="plan-grid">
-          {result.primary ? (
-            <StationPlanCard
-              title="Primary"
-              plan={result.primary}
-              variant="primary"
-              stationName={stationNames[result.primary.station_id]}
-            />
+        <>
+          {primary ? (
+            <div className="plan-hero" data-testid="plan-hero">
+              <p className="plan-hero__label">Trạm chính</p>
+              <h3 className="plan-hero__name">{primaryName}</h3>
+              <dl className="plan-hero__metrics">
+                <div>
+                  <dt>Đến lúc</dt>
+                  <dd>{formatEta(primary.eta)}</dd>
+                </div>
+                <div>
+                  <dt>Khả năng có cổng</dt>
+                  <dd data-probability={primary.p_available}>
+                    {formatPct(primary.p_available)}
+                  </dd>
+                </div>
+                {result.plan_p != null ? (
+                  <div>
+                    <dt>Ước lượng kế hoạch</dt>
+                    <dd>{formatPct(result.plan_p)}</dd>
+                  </div>
+                ) : null}
+              </dl>
+              <p className="plan-hero__next">
+                Bước tiếp: đi theo hướng trạm này trên bản đồ
+                {result.backup
+                  ? "; giữ trạm dự phòng nếu trạm chính đông."
+                  : "."}
+              </p>
+            </div>
           ) : null}
-          {result.backup ? (
-            <StationPlanCard
-              title="Backup"
-              plan={result.backup}
-              variant="backup"
-              stationName={stationNames[result.backup.station_id]}
-            />
-          ) : (
-            <p className="status-message">No backup station available.</p>
-          )}
-        </div>
+
+          <div className="plan-grid">
+            {primary ? (
+              <StationPlanCard
+                title="Chi tiết trạm chính"
+                plan={primary}
+                variant="primary"
+                stationName={stationNames[primary.station_id]}
+                compact
+              />
+            ) : null}
+            {result.backup ? (
+              <StationPlanCard
+                title="Trạm dự phòng"
+                plan={result.backup}
+                variant="backup"
+                stationName={stationNames[result.backup.station_id]}
+              />
+            ) : (
+              <p className="status-message">Không có trạm dự phòng.</p>
+            )}
+          </div>
+        </>
       )}
 
-      <div className="plan-meta">
-        {result.plan_p != null ? (
-          <p>
-            Combined plan estimate:{" "}
-            <strong>{Math.round(result.plan_p * 100)}%</strong>
-            {result.plan_p_assumption ? (
-              <span className="assumption">
-                {" "}
-                (assumption: {result.plan_p_assumption})
-              </span>
-            ) : null}
-          </p>
-        ) : null}
-        <p>
-          Model {result.model_version} · allocation {result.allocation_method}
-        </p>
+      {result.reasons.length > 0 ? (
         <ul className="reason-list">
           {result.reasons.map((reason) => (
             <li key={reason}>{reason}</li>
           ))}
         </ul>
-      </div>
+      ) : null}
+
+      <details className="tech-details">
+        <summary>Chi tiết kỹ thuật</summary>
+        <div className="tech-details__body">
+          {result.plan_p != null && result.plan_p_assumption ? (
+            <p>Giả định ước lượng: {result.plan_p_assumption}</p>
+          ) : null}
+          <p>Phiên bản mô hình: {result.model_version}</p>
+          <p>Cách phân bổ: {result.allocation_method}</p>
+          {primary ? <p>Mã trạm chính: {primary.station_id}</p> : null}
+          {result.backup ? (
+            <p>Mã trạm dự phòng: {result.backup.station_id}</p>
+          ) : null}
+        </div>
+      </details>
     </section>
   );
 }

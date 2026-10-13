@@ -7,8 +7,8 @@ test("Advanced cannot collapse while Battery is invalid", async ({ page }) => {
   await details.locator("summary").click();
   await expect(details).toHaveAttribute("open", "");
 
-  await page.getByLabel("Battery kWh").fill("");
-  await expect(page.getByLabel("Battery kWh")).toHaveAttribute(
+  await page.getByLabel(/Dung lượng pin/).fill("");
+  await expect(page.getByLabel(/Dung lượng pin/)).toHaveAttribute(
     "aria-invalid",
     "true",
   );
@@ -24,5 +24,5 @@ test("Advanced cannot collapse while Battery is invalid", async ({ page }) => {
   });
   // React controlled `open` + onToggle must restore open=true.
   await expect(details).toHaveAttribute("open", "");
-  await expect(page.getByLabel("Battery kWh")).toBeVisible();
+  await expect(page.getByLabel(/Dung lượng pin/)).toBeVisible();
 });

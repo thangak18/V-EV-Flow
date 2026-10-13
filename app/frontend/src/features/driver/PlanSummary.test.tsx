@@ -33,17 +33,28 @@ const base: RecommendationResult = {
 };
 
 describe("PlanSummary", () => {
-  test("renders primary backup probability and assumptions", () => {
-    render(<PlanSummary result={base} />);
-    expect(screen.getByText("Primary")).toBeInTheDocument();
-    expect(screen.getByText("Backup")).toBeInTheDocument();
-    expect(screen.getByText("S012")).toBeInTheDocument();
-    expect(screen.getByText("85%")).toBeInTheDocument();
+  test("renders hero focus primary backup and hides tech until details open", () => {
+    render(
+      <PlanSummary
+        result={base}
+        stationNames={{ S012: "Trạm Long Thành", S015: "Trạm Phú Mỹ" }}
+      />,
+    );
+    expect(screen.getByTestId("plan-hero")).toBeInTheDocument();
+    expect(screen.getByText("Trạm Long Thành")).toBeInTheDocument();
+    expect(screen.getAllByText("85%").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Bước tiếp/i)).toBeInTheDocument();
+    expect(screen.getByText("Trạm dự phòng")).toBeInTheDocument();
     expect(screen.getByText(/15\.5%/)).toBeInTheDocument();
-    expect(screen.getByText(/independent_stations/)).toBeInTheDocument();
-    expect(screen.getByText("Mock data")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu mock")).toBeInTheDocument();
     expect(screen.getByText("Đủ pin để tới trạm chính")).toBeInTheDocument();
+
+    // Tech details stay collapsed by default.
+    const details = screen.getByText("Chi tiết kỹ thuật").closest("details");
+    expect(details).not.toHaveAttribute("open");
+    details?.setAttribute("open", "");
     expect(screen.getByText(/example-v1/)).toBeInTheDocument();
+    expect(screen.getByText(/independent_stations/)).toBeInTheDocument();
   });
 
   test("handles missing backup and no-plan reasons", () => {
@@ -58,7 +69,7 @@ describe("PlanSummary", () => {
         }}
       />,
     );
-    expect(screen.getByText(/No feasible station/i)).toBeInTheDocument();
+    expect(screen.getByText(/Không có trạm khả thi/i)).toBeInTheDocument();
     expect(screen.getByText("Không còn trạm khả thi")).toBeInTheDocument();
   });
 });

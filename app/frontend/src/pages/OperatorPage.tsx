@@ -58,7 +58,7 @@ export function OperatorPage() {
     for (const station of pressureStations) {
       const meta = stationIndex.get(station.station_id);
       const title = meta?.name ?? station.station_id;
-      const label = `${title} · pressure ${station.pressure_score.toFixed(2)}`;
+      const label = `${title} · áp lực ${station.pressure_score.toFixed(2)}`;
       if (!meta) {
         unlocated.push({
           id: station.station_id,
@@ -86,36 +86,17 @@ export function OperatorPage() {
     <main className="operator-page">
       <header className="operator-header">
         <div>
-          <p className="eyebrow">Operator</p>
-          <h2>Pressure and strategy lab</h2>
+          <p className="eyebrow">Điều hành</p>
+          <h2>Áp lực trạm &amp; so sánh chiến lược</h2>
           <p className="subtitle">
-            Pressure là proxy rủi ro thiếu cổng — không phải xác suất bảo đảm.
+            Áp lực (pressure) là proxy rủi ro thiếu cổng — không phải xác suất
+            bảo đảm.
           </p>
         </div>
         <DataTypeBadge dataType={dataType} />
       </header>
 
       <div className="operator-grid">
-        <section className="operator-map">
-          <AsyncState
-            status={pressure.status}
-            loadingMessage={
-              pressure.stale
-                ? "Refreshing pressure… showing last successful result."
-                : "Loading pressure layer…"
-            }
-            emptyMessage="No pressure stations for this scenario/time."
-            errorMessage={pressure.error ?? "Unable to load pressure."}
-            onRetry={() => void pressure.load(scenario, time)}
-            keepChildrenOnLoading={Boolean(pressure.result)}
-          >
-            <MapView
-              model={mapModel}
-              preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
-            />
-          </AsyncState>
-        </section>
-
         <section className="operator-controls">
           <ScenarioSelector
             scenario={scenario}
@@ -127,7 +108,7 @@ export function OperatorPage() {
           />
           <PressureLegend />
           <details className="operator-sim-details" open>
-            <summary>100-vehicle simulation</summary>
+            <summary>Mô phỏng 100 xe</summary>
             <SimulationControls
               seed={seed}
               vehicleCount={vehicleCount}
@@ -141,10 +122,29 @@ export function OperatorPage() {
           </details>
           {directoryFailed ? (
             <p className="status-message" role="status">
-              Station directory unavailable — pressure markers need directory
-              coordinates.
+              Không tải được danh mục trạm — marker áp lực cần tọa độ danh mục.
             </p>
           ) : null}
+        </section>
+
+        <section className="operator-map">
+          <AsyncState
+            status={pressure.status}
+            loadingMessage={
+              pressure.stale
+                ? "Đang làm mới lớp áp lực… vẫn hiện kết quả trước."
+                : "Đang tải lớp áp lực…"
+            }
+            emptyMessage="Không có trạm áp lực cho kịch bản/thời điểm này."
+            errorMessage={pressure.error ?? "Không tải được lớp áp lực."}
+            onRetry={() => void pressure.load(scenario, time)}
+            keepChildrenOnLoading={Boolean(pressure.result)}
+          >
+            <MapView
+              model={mapModel}
+              preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
+            />
+          </AsyncState>
         </section>
       </div>
 
