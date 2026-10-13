@@ -62,8 +62,6 @@ export function DriverForm({
     parsedConsumption === null || parsedConsumption <= 0;
   const connectorInvalid = connector.trim().length === 0;
   const advancedInvalid = timeInvalid || batteryInvalid || consumptionInvalid;
-  // Stay open while invalid; field edits also sticky-open so mid-typing
-  // (e.g. "0,1" → valid) does not collapse and remount inputs.
   const detailsOpen = advancedInvalid || advancedOpen;
 
   function touchAdvanced() {
@@ -123,10 +121,10 @@ export function DriverForm({
   }
 
   return (
-    <form className="driver-form" onSubmit={handleSubmit} noValidate>
-      <div className="driver-primary-fields">
-        <label>
-          Route
+    <form className="driver-toolbar" onSubmit={handleSubmit} noValidate>
+      <div className="driver-toolbar__fields">
+        <label className="field-chip">
+          <span className="field-chip__label">Hành lang</span>
           <select
             value={presetId}
             onChange={(event) =>
@@ -140,124 +138,127 @@ export function DriverForm({
             ))}
           </select>
         </label>
-        <label>
-          Scenario
+        <label className="field-chip">
+          <span className="field-chip__label">Kịch bản</span>
           <select
             value={scenario}
             onChange={(event) => setScenario(event.target.value as Scenario)}
           >
-            <option value="normal">Normal day</option>
-            <option value="holiday_30_4">30/4 holiday</option>
+            <option value="normal">Ngày thường</option>
+            <option value="holiday_30_4">Lễ 30/4</option>
             <option value="tet">Tết</option>
           </select>
         </label>
-        <div className="driver-primary-row">
-          <label>
-            SOC %
-            <input
-              type="text"
-              inputMode="decimal"
-              value={socPct}
-              onChange={onDraftNumberChange(setSocPct)}
-              aria-invalid={socInvalid}
-            />
-          </label>
-          <label>
-            Connector
-            <input
-              type="text"
-              value={connector}
-              onChange={(event) => setConnector(event.target.value)}
-              aria-invalid={connectorInvalid}
-            />
-          </label>
-        </div>
+        <label className="field-chip">
+          <span className="field-chip__label">Pin hiện tại (SOC %)</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={socPct}
+            onChange={onDraftNumberChange(setSocPct)}
+            aria-invalid={socInvalid}
+          />
+        </label>
+        <label className="field-chip">
+          <span className="field-chip__label">Đầu cắm</span>
+          <input
+            type="text"
+            value={connector}
+            onChange={(event) => setConnector(event.target.value)}
+            aria-invalid={connectorInvalid}
+          />
+        </label>
       </div>
 
-      <details
-        className={
-          advancedInvalid
-            ? "driver-advanced driver-advanced--locked"
-            : "driver-advanced"
-        }
-        open={detailsOpen}
-        onToggle={(event) => {
-          if (advancedInvalid) {
-            // Ignore collapse attempts while Advanced fields are invalid.
-            event.currentTarget.open = true;
-            setAdvancedOpen(true);
-            return;
+      <div className="driver-toolbar__actions">
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={pending || invalid}
+        >
+          {pending ? "Đang tìm…" : "Tìm kế hoạch sạc"}
+        </button>
+
+        <details
+          className={
+            advancedInvalid
+              ? "driver-advanced driver-advanced--locked"
+              : "driver-advanced"
           }
-          setAdvancedOpen(event.currentTarget.open);
-        }}
-      >
-        <summary
-          aria-disabled={advancedInvalid || undefined}
-          onClick={(event) => {
+          open={detailsOpen}
+          onToggle={(event) => {
             if (advancedInvalid) {
-              event.preventDefault();
-              event.stopPropagation();
+              event.currentTarget.open = true;
+              setAdvancedOpen(true);
+              return;
             }
+            setAdvancedOpen(event.currentTarget.open);
           }}
         >
-          Battery, consumption &amp; demo time
-        </summary>
-        <div className="driver-advanced-fields">
-          <label>
-            Battery kWh
-            <input
-              type="text"
-              inputMode="decimal"
-              value={batteryKwh}
-              onChange={(event) => {
-                touchAdvanced();
-                onDraftNumberChange(setBatteryKwh)(event);
-              }}
-              aria-invalid={batteryInvalid}
-            />
-          </label>
-          <label>
-            Consumption kWh/km
-            <input
-              type="text"
-              inputMode="decimal"
-              value={consumption}
-              onChange={(event) => {
-                touchAdvanced();
-                onDraftNumberChange(setConsumption)(event);
-              }}
-              aria-invalid={consumptionInvalid}
-            />
-          </label>
-          <label>
-            Demo time (+07:00)
-            <input
-              className="input-datetime"
-              type="text"
-              value={demoTime}
-              onChange={(event) => {
-                touchAdvanced();
-                setDemoTime(event.target.value);
-              }}
-              aria-invalid={timeInvalid}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </label>
-        </div>
-      </details>
+          <summary
+            aria-disabled={advancedInvalid || undefined}
+            onClick={(event) => {
+              if (advancedInvalid) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+          >
+            Thông số xe
+          </summary>
+          <div className="driver-advanced-fields">
+            <label>
+              Dung lượng pin (kWh)
+              <input
+                type="text"
+                inputMode="decimal"
+                value={batteryKwh}
+                onChange={(event) => {
+                  touchAdvanced();
+                  onDraftNumberChange(setBatteryKwh)(event);
+                }}
+                aria-invalid={batteryInvalid}
+              />
+            </label>
+            <label>
+              Tiêu hao (kWh/km)
+              <input
+                type="text"
+                inputMode="decimal"
+                value={consumption}
+                onChange={(event) => {
+                  touchAdvanced();
+                  onDraftNumberChange(setConsumption)(event);
+                }}
+                aria-invalid={consumptionInvalid}
+              />
+            </label>
+            <label>
+              Giờ demo (+07:00)
+              <input
+                className="input-datetime"
+                type="text"
+                value={demoTime}
+                onChange={(event) => {
+                  touchAdvanced();
+                  setDemoTime(event.target.value);
+                }}
+                aria-invalid={timeInvalid}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+          </div>
+        </details>
+      </div>
 
       {invalid ? (
-        <p className="field-error" role="alert">
+        <p className="field-error driver-toolbar__error" role="alert">
           {timeInvalid
-            ? "Demo time must be ISO-8601 with timezone (e.g. 2026-10-13T16:00:00+07:00)."
-            : "Check SOC (0–100), battery > 0, consumption > 0, and connector. Empty numeric fields are not allowed."}
+            ? "Giờ demo phải là ISO-8601 có múi giờ (ví dụ 2026-10-13T16:00:00+07:00)."
+            : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
         </p>
       ) : null}
-
-      <button type="submit" disabled={pending || invalid}>
-        {pending ? "Finding plan…" : "Tìm kế hoạch sạc"}
-      </button>
     </form>
   );
 }

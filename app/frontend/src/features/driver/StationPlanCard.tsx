@@ -5,43 +5,56 @@ type Props = {
   plan: Plan;
   variant: "primary" | "backup";
   stationName?: string;
+  /** Hide duplicate hero metrics when the plan already has a focus block. */
+  compact?: boolean;
 };
 
 function formatProbability(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function StationPlanCard({ title, plan, variant, stationName }: Props) {
+function formatEta(value: string): string {
+  return new Date(value).toLocaleString("vi-VN");
+}
+
+export function StationPlanCard({
+  title,
+  plan,
+  variant,
+  stationName,
+  compact = false,
+}: Props) {
   return (
     <article className={`plan-card plan-card--${variant}`}>
       <header>
         <p className="eyebrow">{title}</p>
-        <h3>{stationName ?? plan.station_id}</h3>
-        {stationName ? (
-          <p className="plan-station-id">{plan.station_id}</p>
-        ) : null}
+        {!compact ? <h3>{stationName ?? plan.station_id}</h3> : null}
       </header>
       <dl className="plan-metrics">
+        {!compact ? (
+          <>
+            <div>
+              <dt>Đến lúc (ETA)</dt>
+              <dd>{formatEta(plan.eta)}</dd>
+            </div>
+            <div>
+              <dt>Khả năng có cổng</dt>
+              <dd data-probability={plan.p_available}>
+                {formatProbability(plan.p_available)}
+              </dd>
+            </div>
+          </>
+        ) : null}
         <div>
-          <dt>ETA</dt>
-          <dd>{new Date(plan.eta).toLocaleString("vi-VN")}</dd>
-        </div>
-        <div>
-          <dt>Arrival SOC</dt>
+          <dt>Pin lúc tới (SOC)</dt>
           <dd>{plan.arrival_soc_pct.toFixed(1)}%</dd>
         </div>
         <div>
-          <dt>p_available at ETA</dt>
-          <dd data-probability={plan.p_available}>
-            {formatProbability(plan.p_available)}
-          </dd>
-        </div>
-        <div>
-          <dt>Distance</dt>
+          <dt>Khoảng cách</dt>
           <dd>{plan.distance_km.toFixed(1)} km</dd>
         </div>
         <div>
-          <dt>Detour</dt>
+          <dt>Đường vòng thêm</dt>
           <dd>{plan.detour_km.toFixed(1)} km</dd>
         </div>
       </dl>

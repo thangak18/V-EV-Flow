@@ -1,20 +1,21 @@
 export function PressureLegend() {
   return (
-    <aside className="pressure-legend" aria-label="Pressure legend">
-      <p className="eyebrow">Pressure proxy</p>
+    <aside className="pressure-legend" aria-label="Chú thích áp lực">
+      <p className="eyebrow">Áp lực trạm (pressure)</p>
       <p>
-        `pressure_score ≈ 1 − p_available` for a fixed horizon. Higher score
-        means higher risk of no free port — not a measured traffic volume.
+        Điểm áp lực ≈ 1 − khả năng còn cổng trống trong khung thời gian cố định.
+        Cao hơn nghĩa là rủi ro thiếu cổng cao hơn — không phải lưu lượng đo
+        trực tiếp.
       </p>
       <ul>
         <li>
-          <span className="swatch swatch--low" aria-hidden /> Low risk
+          <span className="swatch swatch--low" aria-hidden /> Rủi ro thấp
         </li>
         <li>
-          <span className="swatch swatch--mid" aria-hidden /> Medium risk
+          <span className="swatch swatch--mid" aria-hidden /> Rủi ro trung bình
         </li>
         <li>
-          <span className="swatch swatch--high" aria-hidden /> High risk
+          <span className="swatch swatch--high" aria-hidden /> Rủi ro cao
         </li>
       </ul>
     </aside>

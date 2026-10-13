@@ -5,15 +5,13 @@ test("driver numeric fields keep empty draft and accept comma/dot decimals", asy
 }) => {
   await page.goto("/driver");
 
-  await page
-    .locator("details.driver-advanced")
-    .evaluate((el) => {
-      (el as HTMLDetailsElement).open = true;
-    });
+  await page.locator("details.driver-advanced").evaluate((el) => {
+    (el as HTMLDetailsElement).open = true;
+  });
 
-  const soc = page.getByLabel("SOC %");
-  const battery = page.getByLabel("Battery kWh");
-  const consumption = page.getByLabel("Consumption kWh/km");
+  const soc = page.getByLabel(/SOC %/);
+  const battery = page.getByLabel(/Dung lượng pin/);
+  const consumption = page.getByLabel(/Tiêu hao/);
   const submit = page.getByRole("button", { name: /Tìm kế hoạch sạc/i });
 
   await soc.fill("");
@@ -38,5 +36,5 @@ test("driver numeric fields keep empty draft and accept comma/dot decimals", asy
 
   await expect(submit).toBeEnabled();
   await submit.click();
-  await expect(page.getByText(/No feasible station/i)).toBeVisible();
+  await expect(page.getByText(/Không có trạm khả thi/i)).toBeVisible();
 });

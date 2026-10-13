@@ -22,25 +22,25 @@ export function ScenarioSelector({
 
   return (
     <form
-      className="scenario-selector"
+      className="scenario-selector toolbar-card"
       onSubmit={(event) => {
         event.preventDefault();
         if (!pending && !timeInvalid) onApply();
       }}
     >
-      <label>
-        Scenario
+      <label className="field-chip">
+        <span className="field-chip__label">Kịch bản</span>
         <select
           value={scenario}
           onChange={(event) => onScenarioChange(event.target.value as Scenario)}
         >
-          <option value="normal">Normal day</option>
-          <option value="holiday_30_4">30/4 holiday</option>
+          <option value="normal">Ngày thường</option>
+          <option value="holiday_30_4">Lễ 30/4</option>
           <option value="tet">Tết</option>
         </select>
       </label>
-      <label>
-        Time (+07:00)
+      <label className="field-chip">
+        <span className="field-chip__label">Thời điểm (+07:00)</span>
         <input
           className="input-datetime"
           type="text"
@@ -53,11 +53,16 @@ export function ScenarioSelector({
       </label>
       {timeInvalid ? (
         <p className="field-error" role="alert">
-          Time must be ISO-8601 with timezone (e.g. 2026-10-13T16:00:00+07:00).
+          Thời điểm phải là ISO-8601 có múi giờ (ví dụ
+          2026-10-13T16:00:00+07:00).
         </p>
       ) : null}
-      <button type="submit" disabled={pending || timeInvalid}>
-        {pending ? "Loading pressure…" : "Apply scenario"}
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={pending || timeInvalid}
+      >
+        {pending ? "Đang tải áp lực…" : "Áp dụng kịch bản"}
       </button>
     </form>
   );

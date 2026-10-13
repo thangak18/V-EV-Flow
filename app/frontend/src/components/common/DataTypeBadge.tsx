@@ -1,10 +1,10 @@
 import type { DataType } from "../../services/api";
 
 const LABELS: Record<DataType, string> = {
-  mock: "Mock data",
-  simulated: "Simulated data",
-  real: "Real data",
-  mixed: "Mixed data",
+  mock: "Dữ liệu minh họa",
+  simulated: "Dữ liệu mô phỏng",
+  real: "Dữ liệu thật",
+  mixed: "Dữ liệu hỗn hợp",
 };
 
 export function DataTypeBadge({ dataType }: { dataType: DataType }) {

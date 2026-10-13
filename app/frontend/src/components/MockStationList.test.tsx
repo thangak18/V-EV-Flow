@@ -35,7 +35,7 @@ describe("MockStationList", () => {
     };
     render(<MockStationList client={client} />);
     expect(await screen.findByText("S001")).toBeInTheDocument();
-    expect(screen.getByText("Mock data")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu minh họa")).toBeInTheDocument();
   });
 
   test("shows an empty state", async () => {
@@ -65,7 +65,7 @@ describe("MockStationList", () => {
     };
     render(<MockStationList client={client} />);
     expect(await screen.findByText("Network unavailable")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
     await waitFor(() => expect(screen.getByText("S001")).toBeInTheDocument());
     expect(client.listStations).toHaveBeenCalledTimes(2);
   });

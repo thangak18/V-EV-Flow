@@ -61,7 +61,7 @@ describe("MapView", () => {
       /tiles blocked/i,
     );
     expect(screen.getByLabelText("Station text list")).toBeInTheDocument();
-    expect(screen.getByText(/primary/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trạm chính/i)).toBeInTheDocument();
   });
 
   test("applies the latest model after an async mount completes", async () => {
