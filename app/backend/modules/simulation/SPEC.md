@@ -54,16 +54,20 @@ from functools import lru_cache
 
 from app.backend.modules.simulation.public import DefaultSimulationRunner, strategy_for
 from app.backend.modules.station_data.public import (
-    generate_fixture_bundle, load_scenarios, load_stations,
+    generate_fixture_bundle,
+    load_scenarios,
+    load_stations,
 )
 
 stations = load_stations(STATIONS_PATH)
 configs = load_scenarios(SCENARIOS_PATH)
 
+
 @lru_cache(maxsize=16)
 def _bundle(scenario, seed, vehicle_count):
     config = configs[scenario].model_copy(update={"seed": seed})
     return generate_fixture_bundle(config, stations, vehicle_count)
+
 
 runner = DefaultSimulationRunner(
     lambda req: _bundle(req.scenario, req.seed, req.vehicle_count),
