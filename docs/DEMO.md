@@ -11,6 +11,19 @@
 
 Các số 25%, 85% hoặc plan_p 94% trong proposal/API là minh họa, không mặc định là kết quả demo. Không đặt chỉ tiêu “AI phải thắng” rồi hard-code biểu đồ.
 
+## Frontend integration verify (owner web-map)
+
+HTTP facade vẫn Phase 0 cho `/recommend` (null primary + lý do placeholder). UI đã sẵn sàng payload pipeline: Playwright `e2e/driver-pipeline.spec.ts` inject `/recommend` với `data_type: simulated`, primary/backup, ETA, xác suất, thiếu tọa độ, empty và 503. Live `/pressure` + `/simulate` chạy qua production preview (Playwright webServer build+preview). So sánh 100 xe: mặc định seed 42 / 100 xe; UI không hard-code người thắng — khi FakeSimulationRunner trả metrics giống nhau thì hiện đồng hạng; khi runner/AI lệch tỷ lệ thì delta lấy từ response (`e2e/operator-compare.spec.ts`).
+
+Giới hạn demo hiện tại: ranking HTTP chờ Kiên nối module recommend; runner thật của Bảo (sau sửa giờ khởi hành) thay FakeSimulationRunner — UI không cần đổi shape. Nhãn badge theo `data_type` từ API (`mock` / `simulated` / …).
+
+### Chốt demo trên máy trình bày
+
+- [ ] Chạy production build (không Vite HMR): `npm --prefix app/frontend run build` rồi `npm --prefix app/frontend run preview -- --host 127.0.0.1 --port 4173` với API `:8000` và `VITE_API_BASE_URL=/api`.
+- [ ] Kiểm trên laptop + máy chiếu (độ phân giải/zoom 100%; Driver + Operator).
+- [ ] Video dự phòng khi mất mạng / Goong CDN: quay sẵn Driver tìm kế hoạch + Operator áp lực + so sánh 3 chiến lược.
+- [ ] Nêu rõ trên slide: recommend live vẫn placeholder cho đến khi Kiên nối; số so sánh đến từ runner, không phải slide cố định.
+
 ## Checklist trước nộp
 
 - [ ] Mỗi module có lệnh cài/chạy đã kiểm tra, env mẫu và không có key thật trong repo.

@@ -98,6 +98,92 @@ describe("DriverPage", () => {
     expect(list.textContent).not.toMatch(/106\.9000/);
   });
 
+  test("pipeline-shaped plan: directory coords, backup, simulated badge", async () => {
+    const recommend = vi.fn().mockResolvedValue({
+      ...planResult,
+      primary: {
+        station_id: "S012",
+        eta: "2026-10-13T16:40:00+07:00",
+        distance_km: 15,
+        detour_km: 5,
+        arrival_soc_pct: 15.5,
+        p_available: 0.85,
+      },
+      backup: {
+        station_id: "S013",
+        eta: "2026-10-13T16:55:00+07:00",
+        distance_km: 25,
+        detour_km: 7.5,
+        arrival_soc_pct: 12.5,
+        p_available: 0.6,
+      },
+      data_type: "simulated" as const,
+      reasons: ["pipeline ok"],
+    });
+    const client = createMockApiClient({
+      recommend,
+      listStations: vi.fn().mockResolvedValue({
+        stations: [
+          {
+            station_id: "S012",
+            name: "Long Dien Crossing",
+            lat: 10.48,
+            lng: 107.21,
+            n_ports: 4,
+            power_kw: 60,
+            connector_types: ["CCS2"],
+            network: "phase0-demo",
+            station_type: "highway",
+            source: "phase0-fixture",
+            assumptions: [],
+          },
+          {
+            station_id: "S013",
+            name: "Vung Tau Back Beach",
+            lat: 10.37,
+            lng: 107.11,
+            n_ports: 6,
+            power_kw: 120,
+            connector_types: ["CCS2"],
+            network: "phase0-demo",
+            station_type: "urban",
+            source: "phase0-fixture",
+            assumptions: [],
+          },
+        ],
+        data_type: "mock",
+        source_notes: [],
+      }),
+    });
+
+    render(
+      <ApiProvider client={client}>
+        <MemoryRouter>
+          <DriverPage />
+        </MemoryRouter>
+      </ApiProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
+    expect(await screen.findByTestId("plan-hero")).toHaveTextContent(
+      "Long Dien Crossing",
+    );
+    expect(screen.getByTestId("plan-hero")).toHaveTextContent("85%");
+    expect(screen.getByTestId("plan-hero")).toHaveTextContent(/16:40/);
+    expect(screen.getByText("Dữ liệu mô phỏng")).toBeInTheDocument();
+    expect(screen.getAllByText("Trạm dự phòng").length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(
+      screen.getAllByText("Vung Tau Back Beach").length,
+    ).toBeGreaterThanOrEqual(1);
+    const list = screen.getByLabelText("Station text list");
+    expect(list.textContent).toMatch(/10\.4800/);
+    expect(list.textContent).toMatch(/107\.2100/);
+    expect(list.textContent).toMatch(/10\.3700/);
+    expect(list.textContent).not.toMatch(/chưa có tọa độ/i);
+  });
+
   test("clears previous recommendation when corridor preset changes", async () => {
     const recommend = vi.fn().mockResolvedValue(planResult);
     const client = createMockApiClient({ recommend });
