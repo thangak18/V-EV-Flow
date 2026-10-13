@@ -12,6 +12,9 @@ the candidate ETA window; missing stations mean zero virtual allocation. This
 module neither selects plans nor aggregates/reserves loads. AllocationContext
 alone lacks the duration/capacity metadata, so simulation integration needs an
 explicit upstream metadata source, not guessed speed/capacity or contract edits.
+C5 must inject the same effective minimum arrival SOC into C3 filtering and
+RankingConfig. Ranking rejects below-threshold candidates rather than silently
+overriding either configuration, including when C3 uses a nondefault threshold.
 """
 
 from collections.abc import Iterable, Mapping
@@ -154,6 +157,8 @@ def _validated_input(item: RankingInput, config: RankingConfig) -> RankingInput:
     candidate = item.candidate
     if not isinstance(candidate, FeasibleCandidate):
         raise ValueError("candidate must be a FeasibleCandidate")
+    if isinstance(candidate, RankedCandidate):
+        raise ValueError("RankingInput requires an unranked FeasibleCandidate")
     probability = _nonnegative_number(candidate.p_available, "p_available")
     if probability > 1:
         raise ValueError("p_available must be between 0 and 1")

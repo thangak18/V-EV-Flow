@@ -384,3 +384,93 @@ def test_public_exports_and_default_config_produce_finite_ranking() -> None:
         "normalize_virtual_load",
     ):
         assert getattr(recommendation, name) is getattr(ranking, name)
+
+
+def test_already_ranked_candidate_rejected_explicitly_without_mutation() -> None:
+    selected = item()
+    ranked = ranking.rank_candidates([selected], config(), {})[0]
+    before = ranked.model_dump()
+    already_ranked = replace(selected, candidate=ranked)
+    with pytest.raises(ValueError, match="unranked FeasibleCandidate") as rank_error:
+        ranking.rank_candidates([already_ranked], config(), {})
+    with pytest.raises(ValueError, match="unranked FeasibleCandidate") as score_error:
+        ranking.score_candidate(already_ranked, config())
+    assert type(rank_error.value) is ValueError
+    assert type(score_error.value) is ValueError
+    assert ranked.model_dump() == before
+    assert ranking.rank_candidates([selected], config(), {}) == (ranked,)
+    assert ranking.score_candidate(selected, config()).score == ranked.score
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "weight_probability",
+        "weight_travel",
+        "weight_soc_risk",
+        "weight_virtual_load",
+        "travel_reference_minutes",
+        "min_arrival_soc_pct",
+        "soc_risk_band_pct",
+    ],
+)
+def test_huge_integer_config_fields_raise_controlled_errors(field: str) -> None:
+    with pytest.raises(ValueError, match=field):
+        config(**{field: 10**10000})
+
+
+def test_huge_integer_measurements_raise_controlled_public_errors() -> None:
+    huge = 10**10000
+    chosen = config()
+    with pytest.raises(ValueError, match="travel_minutes"):
+        ranking.rank_candidates([replace(item(), travel_minutes=huge)], chosen, {})
+    with pytest.raises(ValueError, match="travel_minutes"):
+        ranking.score_candidate(replace(item(), travel_minutes=huge), chosen)
+    with pytest.raises(ValueError, match="virtual_load"):
+        ranking.rank_candidates([item()], chosen, {"S001": huge})
+    with pytest.raises(ValueError, match="virtual_load"):
+        ranking.score_candidate(item(), chosen, huge)
+    with pytest.raises(ValueError, match="working_ports"):
+        ranking.rank_candidates([replace(item(), working_ports=huge)], chosen, {})
+    with pytest.raises(ValueError, match="travel_reference_minutes"):
+        ranking.normalize_travel_time(30, huge)
+    with pytest.raises(ValueError, match="travel_minutes"):
+        ranking.normalize_travel_time(huge, 30)
+    with pytest.raises(ValueError, match="soc_risk_band_pct"):
+        ranking.normalize_soc_risk(30, 10, huge)
+    with pytest.raises(ValueError, match="min_arrival_soc_pct"):
+        ranking.normalize_soc_risk(30, huge, 20)
+    with pytest.raises(ValueError, match="virtual_load"):
+        ranking.normalize_virtual_load(huge, 2)
+    with pytest.raises(ValueError, match="working_ports"):
+        ranking.normalize_virtual_load(2, huge)
+
+
+@pytest.mark.parametrize("invalid_config", ["invalid", None, {}, object()])
+def test_invalid_config_type_rejected_before_reading_fields(invalid_config: object) -> None:
+    invalid = cast(Any, invalid_config)
+    with pytest.raises(ValueError, match="config must be a RankingConfig"):
+        ranking.rank_candidates([item()], invalid, {})
+    with pytest.raises(ValueError, match="config must be a RankingConfig"):
+        ranking.rank_candidates([], invalid, {})
+    with pytest.raises(ValueError, match="config must be a RankingConfig"):
+        ranking.score_candidate(item(), invalid)
+
+
+def test_direct_soc_normalization_rejects_below_threshold_not_clamps() -> None:
+    with pytest.raises(ValueError, match="arrival_soc_pct must meet min_arrival_soc_pct"):
+        ranking.normalize_soc_risk(9.999, 10, 20)
+    assert ranking.normalize_soc_risk(10, 10, 20) == 1
+    assert ranking.normalize_soc_risk(10.001, 10, 20) == pytest.approx(0.99995)
+    assert ranking.normalize_soc_risk(30, 10, 20) == 0
+
+
+def test_matching_custom_minimum_soc_is_required_for_ranking() -> None:
+    selected = item(arrival_soc=8)
+    chosen = config(min_arrival_soc_pct=5)
+    assert ranking.score_candidate(selected, chosen).normalized_soc_risk == pytest.approx(0.85)
+    result = ranking.rank_candidates([selected], chosen, {})
+    assert result[0].arrival_soc_pct == 8
+    assert result[0].p_available == selected.candidate.p_available
+    with pytest.raises(ValueError, match="arrival_soc_pct must meet min_arrival_soc_pct"):
+        ranking.rank_candidates([selected], ranking.RankingConfig(), {})
