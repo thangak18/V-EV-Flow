@@ -55,18 +55,18 @@ Hai quyết định cần lưu ý:
 - **CLI `compare`:** đọc output của `station_data.cli generate`, ghi `compare_results.json`, in bảng và hash. Chiến lược `ai_allocation` chỉ chạy khi truyền `--ai-strategy package.module:attribute`.
 - **Test:** 34 test mới, gồm strategy giả để chứng minh strategy được gọi cho từng xe mà không import `recommendation`.
 
-Kết quả với seed 42 và 100 xe (hai baseline):
+Kết quả với seed 42 và 100 xe (hai baseline), sau khi sửa cửa sổ xuất phát:
 
 | Kịch bản | Chiến lược | Success | Detour (km) | Wait (phút) | Failed |
 | --- | --- | --- | --- | --- | --- |
-| normal | nearest | 0,48 | 6,66 | 12,30 | 8 |
-| normal | currently_available | 0,84 | 9,00 | 1,40 | 0 |
-| holiday_30_4 | nearest | 0,46 | 6,66 | 13,85 | 11 |
-| holiday_30_4 | currently_available | 0,81 | 9,69 | 2,50 | 0 |
-| tet | nearest | 0,44 | 6,66 | 13,90 | 11 |
-| tet | currently_available | 0,81 | 9,66 | 1,90 | 0 |
+| normal | nearest | 0,90 | 6,66 | 1,15 | 0 |
+| normal | currently_available | 0,93 | 7,48 | 0,85 | 0 |
+| holiday_30_4 | nearest | 0,58 | 6,66 | 6,15 | 6 |
+| holiday_30_4 | currently_available | 0,75 | 9,40 | 3,20 | 1 |
+| tet | nearest | 0,44 | 6,66 | 13,70 | 29 |
+| tet | currently_available | 0,59 | 9,29 | 8,90 | 14 |
 
-`nearest` thấp một phần vì nhiều xe cùng chọn một trạm gần nhất và tự gây tắc. Đó là đặc tính của chiến lược; không có số liệu nào được chỉnh để định trước người thắng.
+Đã sửa lỗi ở `trips.py`: trước đó 100 xe chỉ xuất phát trong 4 giờ đầu (00:00–03:55) nên bảng cũ quá tải; nay xe xuất phát đều trong 20 giờ, chừa 4 giờ để đến trạm. `fixture_hash` và Parquet không đổi. Tải tăng dần từ normal đến Tết như kỳ vọng. `nearest` thấp một phần vì nhiều xe cùng chọn một trạm gần nhất và tự gây tắc. Đó là đặc tính của chiến lược; không có số liệu nào được chỉnh để định trước người thắng.
 
 ## 6. Giới hạn đã biết
 
