@@ -22,7 +22,7 @@ POLYLINE_POINTS = (
     Coordinate(lat=43.252, lng=-126.453),
 )
 NOW = datetime(2026, 10, 13, 8, tzinfo=timezone(timedelta(hours=7)))
-SECRET = "secret-never-leak"
+TEST_GOONG_KEY = "not-a-real-goong-key"
 
 
 def valid_route(distance_m: float = 1250, duration_s: float = 90) -> dict[str, object]:
@@ -56,7 +56,7 @@ def make_provider(
     from app.backend.infrastructure.routing.goong import GoongRouteProvider
 
     return GoongRouteProvider(
-        api_key=SECRET,
+        api_key=TEST_GOONG_KEY,
         client=client,
         cache=cache or RouteCache(tmp_path / "route-cache", timedelta(minutes=5)),
         clock=clock,
@@ -235,7 +235,7 @@ async def test_formats_v2_request_and_normalizes_route(tmp_path: Path) -> None:
     assert captured[0].url.params["origin"] == "10.7,106.6"
     assert captured[0].url.params["destination"] == "10.8,106.8"
     assert captured[0].url.params["vehicle"] == "car"
-    assert captured[0].url.params["api_key"] == SECRET
+    assert captured[0].url.params["api_key"] == TEST_GOONG_KEY
     assert routes[0].distance_km == pytest.approx(1.25)
     assert routes[0].duration_minutes == pytest.approx(1.5)
     assert routes[0].source == "goong-directions-v2"
@@ -294,7 +294,7 @@ async def test_rejects_unusable_upstream_payload(
         with pytest.raises(RouteUnavailableError, match="Goong route service unavailable") as error:
             await make_provider(tmp_path, client).get_routes(valid_request())
 
-    assert SECRET not in str(error.value)
+    assert TEST_GOONG_KEY not in str(error.value)
 
 
 @pytest.mark.asyncio
@@ -410,20 +410,20 @@ async def test_normalizes_transport_errors(
         with pytest.raises(RouteUnavailableError, match="Goong route service unavailable") as error:
             await make_provider(tmp_path, client).get_routes(valid_request())
 
-    assert SECRET not in str(error.value)
+    assert TEST_GOONG_KEY not in str(error.value)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("status_code", [401, 403, 429, 500, 503])
 async def test_normalizes_unsuccessful_statuses(tmp_path: Path, status_code: int) -> None:
     def handler(_: httpx.Request) -> httpx.Response:
-        return httpx.Response(status_code, text=f"upstream response contains {SECRET}")
+        return httpx.Response(status_code, text=f"upstream response contains {TEST_GOONG_KEY}")
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with pytest.raises(RouteUnavailableError, match="Goong route service unavailable") as error:
             await make_provider(tmp_path, client).get_routes(valid_request())
 
-    assert SECRET not in str(error.value)
+    assert TEST_GOONG_KEY not in str(error.value)
 
 
 def test_rejects_blank_api_key_at_construction(tmp_path: Path) -> None:
@@ -450,7 +450,7 @@ def test_route_providers_conform_to_frozen_port(tmp_path: Path) -> None:
     client = httpx.AsyncClient()
     try:
         provider = GoongRouteProvider(
-            api_key=SECRET,
+            api_key=TEST_GOONG_KEY,
             client=client,
             cache=RouteCache(tmp_path / "route-cache", timedelta(minutes=5)),
             clock=lambda: NOW,
