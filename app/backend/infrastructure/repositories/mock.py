@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from app.backend.contracts.enums import Scenario
+from app.backend.contracts.errors import StationNotFoundError
 from app.backend.contracts.recommendation import StatusWindow
 from app.backend.contracts.stations import Station, StationStatus
 
@@ -26,7 +27,7 @@ class MockStationRepository:
         try:
             return self._by_id[station_id]
         except KeyError as exc:
-            raise KeyError(f"unknown station: {station_id}") from exc
+            raise StationNotFoundError(f"unknown station: {station_id}") from exc
 
 
 class MockStatusRepository:

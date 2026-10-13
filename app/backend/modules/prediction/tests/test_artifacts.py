@@ -217,3 +217,18 @@ def test_replacement_publishes_new_manifest_last_and_keeps_previous_binary(
     loaded = load_pipeline(tmp_path)
     assert loaded.source == "second-fixture"
     np.testing.assert_allclose(loaded.predict_proba(features), replacement.predict_proba(features))
+
+
+def test_legacy_metric_reports_remain_loadable(trained_and_features, tmp_path: Path) -> None:  # noqa: ANN001
+    trained, features = trained_and_features
+    legacy = replace(
+        trained,
+        test_metrics={
+            name: replace(metric, log_loss=None) for name, metric in trained.test_metrics.items()
+        },
+    )
+    manifest = save_pipeline(legacy, tmp_path)
+    assert "log_loss" not in manifest.test_metrics["lightgbm_calibrated"]
+    loaded = load_pipeline(tmp_path)
+    assert loaded.test_metrics["lightgbm_calibrated"].log_loss is None
+    np.testing.assert_allclose(loaded.predict_proba(features), trained.predict_proba(features))
