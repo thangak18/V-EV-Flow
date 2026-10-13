@@ -9,6 +9,7 @@ import type {
   MapPoint,
   UnlocatedMapPoint,
 } from "../components/map/types";
+import { pressureColor } from "../features/operator/pressureColors";
 import { PressureLegend } from "../features/operator/PressureLegend";
 import { ScenarioSelector } from "../features/operator/ScenarioSelector";
 import { SimulationControls } from "../features/operator/SimulationControls";
@@ -16,12 +17,6 @@ import { StrategyComparison } from "../features/operator/StrategyComparison";
 import { usePressure } from "../hooks/usePressure";
 import { useSimulationComparison } from "../hooks/useSimulationComparison";
 import type { Scenario, Station } from "../services/api";
-
-function pressureColor(score: number): string {
-  if (score >= 0.66) return "#b91c1c";
-  if (score >= 0.33) return "#b45309";
-  return "#146c52";
-}
 
 export function OperatorPage() {
   const client = useApiClient();
@@ -62,7 +57,8 @@ export function OperatorPage() {
 
     for (const station of pressureStations) {
       const meta = stationIndex.get(station.station_id);
-      const label = `${station.station_id} · pressure ${station.pressure_score.toFixed(2)}`;
+      const title = meta?.name ?? station.station_id;
+      const label = `${title} · pressure ${station.pressure_score.toFixed(2)}`;
       if (!meta) {
         unlocated.push({
           id: station.station_id,
@@ -93,41 +89,13 @@ export function OperatorPage() {
           <p className="eyebrow">Operator</p>
           <h2>Pressure and strategy lab</h2>
           <p className="subtitle">
-            Pressure is a risk proxy, not a probability guarantee.
+            Pressure là proxy rủi ro thiếu cổng — không phải xác suất bảo đảm.
           </p>
         </div>
         <DataTypeBadge dataType={dataType} />
       </header>
 
       <div className="operator-grid">
-        <section className="operator-controls">
-          <ScenarioSelector
-            scenario={scenario}
-            time={time}
-            onScenarioChange={setScenario}
-            onTimeChange={setTime}
-            onApply={() => void pressure.load(scenario, time)}
-            pending={pressure.status === "loading"}
-          />
-          <PressureLegend />
-          <SimulationControls
-            seed={seed}
-            vehicleCount={vehicleCount}
-            onSeedChange={setSeed}
-            onVehicleCountChange={setVehicleCount}
-            onRun={(nextSeed, nextVehicles) =>
-              void simulation.run(scenario, nextSeed, nextVehicles)
-            }
-            pending={simulation.pending}
-          />
-          {directoryFailed ? (
-            <p className="status-message" role="status">
-              Station directory unavailable — pressure markers need directory
-              coordinates.
-            </p>
-          ) : null}
-        </section>
-
         <section className="operator-map">
           <AsyncState
             status={pressure.status}
@@ -146,6 +114,37 @@ export function OperatorPage() {
               preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
             />
           </AsyncState>
+        </section>
+
+        <section className="operator-controls">
+          <ScenarioSelector
+            scenario={scenario}
+            time={time}
+            onScenarioChange={setScenario}
+            onTimeChange={setTime}
+            onApply={() => void pressure.load(scenario, time)}
+            pending={pressure.status === "loading"}
+          />
+          <PressureLegend />
+          <details className="operator-sim-details" open>
+            <summary>100-vehicle simulation</summary>
+            <SimulationControls
+              seed={seed}
+              vehicleCount={vehicleCount}
+              onSeedChange={setSeed}
+              onVehicleCountChange={setVehicleCount}
+              onRun={(nextSeed, nextVehicles) =>
+                void simulation.run(scenario, nextSeed, nextVehicles)
+              }
+              pending={simulation.pending}
+            />
+          </details>
+          {directoryFailed ? (
+            <p className="status-message" role="status">
+              Station directory unavailable — pressure markers need directory
+              coordinates.
+            </p>
+          ) : null}
         </section>
       </div>
 

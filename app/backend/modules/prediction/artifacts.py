@@ -93,6 +93,11 @@ def _json_value(value: Any) -> Any:
 
 
 def _pipeline_metadata(pipeline: TrainedPipeline) -> dict[str, Any]:
+    reports = _json_value(pipeline.test_metrics)
+    # Old joblib reports predate Log Loss; retain their original metadata shape.
+    for report in reports.values():
+        if report.get("log_loss") is None:
+            report.pop("log_loss", None)
     return {
         "model_class": type(pipeline.model).__name__,
         "calibrator_class": type(pipeline.calibrator).__name__,
@@ -102,7 +107,7 @@ def _pipeline_metadata(pipeline: TrainedPipeline) -> dict[str, Any]:
         "training_config": _json_value(pipeline.config),
         "split_metadata": _json_value(pipeline.split_metadata),
         "calibration_brier": pipeline.calibration_brier.copy(),
-        "test_metrics": _json_value(pipeline.test_metrics),
+        "test_metrics": reports,
         "sample_counts": pipeline.sample_counts.copy(),
         "scenarios": list(pipeline.scenarios),
         "seed": pipeline.seed,

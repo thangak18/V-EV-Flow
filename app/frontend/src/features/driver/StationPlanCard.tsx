@@ -4,18 +4,22 @@ type Props = {
   title: string;
   plan: Plan;
   variant: "primary" | "backup";
+  stationName?: string;
 };
 
 function formatProbability(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function StationPlanCard({ title, plan, variant }: Props) {
+export function StationPlanCard({ title, plan, variant, stationName }: Props) {
   return (
     <article className={`plan-card plan-card--${variant}`}>
       <header>
         <p className="eyebrow">{title}</p>
-        <h3>{plan.station_id}</h3>
+        <h3>{stationName ?? plan.station_id}</h3>
+        {stationName ? (
+          <p className="plan-station-id">{plan.station_id}</p>
+        ) : null}
       </header>
       <dl className="plan-metrics">
         <div>

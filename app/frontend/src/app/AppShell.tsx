@@ -5,8 +5,9 @@ export function AppShell() {
     <div className="app-frame">
       <header className="app-topbar">
         <div className="brand-block">
+          <p className="brand-kicker">Corridor EV</p>
           <h1 className="brand-title">V-EV Flow</h1>
-          <p className="brand-tagline">Corridor charging planner</p>
+          <p className="brand-tagline">Hành lang sạc TP.HCM → Vũng Tàu</p>
         </div>
         <nav className="app-nav" aria-label="Primary">
           <NavLink

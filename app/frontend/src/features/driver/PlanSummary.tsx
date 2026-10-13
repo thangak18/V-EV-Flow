@@ -4,13 +4,17 @@ import { StationPlanCard } from "./StationPlanCard";
 
 type Props = {
   result: RecommendationResult;
+  stationNames?: Record<string, string>;
 };
 
-export function PlanSummary({ result }: Props) {
+export function PlanSummary({ result, stationNames = {} }: Props) {
   const hasPlan = result.primary != null || result.backup != null;
 
   return (
-    <section className="plan-summary" aria-labelledby="plan-summary-title">
+    <section
+      className="plan-summary plan-summary--hero"
+      aria-labelledby="plan-summary-title"
+    >
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Charging plan</p>
@@ -30,6 +34,7 @@ export function PlanSummary({ result }: Props) {
               title="Primary"
               plan={result.primary}
               variant="primary"
+              stationName={stationNames[result.primary.station_id]}
             />
           ) : null}
           {result.backup ? (
@@ -37,6 +42,7 @@ export function PlanSummary({ result }: Props) {
               title="Backup"
               plan={result.backup}
               variant="backup"
+              stationName={stationNames[result.backup.station_id]}
             />
           ) : (
             <p className="status-message">No backup station available.</p>
