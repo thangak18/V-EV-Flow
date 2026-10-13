@@ -22,14 +22,14 @@ export function ScenarioSelector({
 
   return (
     <form
-      className="scenario-selector"
+      className="scenario-selector toolbar-card"
       onSubmit={(event) => {
         event.preventDefault();
         if (!pending && !timeInvalid) onApply();
       }}
     >
-      <label>
-        Kịch bản
+      <label className="field-chip">
+        <span className="field-chip__label">Kịch bản</span>
         <select
           value={scenario}
           onChange={(event) => onScenarioChange(event.target.value as Scenario)}
@@ -39,8 +39,8 @@ export function ScenarioSelector({
           <option value="tet">Tết</option>
         </select>
       </label>
-      <label>
-        Thời điểm (+07:00)
+      <label className="field-chip">
+        <span className="field-chip__label">Thời điểm (+07:00)</span>
         <input
           className="input-datetime"
           type="text"
@@ -57,7 +57,11 @@ export function ScenarioSelector({
           2026-10-13T16:00:00+07:00).
         </p>
       ) : null}
-      <button type="submit" disabled={pending || timeInvalid}>
+      <button
+        type="submit"
+        className="btn-primary"
+        disabled={pending || timeInvalid}
+      >
         {pending ? "Đang tải áp lực…" : "Áp dụng kịch bản"}
       </button>
     </form>

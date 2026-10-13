@@ -91,7 +91,7 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
     <div className="map-panel">
       {!usingGoong ? (
         <p className="map-mode-banner" role="status">
-          Đang dùng bản đồ schematic (chưa bật bản đồ Goong).
+          Bản đồ minh họa — Không dùng để dẫn đường
         </p>
       ) : (
         <p className="map-mode-banner map-mode-banner--live" role="status">

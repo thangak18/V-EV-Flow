@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
 import { AsyncState } from "../components/common/AsyncState";
-import { DataTypeBadge } from "../components/common/DataTypeBadge";
 import { MapView } from "../components/map/MapView";
 import type {
   MapModel,
@@ -14,7 +13,7 @@ import {
   type CorridorPresetId,
 } from "../features/driver/corridorPresets";
 import { DriverForm } from "../features/driver/DriverForm";
-import { PlanSummary } from "../features/driver/PlanSummary";
+import { PlanEmptyState, PlanSummary } from "../features/driver/PlanSummary";
 import { useRecommendation } from "../hooks/useRecommendation";
 import type { Station } from "../services/api";
 
@@ -58,14 +57,14 @@ export function DriverPage() {
         id: "origin",
         lat: corridor.origin.lat,
         lng: corridor.origin.lng,
-        label: "Điểm đi",
+        label: "TP. Hồ Chí Minh",
         role: "origin",
       },
       {
         id: "destination",
         lat: corridor.destination.lat,
         lng: corridor.destination.lng,
-        label: "Điểm đến",
+        label: "Vũng Tàu",
         role: "destination",
       },
     ];
@@ -105,53 +104,57 @@ export function DriverPage() {
     clear();
   }
 
-  const hasResult = status === "success" && result != null;
+  function focusMap() {
+    document
+      .querySelector<HTMLElement>('[data-testid="map-canvas"]')
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 
   return (
-    <main className={`driver-page${hasResult ? " driver-page--has-plan" : ""}`}>
-      <section className="driver-panel">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Tài xế</p>
-            <h2>Lên kế hoạch dừng sạc</h2>
-            <p className="subtitle">
-              Chọn hành lang, pin hiện tại và đầu cắm — bấm tìm để nhận trạm đề
-              xuất.
-            </p>
-          </div>
-          <DataTypeBadge dataType={result?.data_type ?? "mock"} />
-        </div>
-
-        <DriverForm
-          pending={status === "loading"}
-          presetId={presetId}
-          onPresetChange={handlePresetChange}
-          onSubmit={submit}
-        />
-
-        {directoryFailed ? (
-          <p className="status-message" role="status">
-            Không tải được danh mục trạm — bản đồ có thể thiếu vị trí trạm.
-          </p>
-        ) : null}
-
-        <AsyncState
-          status={status === "empty" ? "success" : status}
-          loadingMessage="Đang tìm kế hoạch sạc…"
-          emptyMessage="Không có trạm khả thi cho chuyến này."
-          errorMessage={error ?? "Không tạo được kế hoạch."}
-          onRetry={retry}
-        >
-          {result ? (
-            <PlanSummary result={result} stationNames={stationNames} />
-          ) : null}
-        </AsyncState>
-      </section>
-
-      <MapView
-        model={mapModel}
-        preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
+    <main className="driver-page">
+      <DriverForm
+        pending={status === "loading"}
+        presetId={presetId}
+        onPresetChange={handlePresetChange}
+        onSubmit={submit}
       />
+
+      {directoryFailed ? (
+        <p className="status-message" role="status">
+          Không tải được danh mục trạm — bản đồ có thể thiếu vị trí trạm.
+        </p>
+      ) : null}
+
+      <div className="driver-workspace">
+        <aside className="driver-sidebar">
+          {status === "idle" ? (
+            <PlanEmptyState />
+          ) : (
+            <AsyncState
+              status={status === "empty" ? "success" : status}
+              loadingMessage="Đang tìm kế hoạch sạc…"
+              emptyMessage="Không có trạm khả thi cho chuyến này."
+              errorMessage={error ?? "Không tạo được kế hoạch."}
+              onRetry={retry}
+            >
+              {result ? (
+                <PlanSummary
+                  result={result}
+                  stationNames={stationNames}
+                  onFocusMap={focusMap}
+                />
+              ) : null}
+            </AsyncState>
+          )}
+        </aside>
+
+        <section className="driver-map">
+          <MapView
+            model={mapModel}
+            preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
+          />
+        </section>
+      </div>
     </main>
   );
 }

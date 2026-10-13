@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
 import type { RecommendationResult } from "../../services/api";
-import { PlanSummary } from "./PlanSummary";
+import { PlanEmptyState, PlanSummary } from "./PlanSummary";
 
 const base: RecommendationResult = {
   request_id: "demo-001",
@@ -43,13 +43,11 @@ describe("PlanSummary", () => {
     expect(screen.getByTestId("plan-hero")).toBeInTheDocument();
     expect(screen.getByText("Trạm Long Thành")).toBeInTheDocument();
     expect(screen.getAllByText("85%").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Bước tiếp/i)).toBeInTheDocument();
+    expect(screen.getByText(/Xem trạm trên bản đồ/i)).toBeInTheDocument();
     expect(screen.getByText("Trạm dự phòng")).toBeInTheDocument();
-    expect(screen.getByText(/15\.5%/)).toBeInTheDocument();
-    expect(screen.getByText("Dữ liệu mock")).toBeInTheDocument();
+    expect(screen.getByText(/15,5%/)).toBeInTheDocument();
     expect(screen.getByText("Đủ pin để tới trạm chính")).toBeInTheDocument();
 
-    // Tech details stay collapsed by default.
     const details = screen.getByText("Chi tiết kỹ thuật").closest("details");
     expect(details).not.toHaveAttribute("open");
     details?.setAttribute("open", "");
@@ -71,5 +69,11 @@ describe("PlanSummary", () => {
     );
     expect(screen.getByText(/Không có trạm khả thi/i)).toBeInTheDocument();
     expect(screen.getByText("Không còn trạm khả thi")).toBeInTheDocument();
+  });
+
+  test("empty state copy matches dashboard idle", () => {
+    render(<PlanEmptyState />);
+    expect(screen.getByText("Chưa tìm trạm sạc")).toBeInTheDocument();
+    expect(screen.getByText(/Kết quả sẽ hiện tại đây/i)).toBeInTheDocument();
   });
 });

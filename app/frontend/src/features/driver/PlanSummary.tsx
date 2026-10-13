@@ -1,30 +1,31 @@
 import type { RecommendationResult } from "../../services/api";
-import { DataTypeBadge } from "../../components/common/DataTypeBadge";
-import { StationPlanCard } from "./StationPlanCard";
 
 type Props = {
   result: RecommendationResult;
   stationNames?: Record<string, string>;
+  onFocusMap?: () => void;
 };
 
 function formatPct(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-function formatEta(value: string): string {
+function formatEtaTime(value: string): string {
   return new Date(value).toLocaleString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
   });
 }
 
-export function PlanSummary({ result, stationNames = {} }: Props) {
+export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
   const hasPlan = result.primary != null || result.backup != null;
   const primary = result.primary;
   const primaryName = primary
     ? (stationNames[primary.station_id] ?? primary.station_id)
+    : null;
+  const backup = result.backup;
+  const backupName = backup
+    ? (stationNames[backup.station_id] ?? backup.station_id)
     : null;
 
   return (
@@ -32,13 +33,10 @@ export function PlanSummary({ result, stationNames = {} }: Props) {
       className="plan-summary plan-summary--hero"
       aria-labelledby="plan-summary-title"
     >
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Kế hoạch sạc</p>
-          <h2 id="plan-summary-title">Trạm đề xuất</h2>
-        </div>
-        <DataTypeBadge dataType={result.data_type} />
-      </div>
+      <p className="eyebrow">Kế hoạch sạc</p>
+      <h2 id="plan-summary-title" className="visually-hidden">
+        Trạm đề xuất
+      </h2>
 
       {!hasPlan ? (
         <p className="status-message" role="status">
@@ -50,54 +48,74 @@ export function PlanSummary({ result, stationNames = {} }: Props) {
             <div className="plan-hero" data-testid="plan-hero">
               <p className="plan-hero__label">Trạm chính</p>
               <h3 className="plan-hero__name">{primaryName}</h3>
+              <div className="plan-kpi-row">
+                <div className="plan-kpi">
+                  <strong data-probability={primary.p_available}>
+                    {formatPct(primary.p_available)}
+                  </strong>
+                  <span>Khả năng có cổng</span>
+                </div>
+                <div className="plan-kpi">
+                  <strong>{formatEtaTime(primary.eta)}</strong>
+                  <span>Đến lúc (+07:00)</span>
+                </div>
+              </div>
+              <div
+                className="plan-kpi-bar"
+                style={{ width: `${primary.p_available * 100}%` }}
+                aria-hidden
+              />
               <dl className="plan-hero__metrics">
                 <div>
-                  <dt>Đến lúc</dt>
-                  <dd>{formatEta(primary.eta)}</dd>
+                  <dd>{primary.distance_km.toFixed(0)} km</dd>
+                  <dt>Khoảng cách</dt>
                 </div>
                 <div>
-                  <dt>Khả năng có cổng</dt>
-                  <dd data-probability={primary.p_available}>
-                    {formatPct(primary.p_available)}
+                  <dd>
+                    {primary.arrival_soc_pct.toFixed(1).replace(".", ",")}%
                   </dd>
+                  <dt>Pin khi đến</dt>
                 </div>
-                {result.plan_p != null ? (
-                  <div>
-                    <dt>Ước lượng kế hoạch</dt>
-                    <dd>{formatPct(result.plan_p)}</dd>
-                  </div>
-                ) : null}
+                <div>
+                  <dd>+{primary.detour_km.toFixed(0)} km</dd>
+                  <dt>Đường vòng</dt>
+                </div>
               </dl>
-              <p className="plan-hero__next">
-                Bước tiếp: đi theo hướng trạm này trên bản đồ
-                {result.backup
-                  ? "; giữ trạm dự phòng nếu trạm chính đông."
-                  : "."}
-              </p>
+              {result.plan_p != null ? (
+                <p className="plan-confidence">
+                  Ước lượng kế hoạch {formatPct(result.plan_p)}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                className="btn-primary plan-hero__cta"
+                onClick={onFocusMap}
+              >
+                Xem trạm trên bản đồ
+              </button>
             </div>
           ) : null}
 
-          <div className="plan-grid">
-            {primary ? (
-              <StationPlanCard
-                title="Chi tiết trạm chính"
-                plan={primary}
-                variant="primary"
-                stationName={stationNames[primary.station_id]}
-                compact
-              />
-            ) : null}
-            {result.backup ? (
-              <StationPlanCard
-                title="Trạm dự phòng"
-                plan={result.backup}
-                variant="backup"
-                stationName={stationNames[result.backup.station_id]}
-              />
-            ) : (
-              <p className="status-message">Không có trạm dự phòng.</p>
-            )}
-          </div>
+          {backup ? (
+            <article className="plan-backup">
+              <p className="plan-hero__label">Trạm dự phòng</p>
+              <h3>{backupName}</h3>
+              <dl className="plan-backup__metrics">
+                <div>
+                  <dt>Khả năng có cổng</dt>
+                  <dd data-probability={backup.p_available}>
+                    {formatPct(backup.p_available)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Đến lúc</dt>
+                  <dd>{formatEtaTime(backup.eta)}</dd>
+                </div>
+              </dl>
+            </article>
+          ) : (
+            <p className="status-message">Không có trạm dự phòng.</p>
+          )}
         </>
       )}
 
@@ -118,11 +136,48 @@ export function PlanSummary({ result, stationNames = {} }: Props) {
           <p>Phiên bản mô hình: {result.model_version}</p>
           <p>Cách phân bổ: {result.allocation_method}</p>
           {primary ? <p>Mã trạm chính: {primary.station_id}</p> : null}
-          {result.backup ? (
-            <p>Mã trạm dự phòng: {result.backup.station_id}</p>
-          ) : null}
+          {backup ? <p>Mã trạm dự phòng: {backup.station_id}</p> : null}
         </div>
       </details>
+    </section>
+  );
+}
+
+export function PlanEmptyState() {
+  return (
+    <section className="plan-empty" aria-labelledby="plan-empty-title">
+      <p className="eyebrow">Kế hoạch sạc</p>
+      <h2 id="plan-empty-title">Chưa tìm trạm sạc</h2>
+      <div className="plan-empty__icon" aria-hidden>
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+          <rect
+            x="8"
+            y="12"
+            width="40"
+            height="32"
+            rx="6"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          />
+          <circle
+            cx="28"
+            cy="28"
+            r="8"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          />
+          <path
+            d="M33 33 40 40"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
+      <p className="plan-empty__copy">
+        Kiểm tra hành trình, pin hiện tại và đầu cắm, rồi bấm tìm kế hoạch sạc.
+      </p>
+      <p className="plan-empty__hint">Kết quả sẽ hiện tại đây.</p>
     </section>
   );
 }

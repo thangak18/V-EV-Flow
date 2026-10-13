@@ -109,7 +109,7 @@ describe("DriverPage", () => {
     });
     await waitFor(() => {
       expect(screen.queryByText("S012")).not.toBeInTheDocument();
-      expect(screen.getByText(/Điền form và bấm tìm/i)).toBeInTheDocument();
+      expect(screen.getByText(/Chưa tìm trạm sạc/i)).toBeInTheDocument();
     });
   });
 

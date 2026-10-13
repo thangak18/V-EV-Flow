@@ -205,7 +205,7 @@ describe("DriverForm", () => {
     const details = document.querySelector(
       "details.driver-advanced",
     ) as HTMLDetailsElement;
-    const summary = screen.getByText("Pin xe, tiêu hao & giờ demo");
+    const summary = screen.getByText("Thông số xe");
     fireEvent.click(summary);
     expect(details).toHaveAttribute("open");
 

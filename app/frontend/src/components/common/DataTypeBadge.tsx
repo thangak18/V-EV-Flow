@@ -1,7 +1,7 @@
 import type { DataType } from "../../services/api";
 
 const LABELS: Record<DataType, string> = {
-  mock: "Dữ liệu mock",
+  mock: "Dữ liệu minh họa",
   simulated: "Dữ liệu mô phỏng",
   real: "Dữ liệu thật",
   mixed: "Dữ liệu hỗn hợp",

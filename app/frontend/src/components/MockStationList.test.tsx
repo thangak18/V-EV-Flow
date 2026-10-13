@@ -35,7 +35,7 @@ describe("MockStationList", () => {
     };
     render(<MockStationList client={client} />);
     expect(await screen.findByText("S001")).toBeInTheDocument();
-    expect(screen.getByText("Dữ liệu mock")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu minh họa")).toBeInTheDocument();
   });
 
   test("shows an empty state", async () => {

@@ -45,9 +45,47 @@ function bestSuccess(rows: SuccessRow[]): SuccessRow | null {
 export function StrategyComparison({ rows, meta }: Props) {
   if (rows.length === 0) {
     return (
-      <p className="status-message" role="status">
-        Chạy so sánh để xem chỉ số của ba chiến lược.
-      </p>
+      <section className="strategy-comparison" aria-labelledby="strategy-title">
+        <h2 id="strategy-title">So sánh chiến lược</h2>
+        <div className="strategy-empty" role="status">
+          <div className="strategy-empty__icon" aria-hidden>
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <rect
+                x="6"
+                y="22"
+                width="6"
+                height="12"
+                rx="1.5"
+                fill="currentColor"
+              />
+              <rect
+                x="17"
+                y="14"
+                width="6"
+                height="20"
+                rx="1.5"
+                fill="currentColor"
+              />
+              <rect
+                x="28"
+                y="8"
+                width="6"
+                height="26"
+                rx="1.5"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
+          <h3>Chưa có kết quả mô phỏng</h3>
+          <p>
+            Chọn kịch bản, seed và số xe rồi bấm So sánh 3 chiến lược. Ba chiến
+            lược sẽ dùng cùng một tập xe.
+          </p>
+          <p className="strategy-empty__hint">
+            Áp dụng kịch bản cập nhật bản đồ. So sánh chạy mô phỏng.
+          </p>
+        </div>
+      </section>
     );
   }
 

@@ -11,6 +11,6 @@ test("driver submits once against the Phase 0 mock recommend", async ({
   await expect(
     page.getByText(/recommendation ranking is not implemented/i),
   ).toBeVisible();
-  await expect(page.getByText("Dữ liệu mock").first()).toBeVisible();
+  await expect(page.getByText("Dữ liệu minh họa").first()).toBeVisible();
   await expect(page.getByLabel("Station text list")).toBeVisible();
 });

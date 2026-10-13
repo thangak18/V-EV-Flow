@@ -54,7 +54,7 @@ export function MockStationList({ client }: Props) {
           <p className="eyebrow">Danh mục trạm</p>
           <h2 id="station-list-title">Trạm khả dụng</h2>
         </div>
-        <span className="data-badge">Dữ liệu mock</span>
+        <span className="data-badge">Dữ liệu minh họa</span>
       </div>
 
       {status === "loading" && (

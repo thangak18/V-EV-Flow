@@ -157,9 +157,8 @@ test.describe("driver phone shell", () => {
     await expect(page.getByLabel(/SOC %/)).toBeVisible();
     await expect(page.getByLabel("Station text list")).toBeVisible();
 
-    const panel = page.locator(".driver-panel");
-    const box = await panel.boundingBox();
-    expect(box).toBeTruthy();
-    expect(box!.width).toBeLessThanOrEqual(390);
+    const pageBox = await page.locator(".driver-page").boundingBox();
+    expect(pageBox).toBeTruthy();
+    expect(pageBox!.width).toBeLessThanOrEqual(390);
   });
 });

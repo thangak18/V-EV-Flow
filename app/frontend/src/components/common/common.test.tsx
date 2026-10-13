@@ -23,7 +23,7 @@ describe("routes and shared status UI", () => {
   test("defaults to driver route", () => {
     renderApp("/");
     expect(
-      screen.getByRole("heading", { name: /Lên kế hoạch dừng sạc/i }),
+      screen.getByRole("heading", { name: /Chưa tìm trạm sạc/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Tài xế" })).toHaveClass(
       "nav-link--active",
@@ -39,7 +39,7 @@ describe("routes and shared status UI", () => {
 
   test("badge copy covers mock simulated real mixed", () => {
     const { rerender } = render(<DataTypeBadge dataType="mock" />);
-    expect(screen.getByText("Dữ liệu mock")).toBeInTheDocument();
+    expect(screen.getByText("Dữ liệu minh họa")).toBeInTheDocument();
     rerender(<DataTypeBadge dataType="simulated" />);
     expect(screen.getByText("Dữ liệu mô phỏng")).toBeInTheDocument();
     rerender(<DataTypeBadge dataType="real" />);

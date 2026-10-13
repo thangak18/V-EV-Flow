@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
-import { AsyncState } from "../components/common/AsyncState";
-import { DataTypeBadge } from "../components/common/DataTypeBadge";
 import { MapView } from "../components/map/MapView";
 import type {
   MapModel,
@@ -80,75 +78,86 @@ export function OperatorPage() {
     return { points, unlocated, fitBounds: true };
   }, [pressure.result, stationIndex]);
 
-  const dataType = pressure.result?.stations[0]?.data_type ?? ("mock" as const);
-
   return (
     <main className="operator-page">
       <header className="operator-header">
         <div>
-          <p className="eyebrow">Điều hành</p>
           <h2>Áp lực trạm &amp; so sánh chiến lược</h2>
           <p className="subtitle">
-            Áp lực (pressure) là proxy rủi ro thiếu cổng — không phải xác suất
-            bảo đảm.
+            Áp lực là proxy rủi ro thiếu cổng, không phải số xe thực tế.
           </p>
         </div>
-        <DataTypeBadge dataType={dataType} />
       </header>
 
-      <div className="operator-grid">
-        <section className="operator-controls">
-          <ScenarioSelector
-            scenario={scenario}
-            time={time}
-            onScenarioChange={setScenario}
-            onTimeChange={setTime}
-            onApply={() => void pressure.load(scenario, time)}
-            pending={pressure.status === "loading"}
-          />
-          <PressureLegend />
-          <details className="operator-sim-details" open>
-            <summary>Mô phỏng 100 xe</summary>
-            <SimulationControls
-              seed={seed}
-              vehicleCount={vehicleCount}
-              onSeedChange={setSeed}
-              onVehicleCountChange={setVehicleCount}
-              onRun={(nextSeed, nextVehicles) =>
-                void simulation.run(scenario, nextSeed, nextVehicles)
-              }
-              pending={simulation.pending}
-            />
-          </details>
-          {directoryFailed ? (
-            <p className="status-message" role="status">
-              Không tải được danh mục trạm — marker áp lực cần tọa độ danh mục.
-            </p>
-          ) : null}
-        </section>
-
-        <section className="operator-map">
-          <AsyncState
-            status={pressure.status}
-            loadingMessage={
-              pressure.stale
-                ? "Đang làm mới lớp áp lực… vẫn hiện kết quả trước."
-                : "Đang tải lớp áp lực…"
-            }
-            emptyMessage="Không có trạm áp lực cho kịch bản/thời điểm này."
-            errorMessage={pressure.error ?? "Không tải được lớp áp lực."}
-            onRetry={() => void pressure.load(scenario, time)}
-            keepChildrenOnLoading={Boolean(pressure.result)}
-          >
-            <MapView
-              model={mapModel}
-              preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
-            />
-          </AsyncState>
-        </section>
+      <div className="operator-toolbar">
+        <ScenarioSelector
+          scenario={scenario}
+          time={time}
+          onScenarioChange={setScenario}
+          onTimeChange={setTime}
+          onApply={() => void pressure.load(scenario, time)}
+          pending={pressure.status === "loading"}
+        />
+        <SimulationControls
+          seed={seed}
+          vehicleCount={vehicleCount}
+          onSeedChange={setSeed}
+          onVehicleCountChange={setVehicleCount}
+          onRun={(nextSeed, nextVehicles) =>
+            void simulation.run(scenario, nextSeed, nextVehicles)
+          }
+          pending={simulation.pending}
+        />
       </div>
 
-      <StrategyComparison rows={simulation.rows} meta={simulation.config} />
+      {directoryFailed ? (
+        <p className="status-message" role="status">
+          Không tải được danh mục trạm — marker áp lực cần tọa độ danh mục.
+        </p>
+      ) : null}
+
+      <div className="operator-workspace">
+        <section className="operator-map-card">
+          <div className="operator-map-card__head">
+            <h3>Bản đồ trạm sạc</h3>
+          </div>
+          {pressure.status === "loading" ? (
+            <p className="status-message" role="status">
+              {pressure.stale
+                ? "Đang làm mới lớp áp lực… vẫn hiện kết quả trước."
+                : "Đang tải lớp áp lực…"}
+            </p>
+          ) : null}
+          {pressure.status === "error" ? (
+            <div className="status-message error" role="alert">
+              <p>{pressure.error ?? "Không tải được lớp áp lực."}</p>
+              <button
+                type="button"
+                onClick={() => void pressure.load(scenario, time)}
+              >
+                Thử lại
+              </button>
+            </div>
+          ) : null}
+          <MapView
+            model={mapModel}
+            preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
+          />
+          <details className="tech-details operator-legend-details">
+            <summary>Chú thích áp lực</summary>
+            <PressureLegend />
+          </details>
+          <p className="map-card-footer" role="status">
+            {pressure.result
+              ? "Bản đồ minh họa"
+              : "Bấm Áp dụng kịch bản để xem lớp áp lực."}
+          </p>
+        </section>
+
+        <section className="operator-results-card">
+          <StrategyComparison rows={simulation.rows} meta={simulation.config} />
+        </section>
+      </div>
     </main>
   );
 }
