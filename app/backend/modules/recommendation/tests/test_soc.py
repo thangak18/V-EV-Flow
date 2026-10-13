@@ -139,6 +139,71 @@ def test_port_invariants_are_enforced_by_contract() -> None:
             StationStatus.model_validate(values | updates)
 
 
+@pytest.mark.parametrize("field,value", [("ports_broken", 3), ("ports_free", 2)])
+def test_mutated_status_must_conserve_ports(field: str, value: int) -> None:
+    item = candidate()
+    setattr(item.status, field, value)
+    before = item.status.model_dump()
+    with pytest.raises(ValueError, match="port counts must sum"):
+        soc.working_ports(item.station, item.status)
+    with pytest.raises(ValueError, match="port counts must sum"):
+        soc.evaluate_feasibility(vehicle(), [item], 10)
+    with pytest.raises(ValueError, match="port counts must sum"):
+        soc.filter_feasible(vehicle(), [item], 10)
+    assert item.status.model_dump() == before
+
+
+@pytest.mark.parametrize("field", ["ports_free", "ports_busy", "ports_broken"])
+@pytest.mark.parametrize("value", [-1, 0.5, True, "1", None])
+def test_mutated_status_rejects_invalid_port_counts(field: str, value: object) -> None:
+    item = candidate()
+    setattr(item.status, field, value)
+    with pytest.raises(ValueError, match=field):
+        soc.working_ports(item.station, item.status)
+    with pytest.raises(ValueError, match=field):
+        soc.evaluate_feasibility(vehicle(), [item], 10)
+    with pytest.raises(ValueError, match=field):
+        soc.filter_feasible(vehicle(), [item], 10)
+
+
+@pytest.mark.parametrize(
+    "value", [110, -1, float("nan"), float("inf"), -float("inf"), "20", None, True]
+)
+def test_mutated_vehicle_rejects_invalid_soc(value: object) -> None:
+    car = vehicle()
+    setattr(car, "soc_pct", value)
+    with pytest.raises(ValueError, match="soc_pct"):
+        soc.arrival_soc_pct(car, 0)
+    with pytest.raises(ValueError, match="soc_pct"):
+        soc.evaluate_feasibility(car, [], 10)
+    with pytest.raises(ValueError, match="soc_pct"):
+        soc.filter_feasible(car, [candidate()], 10)
+    assert car.soc_pct is value
+
+
+@pytest.mark.parametrize("field", ["battery_kwh", "consumption_kwh_per_km"])
+@pytest.mark.parametrize(
+    "value", [0, -1, float("nan"), float("inf"), -float("inf"), True, "1", None]
+)
+def test_mutated_vehicle_rejects_invalid_positive_fields(field: str, value: object) -> None:
+    car = vehicle()
+    setattr(car, field, value)
+    with pytest.raises(ValueError, match=field):
+        soc.arrival_soc_pct(car, 0)
+    with pytest.raises(ValueError, match=field):
+        soc.evaluate_feasibility(car, [], 10)
+
+
+@pytest.mark.parametrize("value", [0, 100])
+def test_mutated_vehicle_soc_endpoints_remain_valid(value: int) -> None:
+    car = vehicle()
+    car.soc_pct = value
+    before = car.model_dump()
+    assert soc.arrival_soc_pct(car, 0) == value
+    assert soc.filter_feasible(car, [candidate(distance=0)], value)
+    assert car.model_dump() == before
+
+
 @pytest.mark.parametrize(
     "distance,accepted", [(100 / 3, True), (100 / 3 + 0.001, False), (100, False)]
 )

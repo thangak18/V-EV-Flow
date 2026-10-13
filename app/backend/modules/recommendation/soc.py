@@ -61,9 +61,22 @@ def _nonnegative_finite(value: float, name: str) -> None:
 
 
 def _validate_vehicle(vehicle: Vehicle) -> None:
+    current_soc = vehicle.soc_pct
+    if (
+        isinstance(current_soc, bool)
+        or not isinstance(current_soc, (int, float))
+        or not 0 <= current_soc <= 100
+        or not isfinite(current_soc)
+    ):
+        raise ValueError("soc_pct must be a finite number between 0 and 100")
     for name in ("battery_kwh", "consumption_kwh_per_km"):
         value = getattr(vehicle, name)
-        if not isfinite(value) or value <= 0:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not isfinite(value)
+            or value <= 0
+        ):
             raise ValueError(f"{name} must be finite and positive")
 
 
@@ -92,7 +105,16 @@ def working_ports(station: Station, status: StationStatus) -> int:
         raise ValueError("station_id must match between station and status")
     if station.n_ports != status.n_ports:
         raise ValueError("n_ports must match between station and status")
-    return station.n_ports - status.ports_broken
+    for name in ("ports_free", "ports_busy", "ports_broken"):
+        count = getattr(status, name)
+        if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+            raise ValueError(f"{name} must be a nonnegative integer")
+    if status.ports_free + status.ports_busy + status.ports_broken != station.n_ports:
+        raise ValueError("port counts must sum to n_ports")
+    capacity = station.n_ports - status.ports_broken
+    if isinstance(capacity, bool) or not isinstance(capacity, int) or capacity < 0:
+        raise ValueError("working capacity must be a nonnegative integer")
+    return capacity
 
 
 def evaluate_feasibility(
@@ -131,7 +153,7 @@ def evaluate_feasibility(
             reason = RejectionReason.CONNECTOR_INCOMPATIBLE
         elif len(set(candidate.station.connector_types)) != 1:
             reason = RejectionReason.CONNECTOR_CAPACITY_UNKNOWN
-        elif capacity == 0:
+        elif capacity <= 0:
             reason = RejectionReason.NO_WORKING_PORTS
         else:
             arrival = arrival_soc_pct(vehicle, candidate.route.distance_km)
