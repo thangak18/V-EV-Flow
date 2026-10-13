@@ -1,5 +1,7 @@
 # Bàn giao Predictor cho Kiên
 
+**Bộ artifact đã chốt:** [ARTIFACT_RELEASE.md](ARTIFACT_RELEASE.md) — version/hash cố định, ZIP ngoài Git và ví dụ load qua file repositories đã có của Kiên.
+
 **Artifact khuyên dùng hiện tại:** [model từ simulator Bảo](SIMULATOR_HANDOFF.md),
 14 trạm và 14 ngày/kịch bản. Phần demo synthetic bên dưới giữ để chạy smoke
 nhỏ; không dùng nó thay model simulator khi tích hợp mới.
