@@ -3,56 +3,45 @@ import { describe, expect, test } from "vitest";
 
 import type { StrategyRow } from "../../hooks/useSimulationComparison";
 import { FIXTURE_HASH } from "../../test/fixtureHash";
-import { StrategyComparison } from "./StrategyComparison";
+import { StrategyComparison, topSuccessRows } from "./StrategyComparison";
 
-const rows: StrategyRow[] = [
-  {
-    strategy: "nearest",
+function successRow(
+  strategy: StrategyRow["strategy"],
+  successRate: number,
+): Extract<StrategyRow, { status: "success" }> {
+  return {
+    strategy,
     status: "success",
     result: {
       scenario: "tet",
       seed: 42,
-      strategy: "nearest",
+      strategy,
       model_version: "fake-sim-v1",
       fixture_hash: FIXTURE_HASH,
       contract_version: "0.1.0",
       metrics: {
-        success_rate: 0.9,
+        success_rate: successRate,
         mean_detour_km: 2.5,
         mean_wait_minutes: 4,
         failed_count: 10,
         vehicle_count: 100,
       },
     },
-  },
+  };
+}
+
+const rows: StrategyRow[] = [
+  successRow("nearest", 0.9),
   {
     strategy: "currently_available",
     status: "error",
     message: "timeout",
   },
-  {
-    strategy: "ai_allocation",
-    status: "success",
-    result: {
-      scenario: "tet",
-      seed: 42,
-      strategy: "ai_allocation",
-      model_version: "fake-sim-v1",
-      fixture_hash: FIXTURE_HASH,
-      contract_version: "0.1.0",
-      metrics: {
-        success_rate: 0.92,
-        mean_detour_km: 2.1,
-        mean_wait_minutes: 3.5,
-        failed_count: 8,
-        vehicle_count: 100,
-      },
-    },
-  },
+  successRow("ai_allocation", 0.92),
 ];
 
 describe("StrategyComparison", () => {
-  test("shows cards with delta and keeps tech details collapsed", () => {
+  test("shows bars with delta and keeps tech details collapsed", () => {
     render(
       <StrategyComparison
         rows={rows}
@@ -68,9 +57,36 @@ describe("StrategyComparison", () => {
       1,
     );
     expect(screen.getByText(/Không chọn sẵn người thắng/)).toBeInTheDocument();
-    expect(screen.getByText("10")).toBeInTheDocument();
+    expect(screen.getAllByText("10").length).toBeGreaterThanOrEqual(1);
     const tech = screen.getByText("Chi tiết mô phỏng").closest("details");
     expect(tech).not.toHaveAttribute("open");
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  test("marks all tied leaders without picking array order", () => {
+    const tied: StrategyRow[] = [
+      successRow("nearest", 0.9),
+      successRow("currently_available", 0.9),
+      successRow("ai_allocation", 0.9),
+    ];
+    render(<StrategyComparison rows={tied} />);
+    expect(screen.getByTestId("strategy-delta")).toHaveTextContent(
+      /Đồng hạng/i,
+    );
+    expect(screen.getByTestId("strategy-delta")).toHaveTextContent(/Gần nhất/);
+    expect(screen.getByTestId("strategy-delta")).toHaveTextContent(
+      /Đang trống/,
+    );
+    expect(screen.getByTestId("strategy-delta")).toHaveTextContent(
+      /Phân bổ AI/,
+    );
+    expect(screen.getAllByText(/đồng hạng/i).length).toBeGreaterThanOrEqual(3);
+    expect(
+      topSuccessRows(
+        tied.filter(
+          (row): row is Extract<StrategyRow, { status: "success" }> =>
+            row.status === "success",
+        ),
+      ),
+    ).toHaveLength(3);
   });
 });

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 
 import type { RecommendationResult } from "../../services/api";
-import { PlanEmptyState, PlanSummary } from "./PlanSummary";
+import { formatEtaTime, PlanEmptyState, PlanSummary } from "./PlanSummary";
 
 const base: RecommendationResult = {
   request_id: "demo-001",
@@ -47,12 +47,21 @@ describe("PlanSummary", () => {
     expect(screen.getByText("Trạm dự phòng")).toBeInTheDocument();
     expect(screen.getByText(/15,5%/)).toBeInTheDocument();
     expect(screen.getByText("Đủ pin để tới trạm chính")).toBeInTheDocument();
+    expect(
+      screen.getByText(/giả định independent_stations/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/16:40/)).toBeInTheDocument();
 
     const details = screen.getByText("Chi tiết kỹ thuật").closest("details");
     expect(details).not.toHaveAttribute("open");
     details?.setAttribute("open", "");
     expect(screen.getByText(/example-v1/)).toBeInTheDocument();
-    expect(screen.getByText(/independent_stations/)).toBeInTheDocument();
+  });
+
+  test("formats ETA in Asia/Ho_Chi_Minh regardless of host timezone", () => {
+    expect(formatEtaTime("2026-10-13T16:40:00+07:00")).toMatch(/16:40/);
+    // Same instant in UTC must still render Vietnam local clock.
+    expect(formatEtaTime("2026-10-13T09:40:00Z")).toMatch(/16:40/);
   });
 
   test("handles missing backup and no-plan reasons", () => {

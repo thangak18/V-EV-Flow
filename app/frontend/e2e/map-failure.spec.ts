@@ -32,7 +32,7 @@ test.describe("Goong map failure fallback", () => {
     await page.goto("/operator");
     // MapView mounts only after pressure AsyncState leaves idle.
     await page.getByRole("button", { name: /Áp dụng kịch bản/i }).click();
-    await expect(page.getByText("Chú thích áp lực")).toBeVisible();
+    await expect(page.getByLabel("Chú thích áp lực")).toBeVisible();
 
     await expect(page.getByText(/Bản đồ Goong/i)).toBeVisible();
     await expect(page.getByRole("alert")).toContainText(/Bản đồ lỗi/i, {

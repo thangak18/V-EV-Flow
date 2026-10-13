@@ -44,11 +44,9 @@ for (const width of [375, 390] as const) {
       expect(headerBox!.height).toBeLessThan(170);
 
       await page.getByRole("button", { name: /So sánh 3 chiến lược/i }).click();
-      await expect(page.getByRole("heading", { name: "Gần nhất" })).toBeVisible(
-        {
-          timeout: 30_000,
-        },
-      );
+      await expect(page.getByText("Gần nhất").first()).toBeVisible({
+        timeout: 30_000,
+      });
       await expect(page.getByTestId("strategy-delta")).toBeVisible();
 
       await assertNoDocumentHorizontalOverflow(page);

@@ -6,8 +6,6 @@ test("operator loads pressure and compares three strategies", async ({
   await page.goto("/operator");
   await page.getByLabel("Kịch bản").selectOption("tet");
   await page.getByRole("button", { name: /Áp dụng kịch bản/i }).click();
-  await expect(page.getByText("Chú thích áp lực")).toBeVisible();
-  await page.getByText("Chú thích áp lực").click();
   await expect(page.getByLabel("Chú thích áp lực")).toBeVisible();
   await expect(page.getByText(/Danh sách điểm trên bản đồ/i)).toBeVisible({
     timeout: 15_000,
@@ -16,9 +14,9 @@ test("operator loads pressure and compares three strategies", async ({
   await expect(page.getByLabel("Station text list")).toBeVisible();
 
   await page.getByRole("button", { name: /So sánh 3 chiến lược/i }).click();
-  await expect(page.getByRole("heading", { name: "Gần nhất" })).toBeVisible({
+  await expect(page.getByText("Gần nhất").first()).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByRole("heading", { name: "Đang trống" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Phân bổ AI" })).toBeVisible();
+  await expect(page.getByText("Đang trống").first()).toBeVisible();
+  await expect(page.getByText("Phân bổ AI").first()).toBeVisible();
 });

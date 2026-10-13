@@ -10,10 +10,16 @@ function formatPct(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-function formatEtaTime(value: string): string {
+const HCMC_TZ = "Asia/Ho_Chi_Minh";
+
+/** Format ETA in Vietnam time so the (+07:00) label matches the clock. */
+export function formatEtaTime(value: string): string {
   return new Date(value).toLocaleString("vi-VN", {
+    timeZone: HCMC_TZ,
     hour: "2-digit",
     minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
   });
 }
 
@@ -84,6 +90,12 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
               {result.plan_p != null ? (
                 <p className="plan-confidence">
                   Ước lượng kế hoạch {formatPct(result.plan_p)}
+                  {result.plan_p_assumption ? (
+                    <span className="plan-confidence__hint">
+                      {" "}
+                      · giả định {result.plan_p_assumption}
+                    </span>
+                  ) : null}
                 </p>
               ) : null}
               <button

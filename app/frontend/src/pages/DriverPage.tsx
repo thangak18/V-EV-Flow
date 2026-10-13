@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
 import { AsyncState } from "../components/common/AsyncState";
+import { DataTypeBadge } from "../components/common/DataTypeBadge";
 import { MapView } from "../components/map/MapView";
 import type {
   MapModel,
@@ -57,14 +58,14 @@ export function DriverPage() {
         id: "origin",
         lat: corridor.origin.lat,
         lng: corridor.origin.lng,
-        label: "TP. Hồ Chí Minh",
+        label: corridor.originLabel,
         role: "origin",
       },
       {
         id: "destination",
         lat: corridor.destination.lat,
         lng: corridor.destination.lng,
-        label: "Vũng Tàu",
+        label: corridor.destinationLabel,
         role: "destination",
       },
     ];
@@ -127,6 +128,11 @@ export function DriverPage() {
 
       <div className="driver-workspace">
         <aside className="driver-sidebar">
+          {result ? (
+            <div className="sidebar-badge-row">
+              <DataTypeBadge dataType={result.data_type} />
+            </div>
+          ) : null}
           {status === "idle" ? (
             <PlanEmptyState />
           ) : (

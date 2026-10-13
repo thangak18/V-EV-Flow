@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
+import { DataTypeBadge } from "../components/common/DataTypeBadge";
 import { MapView } from "../components/map/MapView";
 import type {
   MapModel,
@@ -78,6 +79,9 @@ export function OperatorPage() {
     return { points, unlocated, fitBounds: true };
   }, [pressure.result, stationIndex]);
 
+  const pressureDataType =
+    pressure.result?.stations[0]?.data_type ?? ("mock" as const);
+
   return (
     <main className="operator-page">
       <header className="operator-header">
@@ -87,6 +91,7 @@ export function OperatorPage() {
             Áp lực là proxy rủi ro thiếu cổng, không phải số xe thực tế.
           </p>
         </div>
+        {pressure.result ? <DataTypeBadge dataType={pressureDataType} /> : null}
       </header>
 
       <div className="operator-toolbar">
@@ -143,10 +148,9 @@ export function OperatorPage() {
             model={mapModel}
             preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
           />
-          <details className="tech-details operator-legend-details">
-            <summary>Chú thích áp lực</summary>
+          <div className="operator-legend">
             <PressureLegend />
-          </details>
+          </div>
           <p className="map-card-footer" role="status">
             {pressure.result
               ? "Bản đồ minh họa"

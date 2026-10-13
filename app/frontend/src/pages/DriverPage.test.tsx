@@ -64,8 +64,17 @@ describe("DriverPage", () => {
     await waitFor(() => {
       const list = screen.getByLabelText("Station text list");
       expect(list).toHaveTextContent("Điểm đi");
+      expect(list).toHaveTextContent("Vũng Tàu");
+      expect(list).toHaveTextContent("TP. Hồ Chí Minh");
       expect(list.textContent).toMatch(/10\.3500/);
       expect(list.textContent).toMatch(/107\.0800/);
+      // Origin of vt_hcm is Vũng Tàu coords; destination is HCMC coords.
+      expect(list.textContent).toMatch(
+        /Điểm đi: Vũng Tàu \(10\.3500, 107\.0800\)/,
+      );
+      expect(list.textContent).toMatch(
+        /Điểm đến: TP\. Hồ Chí Minh \(10\.7800, 106\.7000\)/,
+      );
     });
   });
 

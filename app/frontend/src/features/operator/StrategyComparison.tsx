@@ -33,13 +33,11 @@ function formatDeltaMin(value: number): string {
   return `${signed} phút`;
 }
 
-function bestSuccess(rows: SuccessRow[]): SuccessRow | null {
-  if (rows.length === 0) return null;
-  return rows.reduce((best, row) =>
-    row.result.metrics.success_rate > best.result.metrics.success_rate
-      ? row
-      : best,
-  );
+/** All success rows tied at the highest success rate (may be many). */
+export function topSuccessRows(rows: SuccessRow[]): SuccessRow[] {
+  if (rows.length === 0) return [];
+  const best = Math.max(...rows.map((row) => row.result.metrics.success_rate));
+  return rows.filter((row) => row.result.metrics.success_rate === best);
 }
 
 export function StrategyComparison({ rows, meta }: Props) {
@@ -96,7 +94,9 @@ export function StrategyComparison({ rows, meta }: Props) {
     successRows.find((row) => row.strategy === "nearest") ??
     successRows[0] ??
     null;
-  const winner = bestSuccess(successRows);
+  const leaders = topSuccessRows(successRows);
+  const leaderIds = new Set(leaders.map((row) => row.strategy));
+  const isTie = leaders.length > 1;
 
   return (
     <section className="strategy-comparison" aria-labelledby="strategy-title">
@@ -108,98 +108,135 @@ export function StrategyComparison({ rows, meta }: Props) {
         </p>
       ) : null}
 
-      {winner && baseline && winner.strategy !== baseline.strategy ? (
+      {leaders.length === 0 ? null : isTie ? (
+        <p className="strategy-delta" data-testid="strategy-delta">
+          Đồng hạng tỷ lệ thành công cao nhất (
+          {formatPct(leaders[0]!.result.metrics.success_rate)}):{" "}
+          <strong>
+            {leaders
+              .map((row) => LABELS[row.strategy] ?? row.strategy)
+              .join(", ")}
+          </strong>
+          .
+        </p>
+      ) : baseline && leaders[0]!.strategy !== baseline.strategy ? (
         <p className="strategy-delta" data-testid="strategy-delta">
           So với{" "}
           <strong>{LABELS[baseline.strategy] ?? baseline.strategy}</strong>:{" "}
-          <strong>{LABELS[winner.strategy] ?? winner.strategy}</strong> cao hơn{" "}
+          <strong>
+            {LABELS[leaders[0]!.strategy] ?? leaders[0]!.strategy}
+          </strong>{" "}
+          cao hơn{" "}
           {formatDeltaPct(
-            winner.result.metrics.success_rate -
+            leaders[0]!.result.metrics.success_rate -
               baseline.result.metrics.success_rate,
           )}
           , đường vòng{" "}
           {formatDeltaKm(
-            winner.result.metrics.mean_detour_km -
+            leaders[0]!.result.metrics.mean_detour_km -
               baseline.result.metrics.mean_detour_km,
           )}
           , chờ{" "}
           {formatDeltaMin(
-            winner.result.metrics.mean_wait_minutes -
+            leaders[0]!.result.metrics.mean_wait_minutes -
               baseline.result.metrics.mean_wait_minutes,
           )}
           .
         </p>
-      ) : winner ? (
+      ) : (
         <p className="strategy-delta" data-testid="strategy-delta">
-          Hiện tại <strong>{LABELS[winner.strategy] ?? winner.strategy}</strong>{" "}
+          Hiện tại{" "}
+          <strong>
+            {LABELS[leaders[0]!.strategy] ?? leaders[0]!.strategy}
+          </strong>{" "}
           có tỷ lệ thành công cao nhất (
-          {formatPct(winner.result.metrics.success_rate)}).
+          {formatPct(leaders[0]!.result.metrics.success_rate)}).
         </p>
-      ) : null}
+      )}
 
-      <div className="strategy-cards">
+      <div className="strategy-bars" aria-label="Tỷ lệ thành công 0–100%">
+        <p className="strategy-bars__scale">Tỷ lệ thành công (0–100%)</p>
         {rows.map((row) =>
           row.status === "success" ? (
-            <article
+            <div
               key={row.strategy}
               className={
-                winner?.strategy === row.strategy
-                  ? "strategy-card strategy-card--best"
-                  : "strategy-card"
+                leaderIds.has(row.strategy)
+                  ? "strategy-bar-row strategy-bar-row--best"
+                  : "strategy-bar-row"
               }
               data-strategy={row.strategy}
             >
-              <h3>{LABELS[row.strategy] ?? row.strategy}</h3>
-              <p className="strategy-card__rate">
-                {formatPct(row.result.metrics.success_rate)}
-              </p>
-              <p className="strategy-card__rate-label">Tỷ lệ thành công</p>
-              <span
-                className="metric-bar metric-bar--card"
-                style={{
-                  width: `${row.result.metrics.success_rate * 100}%`,
-                }}
-                aria-hidden
-              />
-              <dl className="strategy-card__metrics">
-                <div>
-                  <dt>Đường vòng</dt>
-                  <dd>{row.result.metrics.mean_detour_km.toFixed(2)} km</dd>
-                </div>
-                <div>
-                  <dt>Chờ trung bình</dt>
-                  <dd>
-                    {row.result.metrics.mean_wait_minutes.toFixed(2)} phút
-                  </dd>
-                </div>
-                <div>
-                  <dt>Thất bại</dt>
-                  <dd>{row.result.metrics.failed_count}</dd>
-                </div>
-                {baseline && row.strategy !== baseline.strategy ? (
-                  <div>
-                    <dt>Δ thành công</dt>
-                    <dd>
-                      {formatDeltaPct(
-                        row.result.metrics.success_rate -
-                          baseline.result.metrics.success_rate,
-                      )}
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
-            </article>
+              <div className="strategy-bar-row__label">
+                <strong>{LABELS[row.strategy] ?? row.strategy}</strong>
+                <span>{formatPct(row.result.metrics.success_rate)}</span>
+              </div>
+              <div className="strategy-bar-row__track">
+                <span
+                  className="strategy-bar-row__fill"
+                  style={{
+                    width: `${row.result.metrics.success_rate * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
           ) : (
-            <article
+            <div
               key={row.strategy}
-              className="strategy-card strategy-card--error"
+              className="strategy-bar-row strategy-bar-row--error"
               data-strategy={row.strategy}
             >
-              <h3>{LABELS[row.strategy] ?? row.strategy}</h3>
-              <p className="strategy-card__error">Lỗi: {row.message}</p>
-            </article>
+              <div className="strategy-bar-row__label">
+                <strong>{LABELS[row.strategy] ?? row.strategy}</strong>
+                <span className="strategy-card__error">Lỗi: {row.message}</span>
+              </div>
+            </div>
           ),
         )}
+      </div>
+
+      <div className="table-wrap">
+        <table className="strategy-metrics-table">
+          <thead>
+            <tr>
+              <th scope="col">Chiến lược</th>
+              <th scope="col">Đường vòng</th>
+              <th scope="col">Chờ</th>
+              <th scope="col">Thất bại</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) =>
+              row.status === "success" ? (
+                <tr
+                  key={row.strategy}
+                  className={
+                    leaderIds.has(row.strategy) ? "row-best" : undefined
+                  }
+                >
+                  <th scope="row">
+                    {LABELS[row.strategy] ?? row.strategy}
+                    {leaderIds.has(row.strategy) ? (
+                      <span className="tie-badge">
+                        {isTie ? " đồng hạng" : " cao nhất"}
+                      </span>
+                    ) : null}
+                  </th>
+                  <td>{row.result.metrics.mean_detour_km.toFixed(2)} km</td>
+                  <td>
+                    {row.result.metrics.mean_wait_minutes.toFixed(2)} phút
+                  </td>
+                  <td>{row.result.metrics.failed_count}</td>
+                </tr>
+              ) : (
+                <tr key={row.strategy} className="row-error">
+                  <th scope="row">{LABELS[row.strategy] ?? row.strategy}</th>
+                  <td colSpan={3}>Lỗi: {row.message}</td>
+                </tr>
+              ),
+            )}
+          </tbody>
+        </table>
       </div>
 
       <details className="tech-details">
