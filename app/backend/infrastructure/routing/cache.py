@@ -6,7 +6,7 @@ import math
 import os
 import tempfile
 from datetime import datetime, timedelta
-from itertools import islice
+from itertools import chain, islice
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,7 @@ class RouteCache:
             raise ValueError("cache ttl must be positive")
         self.directory = directory
         self._ttl = ttl
+        self._cleanup_cursor: str | None = None
 
     @property
     def ttl(self) -> timedelta:
@@ -119,10 +120,16 @@ class RouteCache:
         return routes
 
     def _cleanup_expired(self, now: datetime) -> None:
-        """Bound opportunistic cleanup to a fixed number of cache files per write."""
+        """Rotate a bounded cleanup scan so cold entries are eventually reached."""
         try:
-            entries = islice(self.directory.glob("*.json"), _CLEANUP_SCAN_LIMIT)
+            cursor = self._cleanup_cursor
+            paths = sorted(self.directory.glob("*.json"), key=lambda path: path.name)
+            after_cursor = (path for path in paths if path.name > (cursor or ""))
+            before_cursor = (path for path in paths if cursor is not None and path.name <= cursor)
+            entries = islice(chain(after_cursor, before_cursor), _CLEANUP_SCAN_LIMIT)
+            last_path: Path | None = None
             for path in entries:
+                last_path = path
                 try:
                     with path.open(encoding="utf-8") as entry_file:
                         entry = json.load(entry_file, parse_constant=_reject_nonfinite_json)
@@ -133,6 +140,8 @@ class RouteCache:
                         self._unlink(path)
                 except (OSError, TypeError, ValueError, json.JSONDecodeError):
                     self._unlink(path)
+            if last_path is not None:
+                self._cleanup_cursor = last_path.name
         except OSError:
             pass
 

@@ -299,3 +299,49 @@ def test_opportunistic_cleanup_scans_a_bounded_number_of_other_entries(
     )
 
     assert sum(path.exists() for path in expired_paths) >= 1
+
+
+def test_rotating_cleanup_reaches_expired_entries_after_fresh_first_batch(
+    cache: RouteCache, now: datetime
+) -> None:
+    cache.directory.mkdir(parents=True)
+    for index in range(64):
+        key = f"{index:064x}"
+        path = cache.directory / f"{key}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "key": key,
+                    "collected_at": (now - timedelta(minutes=10)).isoformat(),
+                    "expires_at": (now - timedelta(minutes=5)).isoformat(),
+                    "routes": [
+                        {
+                            "distance_km": 12.5,
+                            "duration_minutes": 20,
+                            "source": "goong-directions-v2",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    paths = list(cache.directory.glob("*.json"))
+    fresh_paths = paths[:32]
+    expired_paths = paths[32:]
+    for path in fresh_paths:
+        entry = json.loads(path.read_text(encoding="utf-8"))
+        entry["expires_at"] = (now + timedelta(minutes=5)).isoformat()
+        path.write_text(json.dumps(entry), encoding="utf-8")
+
+    for round_ in range(2):
+        cache.put(
+            f"{100 + round_:064x}",
+            (RouteResult(distance_km=12.5, duration_minutes=20, source="goong-directions-v2"),),
+            now,
+            now + timedelta(minutes=5),
+        )
+
+    assert all(path.exists() for path in fresh_paths)
+    assert not any(path.exists() for path in expired_paths)
