@@ -169,8 +169,133 @@ def test_discards_stale_entry_even_if_stored_expiry_is_future(
     cache: RouteCache, now: datetime
 ) -> None:
     key = "e" * 64
-    cache.put(key, (), now - timedelta(minutes=6), now - timedelta(seconds=1))
+    cache.put(
+        key,
+        (RouteResult(distance_km=12.5, duration_minutes=20, source="goong-directions-v2"),),
+        now - timedelta(minutes=6),
+        now - timedelta(seconds=1),
+    )
     path = cache.directory / f"{key}.json"
 
     assert cache.get(key, now) is None
     assert not path.exists()
+
+
+@pytest.mark.parametrize("field", ["distance_km", "duration_minutes"])
+def test_discards_nonfinite_numeric_route_values(
+    cache: RouteCache, now: datetime, field: str
+) -> None:
+    key = "f" * 64
+    cache.directory.mkdir(parents=True)
+    path = cache.directory / f"{key}.json"
+    route = {"distance_km": 12.5, "duration_minutes": 20, "source": "goong-directions-v2"}
+    route[field] = 1e309
+    entry = json.dumps(
+        {
+            "schema_version": 1,
+            "key": key,
+            "collected_at": now.isoformat(),
+            "expires_at": (now + timedelta(minutes=5)).isoformat(),
+            "routes": [route],
+        }
+    ).replace("Infinity", "1e309")
+    path.write_text(entry, encoding="utf-8")
+
+    assert cache.get(key, now) is None
+    assert not path.exists()
+
+
+def test_discards_empty_routes_from_otherwise_valid_entry(cache: RouteCache, now: datetime) -> None:
+    key = "g" * 64
+    cache.directory.mkdir(parents=True)
+    path = cache.directory / f"{key}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "key": key,
+                "collected_at": now.isoformat(),
+                "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                "routes": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert cache.get(key, now) is None
+    assert not path.exists()
+
+
+def test_put_opportunistically_removes_expired_entries_for_other_keys(
+    cache: RouteCache, now: datetime
+) -> None:
+    cache.directory.mkdir(parents=True)
+    expired_paths = []
+    for suffix in "hijkl":
+        path = cache.directory / f"{suffix * 64}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "key": suffix * 64,
+                    "collected_at": (now - timedelta(minutes=10)).isoformat(),
+                    "expires_at": (now - timedelta(minutes=5)).isoformat(),
+                    "routes": [
+                        {
+                            "distance_km": 12.5,
+                            "duration_minutes": 20,
+                            "source": "goong-directions-v2",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        expired_paths.append(path)
+
+    cache.put(
+        "m" * 64,
+        (RouteResult(distance_km=12.5, duration_minutes=20, source="goong-directions-v2"),),
+        now,
+        now + timedelta(minutes=5),
+    )
+
+    assert not any(path.exists() for path in expired_paths)
+
+
+def test_opportunistic_cleanup_scans_a_bounded_number_of_other_entries(
+    cache: RouteCache, now: datetime
+) -> None:
+    cache.directory.mkdir(parents=True)
+    expired_paths = []
+    for index in range(33):
+        key = f"{index:064x}"
+        path = cache.directory / f"{key}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "key": key,
+                    "collected_at": (now - timedelta(minutes=10)).isoformat(),
+                    "expires_at": (now - timedelta(minutes=5)).isoformat(),
+                    "routes": [
+                        {
+                            "distance_km": 12.5,
+                            "duration_minutes": 20,
+                            "source": "goong-directions-v2",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        expired_paths.append(path)
+
+    cache.put(
+        "z" * 64,
+        (RouteResult(distance_km=12.5, duration_minutes=20, source="goong-directions-v2"),),
+        now,
+        now + timedelta(minutes=5),
+    )
+
+    assert sum(path.exists() for path in expired_paths) >= 1

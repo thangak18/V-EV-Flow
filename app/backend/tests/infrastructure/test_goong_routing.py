@@ -119,12 +119,7 @@ async def test_corrupted_route_is_replaced_from_upstream(tmp_path: Path) -> None
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         provider = make_provider(tmp_path, client, cache=cache)
         entry = cache.directory / f"{cache.key_for(request)}.json"
-        cache.put(
-            cache.key_for(request),
-            (),
-            NOW,
-            NOW + cache.ttl,
-        )
+        cache.directory.mkdir(parents=True)
         entry.write_text("{broken json", encoding="utf-8")
 
         replacement = await provider.get_routes(request)

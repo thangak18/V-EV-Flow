@@ -2,9 +2,11 @@
 
 import hashlib
 import json
+import math
 import os
 import tempfile
 from datetime import datetime, timedelta
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +14,7 @@ from app.backend.contracts.recommendation import RouteRequest, RouteResult
 
 _SCHEMA_VERSION = 1
 _PROVIDER_VERSION = "goong-directions-v2"
+_CLEANUP_SCAN_LIMIT = 32
 
 
 class RouteCache:
@@ -63,8 +66,10 @@ class RouteCache:
             raise ValueError("cache timestamps must be timezone-aware")
         if expires_at <= collected_at:
             raise ValueError("cache expiry must be after collection")
+        _validate_routes(routes)
 
         self.directory.mkdir(parents=True, exist_ok=True)
+        self._cleanup_expired(collected_at)
         entry = {
             "schema_version": _SCHEMA_VERSION,
             "key": key,
@@ -109,7 +114,27 @@ class RouteCache:
         raw_routes = entry.get("routes")
         if not isinstance(raw_routes, list):
             raise ValueError("cache routes must be a list")
-        return tuple(RouteResult.model_validate(route) for route in raw_routes)
+        routes = tuple(RouteResult.model_validate(route) for route in raw_routes)
+        _validate_routes(routes)
+        return routes
+
+    def _cleanup_expired(self, now: datetime) -> None:
+        """Bound opportunistic cleanup to a fixed number of cache files per write."""
+        try:
+            entries = islice(self.directory.glob("*.json"), _CLEANUP_SCAN_LIMIT)
+            for path in entries:
+                try:
+                    with path.open(encoding="utf-8") as entry_file:
+                        entry = json.load(entry_file, parse_constant=_reject_nonfinite_json)
+                    expires_at = _parse_aware_datetime(
+                        entry.get("expires_at") if isinstance(entry, dict) else None
+                    )
+                    if expires_at <= now:
+                        self._unlink(path)
+                except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                    self._unlink(path)
+        except OSError:
+            pass
 
     @staticmethod
     def _unlink(path: Path) -> None:
@@ -130,6 +155,14 @@ def _parse_aware_datetime(value: Any) -> datetime:
 
 def _is_aware(value: datetime) -> bool:
     return value.tzinfo is not None and value.utcoffset() is not None
+
+
+def _validate_routes(routes: tuple[RouteResult, ...]) -> None:
+    if not routes:
+        raise ValueError("cache routes must not be empty")
+    for route in routes:
+        if not math.isfinite(route.distance_km) or not math.isfinite(route.duration_minutes):
+            raise ValueError("cache route distance and duration must be finite")
 
 
 def _reject_nonfinite_json(value: str) -> None:
