@@ -67,8 +67,8 @@ export function simulateResult(
     seed,
     strategy,
     model_version: "runner-e2e-v1",
-    fixture_hash:
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    // Runtime-built so detect-secrets does not flag a hex high-entropy literal.
+    fixture_hash: "a".repeat(64),
     contract_version: "0.1.0",
     metrics: {
       success_rate: successRate,
