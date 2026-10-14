@@ -171,3 +171,7 @@ thực hiện integration proof với nguồn simulator đó.
 ## Ca inference đối chiếu C5
 
 Xem [INFERENCE_CASES.md](INFERENCE_CASES.md): 9 payload hợp lệ và 15 ca partial/file history, horizon, loader failure; lệnh chạy lại và output/lỗi thực tế. Không phải proof HTTP wiring.
+
+## Phối hợp C5/API/UI
+
+Xem [C5_INTEGRATION.md](C5_INTEGRATION.md): snapshot/scenario, đề xuất bucket ETA chờ Kiên xác nhận, tool HTTP parity và checklist E2E sau wiring. Production composition hiện vẫn fake; không coi test-only binding là tích hợp hoàn tất.
