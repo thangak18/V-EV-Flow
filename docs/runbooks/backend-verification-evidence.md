@@ -1,5 +1,25 @@
 # C1–C9 backend stabilization and sign-off evidence
 
+## 0. Review-fix addendum (PR 81, October 14, 2026)
+
+This addendum supersedes the "uncommitted candidate", "793/819 tests" and
+"final clean-commit CI NOT RUN" statements below, which describe earlier
+revisions (8352af1 and its uncommitted patch; the patch is committed as 470f4e6).
+
+Independent review of 470f4e6 reproduced two P2 HTTP-boundary defects, both
+fixed on top of it without changing frozen contracts or generated artifacts:
+
+| Defect | Fix | Regression |
+| --- | --- | --- |
+| `vehicle.battery_kwh` / `consumption_kwh_per_km` = `"Infinity"` returned 500 | `validate_recommendation_request` rejects non-finite origin, destination and vehicle numerics with 422 before routing/allocation | `test_recommend_rejects_nonfinite_vehicle_measurements_before_allocation` (2 fields × `Infinity`, `-Infinity`, `NaN`); a later valid retry of the same request ID proves no receipt/load was committed |
+| Predictor returning another station/ETA made `/api/recommend` return 500 while `/api/predict` returned 503 | C5 raises `DataSourceUnavailableError` (503 `DATA_SOURCE_UNAVAILABLE`) for non-`PredictionResult`, invalid payload, contract-version, station/ETA mismatch and inconsistent primary/backup evidence; other `ValueError`s are not remapped | `test_recommend_maps_predictor_integrity_failure_to_typed_503_without_commit` (station, ETA) plus updated C5 service tests |
+
+Verification (local macOS, not remote CI): fresh `make setup` then `make ci`,
+exit 0, on clean tested revision `af0ec60` (code identical to the later
+documentation-only commit): 827 backend tests, coverage 95.16%, 87 frontend
+tests, 16 Playwright E2E; lint, build, contract-check, smoke and security pass.
+Log `/tmp/pr81-fix-ci.log` is not committed. Human approval/merge: NOT RUN.
+
 ## 1. Revision, scope and verdict
 
 - Owner: Kiên, Backend & Recommendation. Evidence captured October 14, 2026,
