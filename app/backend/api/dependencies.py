@@ -40,7 +40,7 @@ from app.backend.infrastructure.state.in_memory import InMemoryAllocationStore
 from app.backend.infrastructure.state.virtual_load import VirtualLoadStore
 from app.backend.modules.recommendation.allocation import AllocationCoordinator
 from app.backend.modules.recommendation.ranking import RankingConfig
-from app.backend.modules.recommendation.service import RecommendationService
+from app.backend.modules.recommendation.service import RecommendationService, VirtualLoadReader
 
 
 class StartupConfigurationError(RuntimeError):
@@ -90,7 +90,7 @@ def build_container(
     store = VirtualLoadStore(ttl=timedelta(seconds=settings.virtual_load_receipt_ttl_seconds))
     routes, owned_route_client = _build_route_provider(settings, route_client=route_client)
 
-    def service_factory(reader: VirtualLoadStore) -> RecommendationService:
+    def service_factory(reader: VirtualLoadReader) -> RecommendationService:
         return RecommendationService(
             station_repository=stations,
             status_repositories=statuses,

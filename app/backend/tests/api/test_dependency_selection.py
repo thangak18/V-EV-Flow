@@ -59,7 +59,7 @@ def test_external_goong_client_is_not_owned() -> None:
     transport = httpx.MockTransport(lambda request: httpx.Response(200, json={"routes": []}))
     external = httpx.AsyncClient(transport=transport)
     app = create_app(
-        Settings(route_backend="goong", goong_rest_api_key="not-a-secret"),
+        Settings(route_backend="goong", goong_rest_api_key="x"),
         route_client=external,
     )
     with TestClient(app):
