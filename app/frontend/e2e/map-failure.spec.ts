@@ -21,7 +21,7 @@ test.describe("Goong map failure fallback", () => {
 
     // Plan UI must remain usable after map failure.
     await page.getByRole("button", { name: /Tìm kế hoạch sạc/i }).click();
-    await expect(page.getByText(/Không có trạm khả thi/i)).toBeVisible();
+    await expect(page.getByTestId("plan-hero")).toBeVisible();
     await expect(page.getByLabel("Station text list")).toBeVisible();
     await expect(page.getByText("Dữ liệu minh họa").first()).toBeVisible();
   });

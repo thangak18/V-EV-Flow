@@ -1,5 +1,14 @@
-"""Public entry points for pure recommendation feasibility and ranking."""
+"""Public feasibility, ranking, service and allocation entry points."""
 
+from .allocation import (
+    AllocationCoordinator,
+    AllocationReceipt,
+    CandidateMetadata,
+    RecommendationAllocationStrategy,
+    Reservation,
+    bucket_start,
+    canonical_payload_hash,
+)
 from .ranking import (
     RankingBreakdown,
     RankingConfig,
@@ -10,6 +19,7 @@ from .ranking import (
     rank_candidates,
     score_candidate,
 )
+from .service import RecommendationService, VirtualLoadReader
 from .soc import (
     FeasibilityResult,
     FeasibleRouteCandidate,
@@ -24,6 +34,14 @@ from .soc import (
 )
 
 __all__ = [
+    "AllocationCoordinator",
+    "AllocationReceipt",
+    "CandidateMetadata",
+    "RecommendationAllocationStrategy",
+    "Reservation",
+    "bucket_start",
+    "VirtualLoadReader",
+    "canonical_payload_hash",
     "FeasibilityResult",
     "FeasibleRouteCandidate",
     "RejectedCandidate",
@@ -42,4 +60,5 @@ __all__ = [
     "rank_candidates",
     "score_candidate",
     "working_ports",
+    "RecommendationService",
 ]

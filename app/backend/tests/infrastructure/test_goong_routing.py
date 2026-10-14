@@ -9,11 +9,19 @@ import httpx
 import pytest
 
 from app.backend.contracts.common import Coordinate
+from app.backend.contracts.enums import DataType, Scenario
 from app.backend.contracts.errors import RouteUnavailableError
 from app.backend.contracts.ports import RouteProvider
-from app.backend.contracts.recommendation import RouteRequest, RouteResult, Vehicle
+from app.backend.contracts.recommendation import (
+    RecommendationRequest,
+    RouteRequest,
+    RouteResult,
+    Vehicle,
+)
+from app.backend.infrastructure.repositories.mock import MockStationRepository, MockStatusRepository
 from app.backend.infrastructure.routing.cache import RouteCache
-from app.backend.infrastructure.services import FakeRouteProvider
+from app.backend.infrastructure.services import FakePredictor, FakeRouteProvider
+from app.backend.modules.recommendation import RankingConfig, RecommendationService
 
 POLYLINE = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
 POLYLINE_POINTS = (
@@ -270,7 +278,7 @@ async def test_sums_legs_and_keeps_alternative_order(tmp_path: Path) -> None:
     "payload",
     [
         {},
-        {"routes": []},
+        {"routes": None},
         {"routes": [{"legs": []}]},
         {"routes": [{"legs": [{"distance": {"value": -1}, "duration": {"value": 1}}]}]},
         {"routes": [{"legs": [{"distance": {}, "duration": {"value": 1}}]}]},
@@ -290,6 +298,108 @@ async def test_rejects_unusable_upstream_payload(
             await make_provider(tmp_path, client).get_routes(valid_request())
 
     assert TEST_GOONG_KEY not in str(error.value)
+
+
+@pytest.mark.asyncio
+async def test_explicit_empty_routes_are_not_cached_and_can_recover(tmp_path: Path) -> None:
+    calls = 0
+    cache = RouteCache(tmp_path / "route-cache", timedelta(minutes=5))
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"routes": [] if calls == 1 else [valid_route()]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = make_provider(tmp_path, client, cache=cache)
+        assert await provider.get_routes(valid_request()) == ()
+        assert cache.get(cache.key_for(valid_request()), NOW) is None
+        assert list(cache.directory.glob("*.json")) == []
+        recovered = await provider.get_routes(valid_request())
+        assert recovered
+        assert await provider.get_routes(valid_request()) == recovered
+    assert calls == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"routes": [], "status": "REQUEST_DENIED"},
+        {"routes": [], "status": "UNKNOWN"},
+        {"routes": [], "error": "provider unavailable"},
+        {"routes": [], "error_message": "rate limited"},
+        {"routes": [valid_route()], "status": "REQUEST_DENIED"},
+    ],
+)
+async def test_error_envelopes_never_become_no_route(tmp_path: Path, payload: dict) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=payload)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(RouteUnavailableError):
+            await make_provider(tmp_path, client).get_routes(valid_request())
+    assert not list((tmp_path / "route-cache").glob("*.json"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("missing", ["station", "fallback", "all", "authentication"])
+async def test_goong_no_route_and_failures_through_recommendation(
+    tmp_path: Path,
+    missing: str,
+) -> None:
+    repository = MockStationRepository()
+    s1, s2, s3 = repository.list_stations()[:3]
+    coordinates = {f"{item.lat},{item.lng}" for item in repository.list_stations()}
+    s1_coordinate, s2_coordinate = f"{s1.lat},{s1.lng}", f"{s2.lat},{s2.lng}"
+    base = valid_request()
+
+    def handler(http_request: httpx.Request) -> httpx.Response:
+        origin = http_request.url.params["origin"]
+        destination = http_request.url.params["destination"]
+        if missing == "authentication" and destination == s1_coordinate:
+            return httpx.Response(401)
+        no_route = (
+            (missing == "station" and destination == s1_coordinate)
+            or (missing == "all" and destination in coordinates)
+            or (missing == "fallback" and origin == s1_coordinate and destination == s2_coordinate)
+        )
+        return httpx.Response(200, json={"routes": [] if no_route else [valid_route()]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        instance = RecommendationService(
+            station_repository=repository,
+            status_repositories={Scenario.NORMAL: MockStatusRepository(repository)},
+            route_provider=make_provider(tmp_path, client),
+            predictors={Scenario.NORMAL: FakePredictor()},
+            ranking_config=RankingConfig(),
+            data_type=DataType.MOCK,
+            max_prediction_horizon_minutes={Scenario.NORMAL: 60},
+        )
+        assert base.vehicle is not None
+        request = RecommendationRequest(
+            request_id="goong-c5",
+            origin=base.origin,
+            destination=base.destination,
+            observed_at=base.depart_time,
+            depart_time=base.depart_time,
+            scenario=Scenario.NORMAL,
+            vehicle=base.vehicle,
+        )
+        if missing == "authentication":
+            with pytest.raises(RouteUnavailableError):
+                await instance.recommend(request)
+            return
+        result = await instance.recommend(request)
+    if missing == "all":
+        assert result.primary is None
+        assert "route" in " ".join(result.reasons)
+        assert "SOC" not in " ".join(result.reasons)
+    elif missing == "station":
+        assert result.primary is not None and result.primary.station_id == s2.station_id
+    else:
+        assert result.primary is not None and result.primary.station_id == s1.station_id
+        assert result.backup is not None and result.backup.station_id == s3.station_id
 
 
 @pytest.mark.asyncio

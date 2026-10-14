@@ -9,10 +9,11 @@ router = APIRouter()
 
 @router.get("/stations", response_model=StationListResponse, operation_id="listStations")
 def list_stations(container: AppContainer = Depends(get_container)) -> StationListResponse:
+    data_type = DataType.SIMULATED if container.settings.data_backend == "file" else DataType.MOCK
     return StationListResponse(
         stations=container.stations.list_stations(),
-        data_type=DataType.MOCK,
+        data_type=data_type,
         source_notes=[
-            "Phase 0 synthetic station fixture; locations and capacities are assumptions."
+            "Configured station repository; source metadata on each station describes assumptions."
         ],
     )

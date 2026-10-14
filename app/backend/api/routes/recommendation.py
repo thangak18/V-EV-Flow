@@ -1,11 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
 
 from app.backend.api.dependencies import AppContainer, get_container
 from app.backend.api.errors import FeatureNotReadyError
-from app.backend.contracts.enums import DataType, Scenario
+from app.backend.api.validation import validate_prediction_result, validate_recommendation_request
+from app.backend.contracts.enums import Scenario
 from app.backend.contracts.errors import ErrorResponse
+from app.backend.contracts.prediction import PredictRequest
 from app.backend.contracts.recommendation import (
     PressureResponse,
     PressureStation,
@@ -31,7 +33,8 @@ router = APIRouter()
 async def recommend(
     request: RecommendationRequest, container: AppContainer = Depends(get_container)
 ) -> RecommendationResult:
-    return await container.recommendation.recommend(request)
+    validate_recommendation_request(request)
+    return await container.allocation_coordinator.recommend(request)
 
 
 @router.get("/pressure", response_model=PressureResponse, operation_id="getPressure")
@@ -40,16 +43,37 @@ def pressure(
     time: datetime = Query(...),
     container: AppContainer = Depends(get_container),
 ) -> PressureResponse:
+    horizon_minutes = container.settings.fake_prediction_horizon_minutes
+    if horizon_minutes < 30:
+        raise ValueError("configured prediction horizon does not support pressure proxy")
+    eta = time + timedelta(minutes=30)
+    if time.utcoffset() != timedelta(hours=7) or time.minute % 5 or time.second or time.microsecond:
+        from fastapi import HTTPException
+
+        raise HTTPException(422, "time must use a +07:00 five-minute bucket")
+    predictor = container.predictors_by_scenario[scenario]
     stations = tuple(
-        PressureStation(
-            station_id=station.station_id,
-            p_available=0.75,
-            pressure_score=0.25,
-            data_type=DataType.MOCK,
-        )
+        _pressure_station(station, scenario, time, eta, predictor)
         for station in container.stations.list_stations()
     )
     return PressureResponse(time=time, scenario=scenario, stations=stations)
+
+
+def _pressure_station(station, scenario: Scenario, observed_at: datetime, eta: datetime, predictor):
+    predict_request = PredictRequest(
+        station_id=station.station_id,
+        observed_at=observed_at,
+        eta=eta,
+        connector_type=station.connector_types[0],
+        scenario=scenario,
+    )
+    prediction = validate_prediction_result(predict_request, predictor.predict(predict_request))
+    return PressureStation(
+        station_id=station.station_id,
+        p_available=prediction.p_available,
+        pressure_score=1 - prediction.p_available,
+        data_type=prediction.data_type,
+    )
 
 
 @router.post("/simulate", response_model=SimulationResult, operation_id="simulate")
@@ -71,7 +95,10 @@ def whatif() -> None:
 
 
 @router.post("/reset", response_model=ResetResponse, operation_id="resetDemo")
-def reset(request: ResetRequest, container: AppContainer = Depends(get_container)) -> ResetResponse:
+async def reset(
+    request: ResetRequest, container: AppContainer = Depends(get_container)
+) -> ResetResponse:
     del request
+    await container.allocation_coordinator.reset()
     container.requests.reset()
     return ResetResponse(reset=True)

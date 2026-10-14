@@ -19,7 +19,12 @@ _UNAVAILABLE_MESSAGE = "Goong route service unavailable"
 
 
 class GoongRouteProvider:
-    """Translate Goong's V2 Directions response into validated route results."""
+    """Translate Goong's V2 Directions response into validated route results.
+
+    An explicit empty routes list in a successful, error-free response means
+    no road route. Empty results are not cached; the successful-route cache
+    retains its existing validation and TTL. Provider failures still raise.
+    """
 
     def __init__(
         self,
@@ -56,6 +61,8 @@ class GoongRouteProvider:
                     return cached
 
                 routes = await self._fetch_routes(request)
+                if not routes:
+                    return ()
                 now = self._clock()
                 try:
                     self._cache.put(key, routes, now, now + self._cache.ttl)
@@ -108,9 +115,13 @@ def _coordinate_text(coordinate: Coordinate) -> str:
 def _parse_routes(payload: Any) -> tuple[RouteResult, ...]:
     if not isinstance(payload, dict):
         raise ValueError("routes payload must be an object")
+    if any(key in payload for key in ("error", "errors", "error_message")):
+        raise ValueError("routes payload contains a provider error")
+    if "status" in payload and payload["status"] != "OK":
+        raise ValueError("routes payload has an unknown or unsuccessful status")
     raw_routes = payload.get("routes")
-    if not isinstance(raw_routes, list) or not raw_routes:
-        raise ValueError("routes payload must include alternatives")
+    if not isinstance(raw_routes, list):
+        raise ValueError("routes payload must include an explicit alternatives list")
 
     routes: list[RouteResult] = []
     for raw_route in raw_routes:

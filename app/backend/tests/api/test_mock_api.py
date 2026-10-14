@@ -87,8 +87,8 @@ def test_recommendation_conflict_reset_and_success() -> None:
     client = TestClient(create_app())
     result = client.post("/api/recommend", json=recommendation_payload())
     assert result.status_code == 200
-    assert result.json()["primary"] is None
-    assert result.json()["allocation_method"] == "phase0_placeholder"
+    assert result.json()["primary"] is not None
+    assert result.json()["allocation_method"] == "heuristic_ranking"
     changed = recommendation_payload()
     changed["scenario"] = "tet"
     assert client.post("/api/recommend", json=changed).status_code == 409
