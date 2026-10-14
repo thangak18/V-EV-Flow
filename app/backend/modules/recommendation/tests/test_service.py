@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from app.backend.contracts.common import Coordinate
 from app.backend.contracts.enums import DataType, Scenario
-from app.backend.contracts.errors import RouteUnavailableError
+from app.backend.contracts.errors import DataSourceUnavailableError, RouteUnavailableError
 from app.backend.contracts.prediction import PredictionResult, PredictRequest
 from app.backend.contracts.recommendation import (
     RecommendationRequest,
@@ -513,7 +513,7 @@ def test_no_plan_provenance_is_explicit_and_model_unused(source: DataType) -> No
 def test_predictor_corrupt_or_mismatched_response_rejected(field: str, value: object) -> None:
     stations, routes, predictor = journey()
     predictor.transform = lambda result: result.model_copy(update={field: value})
-    with pytest.raises(ValueError):
+    with pytest.raises(DataSourceUnavailableError):
         run(service(stations[:1], routes, predictor))
 
 
@@ -527,7 +527,7 @@ def test_incompatible_primary_backup_prediction_evidence_rejected(
     predictor.transform = lambda result: (
         result.model_copy(update={field: value}) if result.station_id == "S2" else result
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(DataSourceUnavailableError):
         run(service(stations[:2], routes, predictor))
 
 

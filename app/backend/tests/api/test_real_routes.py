@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
@@ -306,3 +307,60 @@ async def test_http_retry_conflict_and_reset_preserve_exactly_one_primary_alloca
                 reused.json()["primary"]["station_id"]: 1.0
             }
             assert await store.snapshot(eta, Scenario.NORMAL) == {}
+
+
+def _store_is_empty(app: FastAPI, payload: dict[str, object]) -> bool:
+    """A later valid retry of the same request id must create the only reservation."""
+    with TestClient(app) as client:
+        retry = client.post("/api/recommend", json=payload)
+        assert retry.status_code == 200
+        primary = retry.json()["primary"]
+        eta = datetime.fromisoformat(primary["eta"])
+        store = app.state.container.virtual_load_store
+        loads = asyncio.run(store.snapshot(eta, Scenario.NORMAL))
+    return loads == {primary["station_id"]: 1.0}
+
+
+@pytest.mark.parametrize("field", ["battery_kwh", "consumption_kwh_per_km"])
+@pytest.mark.parametrize("value", ["Infinity", "-Infinity", "NaN"])
+def test_recommend_rejects_nonfinite_vehicle_measurements_before_allocation(
+    field: str, value: str
+) -> None:
+    app = create_app(Settings(_env_file=None))
+    payload = recommendation_payload("c8-nonfinite")
+    invalid = {**payload, "vehicle": {**payload["vehicle"], field: value}}
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post("/api/recommend", json=invalid)
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("application/json")
+    assert _store_is_empty(app, payload)
+
+
+@pytest.mark.parametrize(
+    "tampering",
+    [
+        {"station_id": "WRONG_STATION"},
+        {"eta": datetime.fromisoformat("2026-10-13T23:55:00+07:00")},
+    ],
+    ids=["station", "eta"],
+)
+def test_recommend_maps_predictor_integrity_failure_to_typed_503_without_commit(
+    tampering: dict[str, object],
+) -> None:
+    app = create_app(Settings(_env_file=None))
+    predictor = app.state.container.predictors_by_scenario[Scenario.NORMAL]
+    genuine = predictor.predict
+
+    def tampered(request: PredictRequest) -> PredictionResult:
+        return genuine(request).model_copy(update=tampering)
+
+    payload = recommendation_payload("c8-predictor-integrity")
+    predictor.predict = tampered
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post("/api/recommend", json=payload)
+    finally:
+        del predictor.predict
+    assert response.status_code == 503
+    assert response.json()["code"] == "DATA_SOURCE_UNAVAILABLE"
+    assert _store_is_empty(app, payload)

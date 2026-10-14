@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from math import isfinite
 
 from fastapi import HTTPException
 
@@ -31,6 +32,21 @@ def validate_recommendation_request(request: RecommendationRequest) -> None:
         raise HTTPException(422, "timestamps must use the +07:00 convention")
     if request.depart_time < request.observed_at:
         raise HTTPException(422, "depart_time must not precede observed_at")
+    nonfinite = [
+        name
+        for name, value in (
+            ("origin.lat", request.origin.lat),
+            ("origin.lng", request.origin.lng),
+            ("destination.lat", request.destination.lat),
+            ("destination.lng", request.destination.lng),
+            ("vehicle.soc_pct", request.vehicle.soc_pct),
+            ("vehicle.battery_kwh", request.vehicle.battery_kwh),
+            ("vehicle.consumption_kwh_per_km", request.vehicle.consumption_kwh_per_km),
+        )
+        if not isfinite(value)
+    ]
+    if nonfinite:
+        raise HTTPException(422, f"non-finite numeric values are not accepted: {nonfinite}")
 
 
 def validate_prediction_result(

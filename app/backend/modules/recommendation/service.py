@@ -9,6 +9,7 @@ from typing import Protocol
 
 from app.backend.contracts.common import Coordinate
 from app.backend.contracts.enums import DataType, Scenario
+from app.backend.contracts.errors import DataSourceUnavailableError
 from app.backend.contracts.ports import (
     Predictor,
     RouteProvider,
@@ -316,12 +317,16 @@ class RecommendationService:
         if backup is not None:
             model_versions.add(predictions[backup.station_id].model_version)
         if len(model_versions) != 1:
-            raise ValueError("primary and backup predictions use inconsistent model versions")
+            raise DataSourceUnavailableError(
+                "primary and backup predictions use inconsistent model versions"
+            )
         selected_data_types = {predictions[primary.station_id].data_type}
         if backup is not None:
             selected_data_types.add(predictions[backup.station_id].data_type)
         if len(selected_data_types) != 1:
-            raise ValueError("primary and backup predictions use incompatible data provenance")
+            raise DataSourceUnavailableError(
+                "primary and backup predictions use incompatible data provenance"
+            )
         selected_data_types.add(self._data_type)
         result_data_type = (
             next(iter(selected_data_types)) if len(selected_data_types) == 1 else DataType.MIXED
@@ -460,15 +465,22 @@ class RecommendationService:
         )
         response = predictor.predict(prediction_request)
         if not isinstance(response, PredictionResult):
-            raise ValueError("predictor must return a PredictionResult")
-        result = PredictionResult.model_validate(response.model_dump(warnings=False))
+            raise DataSourceUnavailableError("predictor must return a PredictionResult")
+        try:
+            result = PredictionResult.model_validate(response.model_dump(warnings=False))
+        except ValueError as exc:
+            raise DataSourceUnavailableError("predictor returned an invalid response") from exc
         if result.contract_version != RecommendationResult.model_fields["contract_version"].default:
-            raise ValueError("prediction contract version is incompatible with recommendation")
+            raise DataSourceUnavailableError(
+                "prediction contract version is incompatible with recommendation"
+            )
         if (
             result.station_id != prediction_request.station_id
             or result.eta != prediction_request.eta
         ):
-            raise ValueError("predictor returned a station or ETA different from the request")
+            raise DataSourceUnavailableError(
+                "predictor returned a station or ETA different from the request"
+            )
         return result
 
     @staticmethod
