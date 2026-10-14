@@ -82,3 +82,12 @@ result = runner.run(request, strategy)
 - `strategy_for` maps `Strategy` to a strategy object. `ai_allocation` raises `ValueError` unless an `AllocationStrategy` is injected; there is no silent fallback to a baseline.
 - Each `Strategy` run uses a fresh engine from the same bundle, so all results for one `(scenario, seed, vehicle_count)` share `fixture_hash`.
 - The runner is not thread-safe (`free_ports` reflects the run in progress); the demo uses one worker.
+
+## Model snapshots: background replay, not live runner state
+
+The Parquet status history is a **background replay**: the engine run with the bundle's background arrivals and port faults only. The simulated vehicles of a `/simulate` run are not in it. Inside `DefaultSimulationRunner.run` the engine additionally holds those vehicles, so its ports can be busier than the Parquet at the same timestamp.
+
+- A model `availability` function fed by `build_status_window` over the Parquet sees the background snapshot. Call it a "background snapshot", never the live runner state.
+- `currently_available` reads the live engine (`free_ports`), so it does include the simulated vehicles. This asymmetry must be stated whenever the three strategies are compared.
+- The model snapshot needs the current status and exact lags: call `build_status_window(frame, station_id, observed_at, lag_minutes=(0, 15, 30, 60), scenario=scenario)`. Rows never come from after `observed_at`, and `scenario` must be explicit when the frame holds several. This describes the helper only: `build_status_window` currently raises when any requested lag is missing, which is a limitation of the helper, not of the model. `ModelPredictor` requires the current status (lag 0) but deliberately imputes missing 15/30/60-minute lags from its persisted training medians (see the prediction SPEC and `SIMULATOR_HANDOFF.md`). An adapter that wants valid early-history inference (the first 60 minutes) must pass the lags that exist, with lag 0 mandatory, instead of failing.
+- ETA passed to the predictor must be rounded up to a five-minute multiple relative to `observed_at` (at most 60 minutes) by the caller; the runner keeps its exact ETA for the trip.

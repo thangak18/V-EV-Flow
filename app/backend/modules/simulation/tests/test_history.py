@@ -13,6 +13,7 @@ from app.backend.contracts.simulation import (
     ScenarioConfig,
 )
 from app.backend.contracts.stations import Station
+from app.backend.modules.simulation.engine import SimulationEngine
 from app.backend.modules.simulation.history import (
     STATUS_COLUMNS,
     build_status_window,
@@ -161,3 +162,57 @@ def test_status_window_errors(history: pd.DataFrame) -> None:
     with pytest.raises(ValueError, match="scenario is required"):
         build_status_window(multi, "S001", observed)
     assert build_status_window(multi, "S001", observed, scenario=Scenario.TET).statuses
+
+
+def test_model_snapshot_has_current_and_exact_lags_without_future_rows(
+    history: pd.DataFrame,
+) -> None:
+    observed = history["ts"].iloc[-1] - timedelta(minutes=30)
+    window = build_status_window(history, "S002", observed, (0, 15, 30, 60))
+    assert window.lags == (0, 15, 30, 60)
+    assert [observed - item.ts for item in window.statuses] == [
+        timedelta(minutes=m) for m in (0, 15, 30, 60)
+    ]
+    assert window.statuses[0].ts == observed
+    assert all(item.ts <= observed for item in window.statuses)
+    assert all(item.station_id == "S002" for item in window.statuses)
+
+
+def test_model_snapshot_is_scenario_specific(history: pd.DataFrame) -> None:
+    observed = history["ts"].iloc[-1]
+    tet = history.assign(scenario="tet", ports_free=0, ports_busy=4, ports_broken=2)
+    both = pd.concat([history, tet])
+    normal = build_status_window(both, "S002", observed, (0, 15), scenario=Scenario.NORMAL)
+    crowded = build_status_window(both, "S002", observed, (0, 15), scenario=Scenario.TET)
+    assert {item.scenario for item in normal.statuses} == {Scenario.NORMAL}
+    assert {item.scenario for item in crowded.statuses} == {Scenario.TET}
+    assert all(item.ports_free == 0 for item in crowded.statuses)
+
+
+def _live_engine(bundle: FixtureBundle) -> SimulationEngine:
+    return SimulationEngine(
+        make_stations(),
+        bundle.scenario,
+        bundle.background_arrivals,
+        bundle.service_durations,
+        bundle.port_events,
+    )
+
+
+def test_history_is_background_only_and_runner_vehicles_are_not_in_it(
+    history: pd.DataFrame,
+) -> None:
+    """The Parquet replay equals the runner's engine until simulated vehicles arrive."""
+    quiet, live = _live_engine(make_bundle()), _live_engine(make_bundle())
+    for step in range(150):
+        quiet.step(T0 + step * STEP)
+        live.step(T0 + step * STEP)
+    for index in range(2):
+        live.arrive_now(f"EV{index}", "S002", 60.0)
+    ts = T0 + 150 * STEP
+    rows = history.loc[history["ts"] == ts].set_index("station_id")
+    quiet_free = {item.station_id: item.ports_free for item in quiet.step(ts).stations}
+    live_free = {item.station_id: item.ports_free for item in live.step(ts).stations}
+    assert quiet_free == rows["ports_free"].to_dict()
+    assert live_free["S002"] < quiet_free["S002"]
+    assert live_free["S001"] == quiet_free["S001"]
