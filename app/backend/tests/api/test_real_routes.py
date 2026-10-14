@@ -2,6 +2,7 @@ import asyncio
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import httpx
 import pandas as pd
@@ -326,9 +327,10 @@ def _store_is_empty(app: FastAPI, payload: dict[str, object]) -> bool:
 def test_recommend_rejects_nonfinite_vehicle_measurements_before_allocation(
     field: str, value: str
 ) -> None:
-    app = create_app(Settings(_env_file=None))
+    app = create_app()
     payload = recommendation_payload("c8-nonfinite")
-    invalid = {**payload, "vehicle": {**payload["vehicle"], field: value}}
+    vehicle = dict(cast(dict[str, object], payload["vehicle"]))
+    invalid = {**payload, "vehicle": {**vehicle, field: value}}
     with TestClient(app, raise_server_exceptions=False) as client:
         response = client.post("/api/recommend", json=invalid)
     assert response.status_code == 422
@@ -347,7 +349,7 @@ def test_recommend_rejects_nonfinite_vehicle_measurements_before_allocation(
 def test_recommend_maps_predictor_integrity_failure_to_typed_503_without_commit(
     tampering: dict[str, object],
 ) -> None:
-    app = create_app(Settings(_env_file=None))
+    app = create_app()
     predictor = app.state.container.predictors_by_scenario[Scenario.NORMAL]
     genuine = predictor.predict
 
