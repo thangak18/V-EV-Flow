@@ -29,3 +29,7 @@ No-route results are not cached. The existing nonempty-route cache format, valid
 ## C6 Expected-Demand Store
 
 `state/virtual_load.py` adds an async process-local `VirtualLoadStore` alongside the unchanged Phase 0 `InMemoryAllocationStore` facade. It implements the recommendation consumer's internal read/receipt port, without modifying shared contracts. Scenario-specific five-minute counters, globally conflicting request IDs, defensive JSON receipts and configurable processing-clock TTL are protected by a state lock. Receipt expiry reverses its own primary-only contributions. A separate shared decision lock orders complete Driver decisions and independent reset; always acquire decision before state. See recommendation SPEC for constructor/wiring, validation, retention and one-worker limitations. API dependency selection and reset endpoint integration remain C7–C8, not C6.
+
+## C7/C8 Runtime Wiring
+
+Mock adapters label mock data. File-backed station/status inputs are simulated unless an approved adapter establishes another source. File status repositories are scenario-scoped over the canonical Parquet dataset; missing or corrupt files fail without fallback. Goong uses an app-owned async client, `RouteCache`, configured TTL, and no live network in offline tests; no-route remains distinct from provider outage. One application-scoped `VirtualLoadStore` keeps scenario-isolated five-minute expected primary load and receipts until TTL or reset. It is process-local and supports one worker only.

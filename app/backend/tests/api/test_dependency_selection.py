@@ -72,3 +72,8 @@ def test_charge_duration_above_c6_maximum_is_rejected() -> None:
 
     with pytest.raises(ValueError, match="reservation maximum"):
         Settings(assumed_charge_duration_minutes=MAX_RESERVATION_DURATION_MINUTES + 0.1)
+
+
+def test_fake_horizon_must_support_the_pressure_proxy() -> None:
+    with pytest.raises(ValueError, match="30-minute pressure proxy"):
+        Settings(fake_prediction_horizon_minutes=20)

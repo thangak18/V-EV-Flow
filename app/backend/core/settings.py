@@ -53,6 +53,10 @@ class Settings(BaseSettings):
             raise ValueError(
                 "FAKE_PREDICTION_HORIZON_MINUTES must be a positive five-minute multiple"
             )
+        if self.fake_prediction_horizon_minutes < 30:
+            raise ValueError(
+                "FAKE_PREDICTION_HORIZON_MINUTES must support the 30-minute pressure proxy"
+            )
         if self.goong_cache_ttl_seconds <= 0 or self.virtual_load_receipt_ttl_seconds <= 0:
             raise ValueError("cache and receipt TTL values must be positive")
         if (

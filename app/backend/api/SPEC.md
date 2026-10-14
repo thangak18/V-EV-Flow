@@ -19,3 +19,7 @@ Support one demo worker while allocation is in memory. Lock allocation/reset upd
 ## Required Tests and Done Criteria
 
 Test every success/error response, DI selections, CORS, idempotency, reset, source labels, OpenAPI generation, and mock vertical slice. Done means frontend can use only generated types/examples and every documented endpoint passes contract validation.
+
+## C7/C8 Runtime Integration
+
+Settings select mock/file data, fake/model prediction, and fake/Goong routing. Unavailable real/model selections fail explicitly. `AppContainer` owns scenario-scoped predictors/status repositories, one `VirtualLoadStore`, and one `AllocationCoordinator`. Routes delegate `/stations`, `/predict`, `/recommend`, `/pressure`, `/simulate`, and `/reset` to those dependencies; `/whatif` remains P1 unavailable. API prediction observations and ETAs require +07:00 five-minute buckets and supported positive horizons. Pressure is the fixed 30-minute `1 - p_available` risk proxy, not occupancy. Goong clients owned by the app close through lifespan.
