@@ -35,7 +35,7 @@ Settings select mock/file data, fake/model prediction, and fake/Goong routing. U
 | `GET /api/health` | HTTP-process liveness, `{status: ok}` |
 | `GET /api/ready` | AppContainer.ready and selected adapter names; composition-only, not live network/model/status probe |
 | `GET /api/stations` | StationRepository; StationListResponse with mock or simulated envelope, source notes and per-station assumptions |
-| `POST /api/predict` | Station existence + time validation, then `predictors_by_scenario[scenario]`; validated PredictionResult |
+| `POST /api/predict` | Station existence + time/horizon + station connector compatibility validation, then `predictors_by_scenario[scenario]`; validated PredictionResult |
 | `POST /api/recommend` | Request validation, then `await allocation_coordinator.recommend(request)`; C5 decisions with C6 receipt/load commit |
 | `GET /api/pressure?scenario=...&time=...` | Scenario Predictor at time+30 minutes for each station, fixed `1-p_available` proxy |
 | `POST /api/simulate` | `simulation.run(request, allocation)`; configured FakeSimulationRunner, not real strategy comparison |
@@ -48,13 +48,13 @@ Settings select mock/file data, fake/model prediction, and fake/Goong routing. U
 
 Prediction observations and ETA must be aware +07:00 five-minute grid values (zero seconds/microseconds). Horizon must be positive, a five-minute multiple and no greater than `FAKE_PREDICTION_HORIZON_MINUTES` (default 60). Settings requires this fake capability to be at least 30, so pressure's fixed horizon is supported; merely checking the field does not deploy a model. Recommendation observation uses the same grid, departure uses +07 and cannot precede observation but need not be five-minute aligned. C5 physical travel ETA is rounded up for prediction; returned plan ETA is that conservative bucket. Candidate horizons include departure delay and fallback cumulative travel; unsupported candidates are excluded before inference rather than extrapolated.
 
-Pydantic validates required fields, coordinate/SOC bounds, enums, aware times and extra fields. Additional semantic failures use HTTPException 422. `/predict` validates station/time and matches output station/ETA; current FakePredictor has no model-specific connector/status eligibility, so successful fake predict does not establish reachability. Recommendation C3 does check connector/capacity/SOC. No-plan is HTTP 200 with null primary/backup/plan_p, reasons and not_used model_version; it is distinct from dependency failure.
+Pydantic validates required fields, coordinate/SOC bounds, enums, aware times and extra fields. Additional semantic failures use HTTPException 422. `/predict` resolves Station metadata, preserves unknown-station 404, validates time/horizon and exact membership in its `connector_types` before invoking the scenario Predictor, then matches output station/ETA. Unsupported connectors return 422 without inference. Compatibility is not current occupancy: a supported but occupied connector may still have future availability. Neither the station/request DTO nor Predictor probability, model version or provenance is changed. FakePredictor still has no model-specific status/eligibility checks, and successful fake prediction does not establish reachability or connector-specific trained-model capability at mixed-connector stations. Recommendation C3 separately checks connector/capacity/SOC. No-plan is HTTP 200 with null primary/backup/plan_p, reasons and not_used model_version; it is distinct from dependency failure.
 
 | Status | Domain/client failure | Response |
 | --- | --- | --- |
 | 404 | StationNotFoundError | `code="STATION_NOT_FOUND"` |
 | 409 | RequestConflictError | `code="REQUEST_CONFLICT"` |
-| 422 | Invalid request model/time/horizon | FastAPI `detail` list or semantic-validator `detail` string |
+| 422 | Invalid request model/time/horizon or station connector incompatibility | FastAPI `detail` list or semantic-validator `detail` string |
 | 503 | DataSourceUnavailableError | `code="DATA_SOURCE_UNAVAILABLE"` |
 | 503 | ModelNotReadyError | `code="MODEL_NOT_READY"`; mapping exists, model backend selection presently fails startup |
 | 503 | RouteUnavailableError | `code="ROUTE_UNAVAILABLE"` |

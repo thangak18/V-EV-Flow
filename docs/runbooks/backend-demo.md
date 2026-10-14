@@ -146,8 +146,12 @@ Interpretation:
 
 - Fake prediction: `p_available=0.75`, `model_version="fake-v1"`,
   `data_type="mock"`, `explanation_method="rule"`; no trained-model inference.
-  Fake `/predict` checks station/time/schema, but does not perform model-level
-  connector eligibility or read status history. C3 handles recommendation compatibility.
+  `/predict` checks station/time/schema and exact membership in the station's
+  `connector_types` before inference: an unsupported type returns 422 and an
+  unknown station remains 404. A supported but currently occupied connector is
+  not rejected merely for occupancy. Fake prediction still does not read status
+  history or establish model-level mixed-connector eligibility. C3 separately
+  handles recommendation compatibility/capacity/SOC.
 - Recommendation performs C3/C4/C5/C6, not a Phase 0 canned plan. Each plan
   includes routed distance/detour, arrival SOC and a conservative **prediction
   bucket ETA**, not an exact physical arrival. Primary/backup may be null.
@@ -207,6 +211,14 @@ Expected: `cmp` exit 0, conflict HTTP 409 `REQUEST_CONFLICT`, reset
 globally across scenarios. Do not generate a new request ID for a network retry.
 At TTL expiry the original receipt and its contribution are removed; replay is
 no longer promised. TTL uses processing time, not the fixed observation.
+Retries do not extend TTL; lookup/reserve/snapshot lazily prune expired receipts.
+Demand is recorded immediately for future charging buckets, but its retention
+is independent of arrival/session time. With default TTL 30 minutes and assumed
+charge duration 60 minutes, a plan arriving 40 minutes after commit can lose all
+its demand before arrival. This is the consistent short-demo MVP policy, not a
+physical booking or a guarantee of long-running balancing. Reset removes every
+receipt/contribution regardless of age. Post-C9 work may separate idempotency
+retention from demand lifetime; no default or storage semantics changed here.
 
 Response equality alone does not establish correct counters. Run the public
 store inspection test (no debug endpoint added):
@@ -371,11 +383,13 @@ curl -i "$API/predict" -H 'Content-Type: application/json' \
   -d '{"station_id":"UNKNOWN","observed_at":"2026-10-13T16:00:00+07:00","eta":"2026-10-13T16:30:00+07:00","connector_type":"CCS2","scenario":"normal"}'
 curl -i "$API/predict" -H 'Content-Type: application/json' \
   -d '{"station_id":"S001","observed_at":"2026-10-13T16:00:00+07:00","eta":"2026-10-13T17:05:00+07:00","connector_type":"CCS2","scenario":"normal"}'
+curl -i "$API/predict" -H 'Content-Type: application/json' \
+  -d '{"station_id":"S001","observed_at":"2026-10-13T16:00:00+07:00","eta":"2026-10-13T16:30:00+07:00","connector_type":"UNSUPPORTED-CONNECTOR","scenario":"normal"}'
 curl -i "$API/recommend" -H 'Content-Type: application/json' -d '{}'
 ```
 
 Expected: 404 `STATION_NOT_FOUND`, 422 unsupported 65-minute horizon with a
-60-minute setting, 422 missing request fields. Non-+07 offsets, naive times,
+60-minute setting, 422 unsupported station connector, 422 missing request fields. Non-+07 offsets, naive times,
 unaligned observations/ETAs, negative/out-of-range SOC and invalid enum/schema
 also return 422. Semantic validators may return `{"detail":"..."}`; Pydantic
 request errors have a `detail` list, not the domain error envelope.
@@ -394,6 +408,18 @@ request errors have a `detail` list, not the domain error envelope.
 | Full CI E2E cannot start | Stop manual API/Vite servers first; check Chromium dependencies |
 
 ## 9. Verification and post-C9 handoff
+
+The final offline routing probe observed 38 RouteProvider invocations for the
+14-station demo: one direct, 14 origin-to-station, 10 onward and 13
+primary-to-backup calls. Warm identical-departure input after store reset still
+invoked the provider 38 times but required zero MockTransport fetches; an exact
+idempotent retry required zero provider calls. Four distinct concurrent requests
+were serialized by C6 and performed 151 provider calls/54 cold-cohort fetches.
+These are offline measurements with synthetic transport delay, not live-Goong
+latency/quota evidence. See the verification record for timings and methodology.
+Keep the decision lock and route/selection semantics; evaluate any route-call
+optimization separately with regression coverage. Exact departure timestamps
+participate in cache keys, so different departures need not reuse warm entries.
 
 ```bash
 uv run pytest app/backend/modules/recommendation app/backend/tests/infrastructure app/backend/tests/api -v
