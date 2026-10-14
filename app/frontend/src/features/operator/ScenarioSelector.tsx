@@ -1,4 +1,4 @@
-import { isTimezoneAwareIso } from "../../services/errors";
+import { isPlus07FiveMinuteBucket } from "../../services/errors";
 import type { Scenario } from "../../services/api";
 
 type Props = {
@@ -18,7 +18,7 @@ export function ScenarioSelector({
   onApply,
   pending = false,
 }: Props) {
-  const timeInvalid = !isTimezoneAwareIso(time);
+  const timeInvalid = !isPlus07FiveMinuteBucket(time);
 
   return (
     <form
@@ -53,7 +53,7 @@ export function ScenarioSelector({
       </label>
       {timeInvalid ? (
         <p className="field-error" role="alert">
-          Thời điểm phải là ISO-8601 có múi giờ (ví dụ
+          Thời điểm phải là +07:00, căn 5 phút (ví dụ
           2026-10-13T16:00:00+07:00).
         </p>
       ) : null}

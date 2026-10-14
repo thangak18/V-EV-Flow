@@ -13,9 +13,9 @@ Các số 25%, 85% hoặc plan_p 94% trong proposal/API là minh họa, không m
 
 ## Frontend integration verify (owner web-map)
 
-HTTP facade vẫn Phase 0 cho `/recommend` (null primary + lý do placeholder). UI đã sẵn sàng payload pipeline: Playwright `e2e/driver-pipeline.spec.ts` inject `/recommend` với `data_type: simulated`, primary/backup, ETA, xác suất, thiếu tọa độ, empty và 503. Live `/pressure` + `/simulate` chạy qua production preview (Playwright webServer build+preview). So sánh 100 xe: mặc định seed 42 / 100 xe; UI không hard-code người thắng — khi FakeSimulationRunner trả metrics giống nhau thì hiện đồng hạng; khi runner/AI lệch tỷ lệ thì delta lấy từ response (`e2e/operator-compare.spec.ts`).
+HTTP `/recommend` trên `main` vẫn Phase 0 placeholder. Branch Kiên `feat/recommend-api` (#81) đã trả primary/backup (`heuristic_ranking`) khi smoke local; FE form chặn giờ lệch bucket +07/5 phút và hiển thị `detail` string 422. Playwright `e2e/driver-pipeline.spec.ts` inject payload pipeline (`simulated`, primary/backup, empty, 503). Live `/pressure` + `/simulate` qua production preview. So sánh 100 xe: seed 42 / 100 xe; không hard-code người thắng (`e2e/operator-compare.spec.ts`).
 
-Giới hạn demo hiện tại: ranking HTTP chờ Kiên nối module recommend; runner thật của Bảo (sau sửa giờ khởi hành) thay FakeSimulationRunner — UI không cần đổi shape. Nhãn badge theo `data_type` từ API (`mock` / `simulated` / …).
+Giới hạn: chờ #81 merge để Driver live có trạm thật; e2e `driver.spec` trên `main` vẫn kỳ vọng Phase 0 empty cho đến khi BE nối. Runner AI thật vẫn deferred — FakeSimulationRunner. Badge theo `data_type` API.
 
 ### Chốt demo trên máy trình bày
 

@@ -28,6 +28,11 @@ export class ApiError extends Error {
           body.detail,
         );
       }
+
+      // FastAPI HTTPException(422, "…") → {"detail": "<string>"} (C8 time buckets).
+      if (typeof body.detail === "string" && body.detail.length > 0) {
+        return new ApiError(status, "VALIDATION_ERROR", body.detail, null);
+      }
     }
 
     if (typeof body === "string" && body.length > 0) {
@@ -78,6 +83,24 @@ export function formatValidationDetails(detail: unknown[]): string {
 
   if (parts.length === 0) return "Request failed validation";
   return parts.join("; ");
+}
+
+/**
+ * Observation/pressure times for C8+: aware +07:00 on a five-minute grid
+ * (seconds and fractional seconds must be zero).
+ */
+export function isPlus07FiveMinuteBucket(value: string): boolean {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?([+-]\d{2}:\d{2})$/.exec(
+      value,
+    );
+  if (!match) return false;
+  if (match[7] !== undefined) return false;
+  if (match[8] !== "+07:00") return false;
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (second !== 0 || minute % 5 !== 0) return false;
+  return isTimezoneAwareIso(value);
 }
 
 /**
