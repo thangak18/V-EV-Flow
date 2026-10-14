@@ -19,3 +19,9 @@ All implementations of a port run the same reusable conformance suite. Route cal
 ## Done Criteria
 
 Mock and file adapters return equivalent DTO shapes, switching requires configuration only, provider failures map to typed domain failures, caches are reproducible for the fixed demo route, and integration tests do not require network access.
+
+## Goong No-Route Policy
+
+A successful HTTP response with an explicit empty `routes` list and no error envelope returns `()` through the unchanged RouteProvider port. If a `status` is present it must be `OK`; error fields, unknown/unsuccessful statuses, missing route lists, malformed alternatives/JSON, HTTP errors, timeouts, and connection failures remain `RouteUnavailableError`. This permits recommendation to exclude a missing station/fallback edge without hiding infrastructure failures or enabling fake routing.
+
+No-route results are not cached. The existing nonempty-route cache format, validation, TTL, and atomic writes remain unchanged, so a later request may recover a route. Unknown provider status formats are not guessed to mean no-route and require separately verified adapter support.

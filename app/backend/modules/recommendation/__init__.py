@@ -10,6 +10,7 @@ from .ranking import (
     rank_candidates,
     score_candidate,
 )
+from .service import RecommendationService
 from .soc import (
     FeasibilityResult,
     FeasibleRouteCandidate,
@@ -42,4 +43,5 @@ __all__ = [
     "rank_candidates",
     "score_candidate",
     "working_ports",
+    "RecommendationService",
 ]
