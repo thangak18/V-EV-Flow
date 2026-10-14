@@ -24,7 +24,7 @@ from app.backend.contracts.recommendation import (
 from app.backend.contracts.stations import Station, StationStatus
 from app.backend.modules.recommendation import service as service_module
 from app.backend.modules.recommendation.ranking import RankingConfig
-from app.backend.modules.recommendation.service import RecommendationService
+from app.backend.modules.recommendation.service import RecommendationService, VirtualLoadReader
 
 VN = timezone(timedelta(hours=7))
 OBSERVED = datetime(2026, 10, 14, 8, 0, tzinfo=VN)
@@ -163,6 +163,8 @@ def service(
     travel_weight: float = 0,
     data_type: DataType = DataType.MOCK,
     max_horizon: int = 120,
+    virtual_load_provider: VirtualLoadReader | None = None,
+    load_weight: float = 0,
 ) -> RecommendationService:
     repository = FakeStations(stations)
     statuses = FakeStatuses(repository, broken=broken)
@@ -175,17 +177,107 @@ def service(
             weight_probability=1,
             weight_travel=travel_weight,
             weight_soc_risk=0,
-            weight_virtual_load=0,
+            weight_virtual_load=load_weight,
             min_arrival_soc_pct=minimum_soc,
         ),
         minimum_arrival_soc_pct=minimum_soc,
         data_type=data_type,
         max_prediction_horizon_minutes={Scenario.NORMAL: max_horizon},
+        virtual_load_provider=virtual_load_provider,
     )
 
 
 def run(service_instance: RecommendationService):
     return asyncio.run(service_instance.recommend(request()))
+
+
+class SnapshotReader:
+    def __init__(self, loads: dict[tuple[Scenario, str, datetime], float]) -> None:
+        self.loads = loads
+        self.queries: list[tuple[datetime, Scenario]] = []
+
+    async def snapshot(self, at: datetime, scenario: Scenario) -> dict[str, float]:
+        self.queries.append((at, scenario))
+        return {
+            station_id: value
+            for (namespace, station_id, bucket), value in self.loads.items()
+            if namespace == scenario and bucket == at
+        }
+
+
+async def test_virtual_load_per_candidate_eta_and_fallback_bucket() -> None:
+    s1, s2 = station("S1"), station("S2")
+    origin, destination = (10.0, 106.0), (10.5, 106.5)
+    p1, p2 = (s1.lat, s1.lng), (s2.lat, s2.lng)
+    routes = FakeRoutes(
+        {
+            (origin, destination): (route(40, 35),),
+            (origin, p1): (route(10, 10),),
+            (origin, p2): (route(10, 25),),
+            (p1, destination): (route(20, 20),),
+            (p2, destination): (route(20, 20),),
+            (p1, p2): (route(5, 10),),
+            (p2, p1): (route(5, 10),),
+        }
+    )
+    reader = SnapshotReader(
+        {
+            (Scenario.NORMAL, "S1", OBSERVED + timedelta(minutes=10)): 10,
+            (Scenario.NORMAL, "S2", OBSERVED + timedelta(minutes=10)): 100,
+        }
+    )
+    predictor = FakePredictor({"S1": 0.9, "S2": 0.85})
+    instance = service(
+        (s1, s2),
+        routes,
+        predictor,
+        virtual_load_provider=reader,
+        load_weight=1,
+    )
+    output = await instance.recommend(request())
+    assert output.primary is not None and output.primary.station_id == "S2"
+    assert output.backup is not None and output.backup.station_id == "S1"
+    assert output.primary.p_available == 0.85 and output.backup.p_available == 0.9
+    assert reader.queries == [
+        (OBSERVED + timedelta(minutes=10), Scenario.NORMAL),
+        (OBSERVED + timedelta(minutes=25), Scenario.NORMAL),
+        (OBSERVED + timedelta(minutes=35), Scenario.NORMAL),
+    ]
+    assert reader.loads[(Scenario.NORMAL, "S1", OBSERVED + timedelta(minutes=10))] == 10
+
+
+async def test_backup_ranking_uses_fallback_load_and_reuses_equal_eta_snapshots() -> None:
+    stations = tuple(station(station_id) for station_id in ("S1", "S2", "S3"))
+    origin, destination = (10.0, 106.0), (10.5, 106.5)
+    routes_dict = {(origin, destination): (route(40, 35),)}
+    for item in stations:
+        point = (item.lat, item.lng)
+        routes_dict[(origin, point)] = (route(10, 10),)
+        routes_dict[(point, destination)] = (route(20, 20),)
+        for other in stations:
+            if item != other:
+                routes_dict[(point, (other.lat, other.lng))] = (route(5, 10),)
+    reader = SnapshotReader(
+        {
+            (Scenario.NORMAL, "S2", OBSERVED + timedelta(minutes=20)): 10,
+            (Scenario.TET, "S1", OBSERVED + timedelta(minutes=10)): 100,
+        }
+    )
+    instance = service(
+        stations,
+        FakeRoutes(routes_dict),
+        FakePredictor({"S1": 0.95, "S2": 0.9, "S3": 0.85}),
+        virtual_load_provider=reader,
+        load_weight=1,
+    )
+    output = await instance.recommend(request())
+    assert output.primary is not None and output.primary.station_id == "S1"
+    assert output.backup is not None and output.backup.station_id == "S3"
+    assert output.backup.p_available == 0.85
+    assert reader.queries == [
+        (OBSERVED + timedelta(minutes=10), Scenario.NORMAL),
+        (OBSERVED + timedelta(minutes=20), Scenario.NORMAL),
+    ]
 
 
 def test_one_feasible_station_returns_primary_only_and_preserves_prediction() -> None:

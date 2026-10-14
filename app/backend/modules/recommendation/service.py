@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime, timedelta
 from math import ceil
+from typing import Protocol
 
 from app.backend.contracts.common import Coordinate
 from app.backend.contracts.enums import DataType, Scenario
@@ -36,6 +37,12 @@ from app.backend.modules.recommendation.soc import (
 )
 
 
+class VirtualLoadReader(Protocol):
+    """Read-only expected-demand snapshots; absent station means zero demand."""
+
+    async def snapshot(self, at: datetime, scenario: Scenario) -> Mapping[str, float]: ...
+
+
 class RecommendationService:
     """Compose routing, C3 feasibility, prediction, and C4 ranking.
 
@@ -65,6 +72,7 @@ class RecommendationService:
         data_type: DataType,
         max_prediction_horizon_minutes: Mapping[Scenario, int],
         allocation_method: str = "heuristic_ranking",
+        virtual_load_provider: VirtualLoadReader | None = None,
     ) -> None:
         self._stations = station_repository
         self._statuses = {Scenario(key): value for key, value in status_repositories.items()}
@@ -91,6 +99,7 @@ class RecommendationService:
             raise ValueError("allocation_method must be nonempty")
         self._data_type = DataType(data_type)
         self._allocation_method = allocation_method
+        self._virtual_loads = virtual_load_provider
 
     async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
         request = RecommendationRequest.model_validate(request.model_dump())
@@ -183,7 +192,11 @@ class RecommendationService:
                 self._ranking_input(chosen, predicted, working_ports(station, status))
             )
 
-        ranked = rank_candidates(primary_candidates, self._ranking, {})
+        ranked = rank_candidates(
+            primary_candidates,
+            self._ranking,
+            await self._candidate_loads(primary_candidates, request.scenario),
+        )
         if not ranked:
             return self._empty_result(
                 request,
@@ -271,7 +284,11 @@ class RecommendationService:
                 )
             )
 
-        ranked_backups = rank_candidates(backup_inputs, self._ranking, {})
+        ranked_backups = rank_candidates(
+            backup_inputs,
+            self._ranking,
+            await self._candidate_loads(backup_inputs, request.scenario),
+        )
         backup = ranked_backups[0] if ranked_backups else None
         primary_plan = self._plan(primary)
         backup_plan = self._plan(backup) if backup is not None else None
@@ -321,6 +338,24 @@ class RecommendationService:
             allocation_method=self._allocation_method,
             data_type=result_data_type,
         )
+
+    async def _candidate_loads(
+        self,
+        candidates: list[RankingInput],
+        scenario: Scenario,
+    ) -> dict[str, float]:
+        if self._virtual_loads is None:
+            return {}
+        snapshots: dict[datetime, Mapping[str, float]] = {}
+        loads = {}
+        for item in candidates:
+            candidate = item.candidate
+            if candidate.eta not in snapshots:
+                snapshots[candidate.eta] = await self._virtual_loads.snapshot(
+                    candidate.eta, scenario
+                )
+            loads[candidate.station_id] = snapshots[candidate.eta].get(candidate.station_id, 0.0)
+        return loads
 
     async def _route(
         self,
