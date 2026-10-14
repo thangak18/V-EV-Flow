@@ -31,8 +31,13 @@ class MockStationRepository:
 
 
 class MockStatusRepository:
-    def __init__(self, station_repository: MockStationRepository | None = None) -> None:
+    def __init__(
+        self,
+        station_repository: MockStationRepository | None = None,
+        scenario: Scenario = Scenario.NORMAL,
+    ) -> None:
         self._stations = station_repository or MockStationRepository()
+        self._scenario = Scenario(scenario)
 
     def window(
         self, station_id: str, observed_at: datetime, lags: tuple[int, ...] = (15, 30, 60)
@@ -46,7 +51,7 @@ class MockStatusRepository:
                 ports_busy=0,
                 ports_broken=0,
                 n_ports=station.n_ports,
-                scenario=Scenario.NORMAL,
+                scenario=self._scenario,
             )
             for lag in lags
         )

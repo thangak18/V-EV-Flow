@@ -1,3 +1,6 @@
+from contextlib import asynccontextmanager
+
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,10 +10,20 @@ from app.backend.contracts.errors import DomainError
 from app.backend.core.settings import Settings, get_settings
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, *, route_client: httpx.AsyncClient | None = None
+) -> FastAPI:
     selected = settings if settings is not None else get_settings()
-    container = build_container(selected)
-    app = FastAPI(title="V-EV Flow API", version="0.1.0")
+    container = build_container(selected, route_client=route_client)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        try:
+            yield
+        finally:
+            await container.close()
+
+    app = FastAPI(title="V-EV Flow API", version="0.1.0", lifespan=lifespan)
     app.state.container = container
     app.add_exception_handler(DomainError, domain_error_handler)
     app.add_middleware(
