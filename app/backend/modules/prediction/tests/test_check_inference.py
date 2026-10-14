@@ -196,16 +196,27 @@ def test_main_metadata_error_is_setup_failure(
     assert not output.exists()
 
 
-def test_redaction_includes_resolved_and_input_paths(tmp_path: Path) -> None:
-    from app.backend.modules.prediction.check_inference import _redact_paths
+def test_reports_redact_resolved_and_input_paths(
+    acceptance_bundle: Path, tmp_path: Path, monkeypatch
+) -> None:
+    from app.backend.modules.prediction.predictor import ModelPredictor
 
-    actual = tmp_path / "actual"
-    actual.mkdir()
-    alias = tmp_path / "alias"
-    alias.symlink_to(actual, target_is_directory=True)
-    message = f"{alias}/model.joblib and {alias.resolve()}/manifest.json"
-    result = _redact_paths(message, (alias,))
-    assert str(alias) not in result and str(actual) not in result
+    alias = tmp_path / "model-alias"
+    alias.symlink_to(acceptance_bundle / "model", target_is_directory=True)
+
+    def fail(self, request):
+        raise ValueError(f"{alias}/model.joblib and {alias.resolve()}/manifest.json")
+
+    monkeypatch.setattr(ModelPredictor, "predict", fail)
+    report = run_cases(
+        alias,
+        acceptance_bundle / "stations.json",
+        acceptance_bundle / "station_status.parquet",
+        datetime.fromisoformat("2026-10-13T16:00:00+07:00"),
+    )
+    message = report["cases"][0]["error"]["message"]
+    assert "<local-path>" in message
+    assert str(alias) not in message and str(alias.resolve()) not in message
 
 
 def test_runner_fails_when_corrupt_artifact_is_accepted(
