@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.backend.api.dependencies import AppContainer, get_container
+from app.backend.api.validation import validate_predict_request, validate_prediction_result
 from app.backend.contracts.errors import ErrorResponse, StationNotFoundError
 from app.backend.contracts.prediction import PredictionResult, PredictRequest
 
@@ -20,4 +21,6 @@ def predict(
         container.stations.get_station(request.station_id)
     except KeyError as exc:
         raise StationNotFoundError(f"Unknown station: {request.station_id}") from exc
-    return container.predictor.predict(request)
+    validate_predict_request(request, container.settings.fake_prediction_horizon_minutes)
+    result = container.predictors_by_scenario[request.scenario].predict(request)
+    return validate_prediction_result(request, result)
