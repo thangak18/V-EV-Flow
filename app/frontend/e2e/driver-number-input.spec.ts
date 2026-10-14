@@ -36,5 +36,5 @@ test("driver numeric fields keep empty draft and accept comma/dot decimals", asy
 
   await expect(submit).toBeEnabled();
   await submit.click();
-  await expect(page.getByText(/Không có trạm khả thi/i)).toBeVisible();
+  await expect(page.getByTestId("plan-hero")).toBeVisible();
 });
