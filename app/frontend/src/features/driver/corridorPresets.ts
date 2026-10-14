@@ -4,12 +4,16 @@ export const CORRIDOR_PRESETS = {
     label: "TP.HCM → Vũng Tàu",
     origin: { lat: 10.78, lng: 106.7 },
     destination: { lat: 10.35, lng: 107.08 },
+    originLabel: "TP. Hồ Chí Minh",
+    destinationLabel: "Vũng Tàu",
   },
   vt_hcm: {
     id: "vt_hcm",
     label: "Vũng Tàu → TP.HCM",
     origin: { lat: 10.35, lng: 107.08 },
     destination: { lat: 10.78, lng: 106.7 },
+    originLabel: "Vũng Tàu",
+    destinationLabel: "TP. Hồ Chí Minh",
   },
 } as const;
 

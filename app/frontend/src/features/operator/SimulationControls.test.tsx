@@ -21,9 +21,9 @@ function renderControls() {
     onSeedChange,
     onVehicleCountChange,
     onRun,
-    seed: screen.getByLabelText("Seed"),
-    vehicles: screen.getByLabelText("Vehicles"),
-    submit: screen.getByRole("button", { name: /Compare 3 strategies/i }),
+    seed: screen.getByLabelText(/Seed/),
+    vehicles: screen.getByLabelText(/Số xe/),
+    submit: screen.getByRole("button", { name: /So sánh 3 chiến lược/i }),
   };
 }
 

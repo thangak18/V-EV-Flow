@@ -85,66 +85,117 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
     );
   }, [model, mapError, mounted]);
 
+  const pointCount = model.points.length + (model.unlocated?.length ?? 0);
+
   return (
     <div className="map-panel">
       {!usingGoong ? (
         <p className="map-mode-banner" role="status">
-          Đang dùng schematic map (chưa có Goong tiles). Thêm{" "}
-          <code>VITE_GOONG_MAP_KEY</code> vào <code>.env</code> ở root repo rồi
-          restart Vite để hiện bản đồ Goong thật.
+          Bản đồ minh họa — Không dùng để dẫn đường
         </p>
       ) : (
         <p className="map-mode-banner map-mode-banner--live" role="status">
-          Goong map · tiles © Goong
+          Bản đồ Goong · tiles © Goong
         </p>
       )}
       <div
         ref={containerRef}
         className="map-canvas"
         data-testid="map-canvas"
-        aria-label="Charging map"
+        aria-label="Bản đồ sạc"
       />
       {mapError ? (
         <p className="status-message error" role="alert">
-          Map unavailable: {mapError}. Textual station list remains usable.
+          Bản đồ lỗi: {mapError}. Vẫn xem được danh sách điểm bên dưới.
         </p>
       ) : null}
       <StationTextList
         points={model.points}
         unlocated={model.unlocated ?? []}
+        defaultOpen={pointCount > 0 && pointCount <= 4}
       />
     </div>
   );
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  origin: "Điểm đi",
+  destination: "Điểm đến",
+  primary: "Trạm chính",
+  backup: "Trạm dự phòng",
+  pressure: "Áp lực",
+};
+
 function StationTextList({
   points,
   unlocated,
+  defaultOpen,
 }: {
   points: MapPoint[];
   unlocated: UnlocatedMapPoint[];
+  defaultOpen: boolean;
 }) {
-  if (points.length === 0 && unlocated.length === 0) {
+  const count = points.length + unlocated.length;
+
+  if (count === 0) {
     return (
       <p className="status-message" role="status">
-        No map points yet.
+        Chưa có điểm trên bản đồ.
       </p>
     );
   }
 
+  // Remount when count / suggested open changes so initial open resets
+  // without an effect-driven setState.
   return (
-    <ul className="map-text-list" aria-label="Station text list">
-      {points.map((point) => (
-        <li key={`${point.role}-${point.id}`}>
-          <strong>{point.role}</strong>: {point.label} ({point.lat.toFixed(4)},{" "}
-          {point.lng.toFixed(4)})
-        </li>
-      ))}
-      {unlocated.map((point) => (
-        <li key={`unlocated-${point.role}-${point.id}`}>
-          <strong>{point.role}</strong>: {point.label} (location unavailable)
-        </li>
-      ))}
-    </ul>
+    <StationTextListBody
+      key={`${count}-${defaultOpen ? "open" : "closed"}`}
+      points={points}
+      unlocated={unlocated}
+      initialOpen={defaultOpen}
+    />
+  );
+}
+
+function StationTextListBody({
+  points,
+  unlocated,
+  initialOpen,
+}: {
+  points: MapPoint[];
+  unlocated: UnlocatedMapPoint[];
+  initialOpen: boolean;
+}) {
+  const [open, setOpen] = useState(initialOpen);
+  const count = points.length + unlocated.length;
+
+  return (
+    <details
+      className="map-station-details"
+      open={open}
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+      }}
+    >
+      <summary>Danh sách điểm trên bản đồ ({count})</summary>
+      <ul className="map-text-list" aria-label="Station text list">
+        {points.map((point) => (
+          <li key={`${point.role}-${point.id}`}>
+            <strong>{ROLE_LABELS[point.role] ?? point.role}</strong>:{" "}
+            {point.label}
+            <span className="map-coord">
+              {" "}
+              ({point.lat.toFixed(4)}, {point.lng.toFixed(4)})
+            </span>
+          </li>
+        ))}
+        {unlocated.map((point) => (
+          <li key={`unlocated-${point.role}-${point.id}`}>
+            <strong>{ROLE_LABELS[point.role] ?? point.role}</strong>:{" "}
+            {point.label} <span className="map-coord">(chưa có tọa độ)</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
