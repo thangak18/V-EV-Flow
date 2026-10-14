@@ -29,12 +29,12 @@ def check_api(client: httpx.Client, expected_report: dict[str, Any]) -> dict[str
         expected = PredictionResult.model_validate(case["response"])
         if expected.model_version != expected_report["model_version"]:
             raise ValueError("expected report mixes model versions")
-        record: dict[str, Any] = {"case_id": case["case_id"], "passed": False}
+        record: dict[str, Any] = {"case_id": case["case_id"], "passed": False, "mismatches": []}
         try:
             response = client.post("predict", json=request.model_dump(mode="json"))
             record["http_status"] = response.status_code
             if response.status_code != 200:
-                record["mismatch"] = "prediction did not return HTTP 200"
+                record["mismatches"] = ["prediction did not return HTTP 200"]
             else:
                 actual = PredictionResult.model_validate(response.json())
                 record["response"] = actual.model_dump(mode="json")
@@ -46,6 +46,8 @@ def check_api(client: httpx.Client, expected_report: dict[str, Any]) -> dict[str
                         "model_version",
                         "data_type",
                         "contract_version",
+                        "reasons",
+                        "explanation_method",
                     )
                     if getattr(actual, name) != getattr(expected, name)
                 ]
@@ -57,14 +59,18 @@ def check_api(client: httpx.Client, expected_report: dict[str, Any]) -> dict[str
                 record["passed"] = not mismatches
         except (httpx.HTTPError, ValueError) as exc:
             record["error_type"] = type(exc).__name__
-            record["mismatch"] = "transport failure or invalid prediction payload"
+            record["mismatches"] = ["transport failure or invalid prediction payload"]
         records.append(record)
     return {
         "model_version": expected_report["model_version"],
         "case_count": len(records),
         "passed_count": sum(r["passed"] for r in records),
         "passed": all(r["passed"] for r in records),
-        "scope": "HTTP /predict parity only; does not verify recommendation or UI integration",
+        "scope": (
+            "Valid-request HTTP /predict parity only, including reasons/explanation_method; "
+            "does not verify 404/422/503 error mapping, missing history, artifact startup "
+            "failures, recommendation or UI integration"
+        ),
         "cases": records,
     }
 

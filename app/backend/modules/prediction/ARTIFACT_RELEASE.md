@@ -31,13 +31,12 @@ main `5c7ae8c55d99c8ec62c6989b457e29c41a93cee0`.
 
 ## Nhận bundle
 
-File local đã đóng gói, nằm **ngoài checkout Git**:
-
-`/Volumes/Thang/V-EV-Flow-deliveries/ml/simulator-v1-lightgbm-c721ddae6c9223ad.zip`
-
-Thắng gửi file này cho Kiên qua kênh nhóm. ZIP không phải GitHub asset và chưa
-được gửi tự động. Bản gốc `artifacts/simulator-v1/` vẫn giữ nguyên để rollback.
-Không commit binary, Parquet hoặc generated fixtures.
+Nguồn bàn giao chính là [private draft release](https://github.com/thangak18/V-EV-Flow/releases/tag/untagged-e3e94001aa5a32aac40e)
+của repo, asset `simulator-v1-lightgbm-c721ddae6c9223ad.zip`. Đăng nhập bằng tài
+khoản cộng tác có quyền xem draft release; nếu không thấy asset, nhờ owner cấp
+quyền hoặc gửi đúng ZIP qua kênh riêng và đối chiếu SHA-256 ở bảng trên.
+Không phụ thuộc đường dẫn trên máy Thắng. Không commit binary, Parquet hoặc
+generated fixtures. Bản gốc ignored `artifacts/simulator-v1/` giữ để rollback.
 
 Bundle chứa:
 

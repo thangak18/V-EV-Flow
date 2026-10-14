@@ -1,6 +1,6 @@
 # Ca inference đối chiếu cho Kiên / C5
 
-**Đã chạy 24/24 ca; nguồn `simulated`.** Model chốt
+**Bộ 24 kiểm tra gồm 19 ca file-runtime/loader và 5 ca capability-only; nguồn `simulated`.** Model chốt
 `lightgbm-c721ddae6c9223ad` không bị train lại hoặc sửa binary/manifest/history.
 Đây là kết quả gọi public Predictor + file repositories và lỗi loader,
 **không phải kết quả kiểm thử HTTP `/api/predict`**.
@@ -12,8 +12,14 @@
 - Scenario: normal, holiday_30_4, tet.
 - ETA hợp lệ: 16:15, 16:30, 17:00 (+07:00).
 - Artifact/data/version/checksum: [ARTIFACT_RELEASE.md](ARTIFACT_RELEASE.md).
-- Full actual request/response/error: file local ngoài Git
-  `/Volumes/Thang/V-EV-Flow-deliveries/ml/inference-cases-c721ddae.json`.
+- Full request/response/error: asset `inference-cases-c721ddae.json` ở private
+  draft release trong [ARTIFACT_RELEASE.md](ARTIFACT_RELEASE.md). Report lịch sử
+  có 24 ca; chạy lại CLI để nhận nhãn category/runtime_accepted mới.
+
+5 ca partial-window chỉ kiểm khả năng imputation/reject-current của Predictor,
+không phải hành vi runtime file được chấp nhận. Repository file vẫn từ chối
+thiếu bất kỳ lag nào. Report ghi category, runtime_accepted và hai count riêng;
+passed tổng chỉ nói các kiểm tra đạt kỳ vọng, không duyệt adapter partial mới.
 
 Report có expected outcome, actual response/error, passed flag và xác nhận
 input không bị đổi. Các lỗi thiếu/hỏng được tiêm vào **fixture tạm**, không phá

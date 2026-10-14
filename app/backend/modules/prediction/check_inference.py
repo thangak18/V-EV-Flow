@@ -46,6 +46,13 @@ def _digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _redact_paths(message: str, paths: tuple[Path, ...]) -> str:
+    variants = {str(value) for path in paths for value in (path, path.absolute(), path.resolve())}
+    for value in sorted(variants, key=len, reverse=True):
+        message = message.replace(value, "<local-path>")
+    return message[:2000]
+
+
 def run_cases(
     model_dir: Path,
     stations_path: Path,
@@ -84,6 +91,12 @@ def run_cases(
             entry: dict[str, Any] = {
                 "case_id": case_id,
                 "layer": layer,
+                "category": (
+                    "capability_only"
+                    if layer == "predictor_with_partial_window_fixture"
+                    else "file_runtime_or_loader"
+                ),
+                "runtime_accepted": layer != "predictor_with_partial_window_fixture",
                 "request": request.model_dump(mode="json"),
                 "expected": (
                     {"outcome": "prediction", "data_type": "simulated"}
@@ -113,7 +126,9 @@ def run_cases(
             except Exception as exc:  # Record failed acceptance cases; do not hide them.
                 entry["error"] = {
                     "type": type(exc).__name__,
-                    "message": str(exc).replace(str(scratch), "<fault-fixture>")[:2000],
+                    "message": _redact_paths(
+                        str(exc), (scratch, model_dir, stations_path, status_path)
+                    ),
                 }
                 entry["passed"] = (
                     expected_error is not None
@@ -249,6 +264,13 @@ def run_cases(
         "case_count": len(cases),
         "passed_count": sum(case["passed"] for case in cases),
         "inputs_unchanged": unchanged,
+        "runtime_check_count": sum(c["runtime_accepted"] for c in cases),
+        "capability_check_count": sum(not c["runtime_accepted"] for c in cases),
+        "partial_window_policy": (
+            "Capability fixtures only; not accepted file-runtime behavior. "
+            "ParquetStatusRepository requires all exact lags. "
+            "Imputed probabilities can differ from complete-history predictions."
+        ),
         "passed": unchanged and all(case["passed"] for case in cases),
         "scope": "Local inference/loader checks; no HTTP mapping or real-world accuracy claim",
         "cases": cases,
@@ -280,8 +302,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
-    except (OSError, ValueError, DomainError) as exc:
-        print(f"Inference acceptance setup failed: {exc}", file=sys.stderr)
+    except (OSError, ValueError, DomainError, KeyError, TypeError) as exc:
+        print(f"Inference acceptance setup failed: {type(exc).__name__}", file=sys.stderr)
         return 2
     print(f"{report['passed_count']}/{report['case_count']} cases passed; {args.output}")
     return 0 if report["passed"] else 1

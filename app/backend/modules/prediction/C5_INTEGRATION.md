@@ -36,7 +36,12 @@ Source main kiểm tra: `3db895894458b0a04b9bb4b820e2dcde4fc63977`.
 
 - Giữ `eta_actual` từ routing để báo hành trình; predictor dùng `eta_bucket`.
 - Với snapshot `t`, `h = ceil((eta_actual - t) / 5 phút) * 5 phút`; chỉ dùng nếu
-  `0 < h <= 60`. Không floor ETA xuống để làm dự báo có vẻ sớm hơn.
+  `0 < h <= 60`. Đây là xấp xỉ thời điểm, không bảo đảm thận trọng về xác suất.
+- Ceil có thể dự báo sau lúc xe đến gần 5 phút: nếu cổng được giải phóng trong
+  khoảng đó, xác suất có thể lạc quan. Floor/nearest cũng có sai số; lấy min của
+  hai bucket là một heuristic chưa được đánh giá, không còn là xác suất đã
+  calibrate tại ETA thật. Không tự đổi sang heuristic đó hoặc gọi ceil là an toàn.
+  Kiên cần xác nhận chính sách và UI/reasons phải hiển thị thời điểm đánh giá.
 - Ví dụ t=16:00: ETA 16:30 -> bucket 16:30; 16:31:01 -> 16:35;
   16:59 -> 17:00; 17:00:01 -> 17:05 -> **unsupported**, không clip 17:00.
 - 15/30/60 là horizon đã đánh giá; runtime có nhận bội 5 khác, nhưng các horizon
@@ -62,14 +67,16 @@ uv run python -m app.backend.modules.prediction.check_api \
   --output app/backend/modules/prediction/artifacts/http-parity.json
 ```
 
-Tool gửi 9 payload hợp lệ, kiểm station/ETA, version, provenance, contract và
-xác suất với absolute tolerance 1e-8. Không thay payload hoặc dự đoán hộ API.
+Tool gửi 9 payload hợp lệ, kiểm station/ETA, version, provenance, contract,
+reasons/explanation_method và xác suất với absolute tolerance 1e-8.
+Scope report ghi rõ chưa kiểm HTTP error mapping 404/422/503, thiếu history
+hay startup artifact lỗi; parity xanh không thay bộ kiểm thử các lỗi này. Không thay payload hoặc dự đoán hộ API.
 Exit 0: match; exit 1: mismatch/HTTP error; exit 2: setup/report không hợp lệ.
 Report không được ghi đè expected file. Không commit generated outputs.
 
 ## Kết quả thật của lần chuẩn bị
 
-- Local file repositories -> Predictor: 24/24 ca đạt; artifact không đổi.
+- Local file repositories/loader/capability: 24 kiểm tra lịch sử đạt (19 runtime/loader, 5 capability-only); artifact không đổi.
 - API local dùng composition mặc định: `/ready` báo mock/fake/fake;
   HTTP parity **0/9 match**, vì model_version/data_type/probability là fake.
   Đây là xác nhận wiring chưa có, không phải model đã train bị sai.
@@ -81,8 +88,10 @@ Report không được ghi đè expected file. Không commit generated outputs.
 - Chưa chạy thành công full Data -> model -> recommend API -> UI bằng runtime
   wiring thật. Không dùng injected UI fixtures thay bằng chứng tích hợp đó.
 
-Bằng chứng local ngoài Git: `http-parity-current-api.json` và
-`http-parity-temporary-model-binding.json` tại thư mục deliveries/ml trên máy Thắng.
+Bằng chứng ngoài Git: assets `http-parity-current-api.json` và
+`http-parity-temporary-model-binding.json` trên private draft release được dẫn
+ở [ARTIFACT_RELEASE.md](ARTIFACT_RELEASE.md). Đây là report lịch sử trước thay
+đổi kiểm tra reasons; chạy lại CLI trên revision hiện tại để xác nhận mới.
 
 ## Checklist chạy khi Kiên đã nối xong
 
