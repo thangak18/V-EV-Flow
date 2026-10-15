@@ -243,15 +243,13 @@ describe("DriverPage", () => {
     const recommend = vi.fn().mockResolvedValue(planResult);
     const client = createMockApiClient({
       recommend,
-      listStations: vi
-        .fn()
-        .mockResolvedValue({
-          stations: [
-            { station_id: "S099", name: "Long Thành", lat: 10.8, lng: 107.01 },
-          ],
-          data_type: "simulated",
-          source_notes: [],
-        }),
+      listStations: vi.fn().mockResolvedValue({
+        stations: [
+          { station_id: "S099", name: "Long Thành", lat: 10.8, lng: 107.01 },
+        ],
+        data_type: "simulated",
+        source_notes: [],
+      }),
     });
     render(
       <ApiProvider client={client}>
