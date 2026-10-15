@@ -48,7 +48,7 @@ export function AppShell() {
             Điều hành
           </NavLink>
         </nav>
-        <span className="data-badge data-badge--demo">Dữ liệu minh họa</span>
+        <span className="data-badge data-badge--demo">Bản demo</span>
       </header>
       <Outlet />
     </div>

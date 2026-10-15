@@ -16,13 +16,16 @@ import {
 import { DriverForm } from "../features/driver/DriverForm";
 import { PlanEmptyState, PlanSummary } from "../features/driver/PlanSummary";
 import { useRecommendation } from "../hooks/useRecommendation";
-import type { Station } from "../services/api";
+import type { DataType, Station } from "../services/api";
 
 export function DriverPage() {
   const client = useApiClient();
   const { status, result, error, submit, retry, clear } = useRecommendation();
   const [stations, setStations] = useState<Station[]>([]);
   const [directoryFailed, setDirectoryFailed] = useState(false);
+  const [directoryDataType, setDirectoryDataType] = useState<DataType | null>(
+    null,
+  );
   const [presetId, setPresetId] = useState<CorridorPresetId>("hcm_vt");
 
   useEffect(() => {
@@ -30,12 +33,15 @@ export function DriverPage() {
     client
       .listStations(controller.signal)
       .then((response) => {
+        if (controller.signal.aborted) return;
+        setDirectoryDataType(response.data_type);
         setStations(response.stations);
         setDirectoryFailed(false);
       })
       .catch(() => {
         if (!controller.signal.aborted) {
           setStations([]);
+          setDirectoryDataType(null);
           setDirectoryFailed(true);
         }
       });
@@ -111,6 +117,8 @@ export function DriverPage() {
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  const dataType = result?.data_type ?? directoryDataType;
+
   return (
     <main className="driver-page">
       <DriverForm
@@ -128,9 +136,9 @@ export function DriverPage() {
 
       <div className="driver-workspace">
         <aside className="driver-sidebar">
-          {result ? (
+          {dataType ? (
             <div className="sidebar-badge-row">
-              <DataTypeBadge dataType={result.data_type} />
+              <DataTypeBadge dataType={dataType} />
             </div>
           ) : null}
           {status === "idle" ? (

@@ -21,7 +21,7 @@ def predict(
         station = container.stations.get_station(request.station_id)
     except KeyError as exc:
         raise StationNotFoundError(f"Unknown station: {request.station_id}") from exc
-    validate_predict_request(request, container.settings.fake_prediction_horizon_minutes)
+    validate_predict_request(request, container.prediction_horizons[request.scenario])
     if request.connector_type not in station.connector_types:
         raise HTTPException(422, "connector_type is not supported by the station")
     result = container.predictors_by_scenario[request.scenario].predict(request)

@@ -41,6 +41,28 @@ const rows: StrategyRow[] = [
 ];
 
 describe("StrategyComparison", () => {
+  test("labels fake simulation as mock", () => {
+    render(<StrategyComparison rows={[successRow("nearest", 0.9)]} />);
+    expect(screen.getByTestId("simulation-source")).toHaveTextContent("mock");
+    expect(screen.getByTestId("simulation-source")).toHaveTextContent(
+      "chưa chạy simulator thực",
+    );
+  });
+
+  test("labels stateful comparison and background model snapshots", () => {
+    const baseline = successRow("nearest", 0.9);
+    const ai = successRow("ai_allocation", 0.92);
+    baseline.result.model_version = "simulated-baseline-v1";
+    ai.result.model_version = "lightgbm-test";
+    render(<StrategyComparison rows={[baseline, ai]} />);
+    expect(screen.getByTestId("simulation-source")).toHaveTextContent(
+      "simulated",
+    );
+    expect(screen.getByTestId("simulation-source")).toHaveTextContent(
+      "lịch sử nền",
+    );
+  });
+
   test("shows bars with delta and keeps tech details collapsed", () => {
     render(
       <StrategyComparison

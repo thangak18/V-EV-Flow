@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 from fastapi import Request
 
+from app.backend.api.runtime import RuntimePredictor, StatefulSimulation
 from app.backend.contracts.enums import DataType, Scenario
 from app.backend.contracts.errors import DataSourceUnavailableError, RequestConflictError
 from app.backend.contracts.ports import (
@@ -38,6 +39,7 @@ from app.backend.infrastructure.services.fakes import (
 )
 from app.backend.infrastructure.state.in_memory import InMemoryAllocationStore
 from app.backend.infrastructure.state.virtual_load import VirtualLoadStore
+from app.backend.modules.prediction.public import load_predictor, read_manifest
 from app.backend.modules.recommendation.allocation import AllocationCoordinator
 from app.backend.modules.recommendation.ranking import RankingConfig
 from app.backend.modules.recommendation.service import RecommendationService, VirtualLoadReader
@@ -61,6 +63,7 @@ class AppContainer:
     status_repositories_by_scenario: Mapping[Scenario, StatusRepository]
     predictors_by_scenario: Mapping[Scenario, Predictor]
     ranking_config: RankingConfig
+    prediction_horizons: Mapping[Scenario, int]
     virtual_load_store: VirtualLoadStore
     allocation_coordinator: AllocationCoordinator
     owned_route_client: httpx.AsyncClient | None = None
@@ -79,13 +82,12 @@ def build_container(
 ) -> AppContainer:
     if settings.data_backend == "real":
         raise StartupConfigurationError("DATA_BACKEND=real has no approved adapter")
-    if settings.predictor_backend != "fake":
-        raise StartupConfigurationError(
-            f"PREDICTOR_BACKEND={settings.predictor_backend} is unavailable in Phase 0"
-        )
     stations = _build_station_repository(settings)
     statuses = _build_status_repositories(settings, stations)
-    predictors = _build_predictors(settings)
+    try:
+        predictors, horizons = _build_predictors(settings, statuses, stations)
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        raise StartupConfigurationError("model artifact is unavailable or incompatible") from exc
     ranking = RankingConfig(min_arrival_soc_pct=settings.min_arrival_soc_pct)
     store = VirtualLoadStore(ttl=timedelta(seconds=settings.virtual_load_receipt_ttl_seconds))
     routes, owned_route_client = _build_route_provider(settings, route_client=route_client)
@@ -98,12 +100,16 @@ def build_container(
             predictors=predictors,
             ranking_config=ranking,
             data_type=_recommendation_data_type(settings),
-            max_prediction_horizon_minutes={
-                scenario: settings.fake_prediction_horizon_minutes for scenario in Scenario
-            },
+            max_prediction_horizon_minutes=horizons,
             virtual_load_provider=reader,
         )
 
+    try:
+        simulation = _build_simulation_runner(settings, stations, ranking, min(horizons.values()))
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        raise StartupConfigurationError(
+            "simulation fixtures/configuration are unavailable or invalid"
+        ) from exc
     coordinator = AllocationCoordinator(
         store=store,
         service_factory=service_factory,
@@ -117,12 +123,13 @@ def build_container(
         predictor=predictors[Scenario.NORMAL],
         routes=routes,
         allocation=FakeAllocationStrategy(),
-        simulation=_build_simulation_runner(settings),
+        simulation=simulation,
         requests=InMemoryAllocationStore(),
         recommendation=None,  # type: ignore[arg-type]
         status_repositories_by_scenario=statuses,
         predictors_by_scenario=predictors,
         ranking_config=ranking,
+        prediction_horizons=horizons,
         virtual_load_store=store,
         allocation_coordinator=coordinator,
         owned_route_client=owned_route_client,
@@ -153,14 +160,51 @@ def _build_status_repositories(
     return {scenario: ParquetStatusRepository(path, stations, scenario) for scenario in Scenario}
 
 
-def _build_predictors(settings: Settings) -> dict[Scenario, Predictor]:
-    if settings.predictor_backend != "fake":
-        raise StartupConfigurationError("PREDICTOR_BACKEND=model has no approved C7 integration")
-    return {scenario: FakePredictor() for scenario in Scenario}
+def _build_predictors(
+    settings: Settings,
+    statuses: Mapping[Scenario, StatusRepository],
+    stations: StationRepository,
+) -> tuple[dict[Scenario, Predictor], dict[Scenario, int]]:
+    if settings.predictor_backend == "fake":
+        return (
+            {scenario: FakePredictor() for scenario in Scenario},
+            {scenario: settings.fake_prediction_horizon_minutes for scenario in Scenario},
+        )
+    manifest = read_manifest(settings.model_dir)
+    if set(manifest.scenarios) != {scenario.value for scenario in Scenario}:
+        raise ValueError("model artifact must support all configured scenarios")
+    maximum = manifest.split_metadata["max_horizon_minutes"]
+    if isinstance(maximum, bool) or not isinstance(maximum, int) or maximum < 30 or maximum % 5:
+        raise ValueError("model horizon must support the 30-minute pressure proxy")
+    predictors: dict[Scenario, Predictor] = {
+        scenario: RuntimePredictor(
+            load_predictor(
+                settings.model_dir,
+                statuses[scenario],
+                stations,
+                status_data_type=DataType.SIMULATED,
+            )
+        )
+        for scenario in Scenario
+    }
+    return predictors, {scenario: maximum for scenario in Scenario}
 
 
-def _build_simulation_runner(settings: Settings) -> SimulationRunner:
-    return FakeSimulationRunner()
+def _build_simulation_runner(
+    settings: Settings, stations: StationRepository, ranking: RankingConfig, maximum_horizon: int
+) -> SimulationRunner:
+    if settings.simulation_backend == "fake":
+        return FakeSimulationRunner()
+    return StatefulSimulation(
+        stations=stations,
+        model_dir=settings.model_dir,
+        generated_dir=settings.data_dir / "generated",
+        scenarios_path=settings.simulation_scenarios_path,
+        ranking=ranking,
+        maximum_horizon=maximum_horizon,
+        duration=settings.assumed_charge_duration_minutes,
+        load=settings.expected_virtual_load,
+    )
 
 
 def _recommendation_data_type(settings: Settings) -> DataType:

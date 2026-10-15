@@ -27,6 +27,31 @@ const planResult = {
 };
 
 describe("DriverPage", () => {
+  test("labels the directory source before submit and the prediction source afterwards", async () => {
+    const client = createMockApiClient({
+      listStations: vi.fn().mockResolvedValue({
+        stations: [],
+        data_type: "simulated",
+        source_notes: [],
+      }),
+      recommend: vi
+        .fn()
+        .mockResolvedValue({ ...planResult, data_type: "mixed" }),
+    });
+    render(
+      <ApiProvider client={client}>
+        <MemoryRouter>
+          <DriverPage />
+        </MemoryRouter>
+      </ApiProvider>,
+    );
+    expect(await screen.findByText("Dữ liệu mô phỏng")).toBeInTheDocument();
+    expect(screen.queryByText("Dữ liệu minh họa")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
+    expect(await screen.findByText("Dữ liệu hỗn hợp")).toBeInTheDocument();
+    expect(screen.queryByText("Dữ liệu mô phỏng")).not.toBeInTheDocument();
+  });
+
   test("calls recommend exactly once per explicit submit", async () => {
     const recommend = vi.fn().mockResolvedValue(planResult);
     const client = createMockApiClient({ recommend });
