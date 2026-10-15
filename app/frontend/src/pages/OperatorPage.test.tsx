@@ -69,6 +69,74 @@ describe("OperatorPage", () => {
     expect(screen.getAllByText("Gần nhất").length).toBeGreaterThanOrEqual(1);
   });
 
+  test("compare leaders follow runner rates without a fixed winner", async () => {
+    const getPressure = vi.fn().mockResolvedValue({
+      time: "2026-10-13T16:00:00+07:00",
+      scenario: "normal",
+      contract_version: "0.1.0",
+      stations: [
+        {
+          station_id: "S001",
+          p_available: 0.4,
+          pressure_score: 0.6,
+          data_type: "simulated",
+        },
+      ],
+    });
+    const rates: Record<string, number> = {
+      nearest: 0.8,
+      currently_available: 0.85,
+      ai_allocation: 0.92,
+    };
+    const simulate = vi
+      .fn()
+      .mockImplementation(async (body: { strategy: string }) => ({
+        scenario: "normal",
+        seed: 42,
+        strategy: body.strategy,
+        model_version: "runner-v1",
+        fixture_hash: FIXTURE_HASH,
+        contract_version: "0.1.0",
+        metrics: {
+          success_rate: rates[body.strategy] ?? 0.5,
+          mean_detour_km: 2,
+          mean_wait_minutes: 3,
+          failed_count: Math.round(100 * (1 - (rates[body.strategy] ?? 0.5))),
+          vehicle_count: 100,
+        },
+      }));
+
+    const client = createMockApiClient({
+      getPressure,
+      pressure: getPressure,
+      simulate,
+    });
+
+    render(
+      <ApiProvider client={client}>
+        <MemoryRouter>
+          <OperatorPage />
+        </MemoryRouter>
+      </ApiProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Áp dụng kịch bản/i }));
+    expect(await screen.findByText("Dữ liệu mô phỏng")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /So sánh 3 chiến lược/i }),
+    );
+    await waitFor(() => expect(simulate).toHaveBeenCalledTimes(3));
+    expect(screen.getByTestId("strategy-delta")).toHaveTextContent(
+      /Phân bổ AI/i,
+    );
+    expect(screen.getByTestId("strategy-delta")).toHaveTextContent(
+      /12\.0 điểm %/,
+    );
+    expect(screen.getByText(/Không chọn sẵn người thắng/)).toBeInTheDocument();
+    expect(screen.getByText(/100 xe/)).toBeInTheDocument();
+  });
+
   test("keeps pressure stations textual when directory lacks coordinates", async () => {
     const getPressure = vi.fn().mockResolvedValue({
       time: "2026-10-13T16:00:00+07:00",

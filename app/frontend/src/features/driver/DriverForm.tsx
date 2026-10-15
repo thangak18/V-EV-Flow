@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import type { RecommendationRequest, Scenario } from "../../services/api";
-import { isTimezoneAwareIso } from "../../services/errors";
+import { isPlus07FiveMinuteBucket } from "../../services/errors";
 import {
   CORRIDOR_PRESETS,
   DEFAULT_DEMO_TIME,
@@ -55,7 +55,7 @@ export function DriverForm({
   const parsedBattery = parseLocaleNumber(batteryKwh);
   const parsedConsumption = parseLocaleNumber(consumption);
 
-  const timeInvalid = !isTimezoneAwareIso(demoTime);
+  const timeInvalid = !isPlus07FiveMinuteBucket(demoTime);
   const socInvalid = parsedSoc === null || parsedSoc < 0 || parsedSoc > 100;
   const batteryInvalid = parsedBattery === null || parsedBattery <= 0;
   const consumptionInvalid =
@@ -255,7 +255,7 @@ export function DriverForm({
       {invalid ? (
         <p className="field-error driver-toolbar__error" role="alert">
           {timeInvalid
-            ? "Giờ demo phải là ISO-8601 có múi giờ (ví dụ 2026-10-13T16:00:00+07:00)."
+            ? "Giờ demo phải là +07:00, căn 5 phút (ví dụ 2026-10-13T16:00:00+07:00)."
             : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
         </p>
       ) : null}

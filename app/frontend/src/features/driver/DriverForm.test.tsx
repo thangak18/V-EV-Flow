@@ -174,7 +174,7 @@ describe("DriverForm", () => {
     expect(
       screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
     ).toBeDisabled();
-    expect(screen.getByRole("alert")).toHaveTextContent(/múi giờ/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/\+07:00, căn 5 phút/i);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

@@ -11,6 +11,19 @@
 
 Các số 25%, 85% hoặc plan_p 94% trong proposal/API là minh họa, không mặc định là kết quả demo. Không đặt chỉ tiêu “AI phải thắng” rồi hard-code biểu đồ.
 
+## Frontend integration verify (owner web-map)
+
+HTTP `/recommend` trên `main` vẫn Phase 0 placeholder. Branch Kiên `feat/recommend-api` (#81) đã trả primary/backup (`heuristic_ranking`) khi smoke local; FE form chặn giờ lệch bucket +07/5 phút và hiển thị `detail` string 422. Playwright `e2e/driver-pipeline.spec.ts` inject payload pipeline (`simulated`, primary/backup, empty, 503). Live `/pressure` + `/simulate` qua production preview. So sánh 100 xe: seed 42 / 100 xe; không hard-code người thắng (`e2e/operator-compare.spec.ts`).
+
+Giới hạn: chờ #81 merge để Driver live có trạm thật; e2e `driver.spec` trên `main` vẫn kỳ vọng Phase 0 empty cho đến khi BE nối. Runner AI thật vẫn deferred — FakeSimulationRunner. Badge theo `data_type` API.
+
+### Chốt demo trên máy trình bày
+
+- [ ] Chạy production build (không Vite HMR): `npm --prefix app/frontend run build` rồi `npm --prefix app/frontend run preview -- --host 127.0.0.1 --port 4173` với API `:8000` và `VITE_API_BASE_URL=/api`.
+- [ ] Kiểm trên laptop + máy chiếu (độ phân giải/zoom 100%; Driver + Operator).
+- [ ] Video dự phòng khi mất mạng / Goong CDN: quay sẵn Driver tìm kế hoạch + Operator áp lực + so sánh 3 chiến lược.
+- [ ] Nêu rõ trên slide: recommend live vẫn placeholder cho đến khi Kiên nối; số so sánh đến từ runner, không phải slide cố định.
+
 ## Checklist trước nộp
 
 - [ ] Mỗi module có lệnh cài/chạy đã kiểm tra, env mẫu và không có key thật trong repo.
