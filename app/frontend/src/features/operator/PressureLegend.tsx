@@ -1,11 +1,10 @@
 export function PressureLegend() {
   return (
     <aside className="pressure-legend" aria-label="Chú thích áp lực">
-      <p className="eyebrow">Áp lực trạm (pressure)</p>
+      <p className="eyebrow">NGUY CƠ THIẾU CHỖ</p>
       <p>
-        Điểm áp lực ≈ 1 − khả năng còn cổng trống trong khung thời gian cố định.
-        Cao hơn nghĩa là rủi ro thiếu cổng cao hơn — không phải lưu lượng đo
-        trực tiếp.
+        Màu đỏ nghĩa là khả năng còn cổng thấp hơn tại giờ dự báo. Đây là dự báo
+        còn chỗ, không phải số xe đang xếp hàng.
       </p>
       <ul>
         <li>

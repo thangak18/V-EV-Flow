@@ -12,6 +12,11 @@ import { pressureColor } from "../features/operator/pressureColors";
 import { PressureLegend } from "../features/operator/PressureLegend";
 import { ScenarioSelector } from "../features/operator/ScenarioSelector";
 import { SimulationControls } from "../features/operator/SimulationControls";
+import { AreaFilter } from "../features/operator/AreaFilter";
+import {
+  inMonitoredArea,
+  type MonitoredArea,
+} from "../features/operator/areas";
 import { WhatIfPanel } from "../features/operator/WhatIfPanel";
 import { StrategyComparison } from "../features/operator/StrategyComparison";
 import { usePressure } from "../hooks/usePressure";
@@ -24,6 +29,8 @@ export function OperatorPage() {
   const [time, setTime] = useState("2026-10-13T16:00:00+07:00");
   const [runtimeNotice, setRuntimeNotice] = useState("");
   const [runtimeReady, setRuntimeReady] = useState(false);
+  const [placesAvailable, setPlacesAvailable] = useState(false);
+  const [area, setArea] = useState<MonitoredArea | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     client
@@ -31,8 +38,15 @@ export function OperatorPage() {
       .then((context) => {
         if (controller.signal.aborted) return;
         if (context.observed_at) setTime(context.observed_at);
-        setRuntimeNotice(context.message);
+        setRuntimeNotice(
+          !context.available
+            ? "Chưa có dữ liệu phù hợp cho thời điểm đã chọn."
+            : context.clock_mode === "replay"
+              ? `Dữ liệu mô phỏng · Mốc quan sát ${context.observed_at ? new Date(context.observed_at).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "chưa xác định"}`
+              : context.message,
+        );
         setRuntimeReady(context.available);
+        setPlacesAvailable(context.places_available);
       })
       .catch(() => {
         if (!controller.signal.aborted)
@@ -89,9 +103,11 @@ export function OperatorPage() {
 
     for (const station of pressureStations) {
       const meta = stationIndex.get(station.station_id);
+      if (meta && !inMonitoredArea(meta, area)) continue;
       const title = meta?.name ?? station.station_id;
       const label = `${title} · áp lực ${station.pressure_score.toFixed(2)}`;
       if (!meta) {
+        if (area) continue;
         unlocated.push({
           id: station.station_id,
           label,
@@ -109,19 +125,45 @@ export function OperatorPage() {
       });
     }
 
+    if (area)
+      points.push({
+        id: "monitored-area",
+        lat: area.center.lat,
+        lng: area.center.lng,
+        label: `Khu vực theo dõi: ${area.center.label}`,
+        role: "origin",
+      });
     return { points, unlocated, fitBounds: true };
-  }, [pressure.result, stationIndex]);
+  }, [pressure.result, stationIndex, area]);
 
   const pressureDataType =
     pressure.result?.stations[0]?.data_type ?? ("mock" as const);
 
+  const visibleStations = stations.filter((station) =>
+    inMonitoredArea(station, area),
+  );
+  const visibleIds = new Set(
+    visibleStations.map((station) => station.station_id),
+  );
+  const knownPressure = (pressure.result?.stations ?? []).filter((station) =>
+    visibleIds.has(station.station_id),
+  );
+  const highRisk = knownPressure.filter(
+    (station) => station.pressure_score >= 0.66,
+  ).length;
+  const availableAverage = knownPressure.length
+    ? knownPressure.reduce((total, station) => total + station.p_available, 0) /
+      knownPressure.length
+    : null;
   return (
     <main className="operator-page">
       <header className="operator-header">
         <div>
-          <h2>Áp lực trạm &amp; so sánh chiến lược</h2>
+          <p className="eyebrow">TỔNG QUAN MẠNG LƯỚI</p>
+          <h2>Theo dõi & điều phối trạm sạc</h2>
           <p className="subtitle">
-            Áp lực là proxy rủi ro thiếu cổng, không phải số xe thực tế.
+            Theo dõi nguy cơ thiếu chỗ, so sánh cách điều phối xe và đánh giá
+            phương án cải thiện trước khi áp dụng.
           </p>
         </div>
         {pressure.result ? <DataTypeBadge dataType={pressureDataType} /> : null}
@@ -132,6 +174,62 @@ export function OperatorPage() {
           {runtimeNotice}
         </p>
       ) : null}
+      <AreaFilter
+        stations={stations}
+        placesAvailable={placesAvailable}
+        onApply={setArea}
+      />
+      <div className="network-kpis" aria-label="Tổng quan khu vực">
+        <article>
+          <span>Trạm trong khu vực</span>
+          <strong>
+            {visibleStations.length}
+            <small> / {stations.length}</small>
+          </strong>
+          <p>
+            {area
+              ? `Trong bán kính ${area.radiusKm} km`
+              : "Toàn bộ mạng lưới có dữ liệu"}
+          </p>
+        </article>
+        <article>
+          <span>Trạm có nguy cơ thiếu chỗ</span>
+          <strong>{pressure.result ? highRisk : "—"}</strong>
+          <p>Nguy cơ từ 66% tại giờ dự báo</p>
+        </article>
+        <article>
+          <span>Khả năng còn chỗ trung bình</span>
+          <strong>
+            {availableAverage === null
+              ? "—"
+              : `${Math.round(availableAverage * 100)}%`}
+          </strong>
+          <p>
+            {knownPressure.length
+              ? `Từ ${knownPressure.length} trạm có dự báo`
+              : "Áp dụng kịch bản để xem dự báo"}
+          </p>
+        </article>
+      </div>
+      {area ? (
+        <p className="scope-note">
+          Khu vực: {area.center.label}.{" "}
+          {visibleStations.length === 0
+            ? "Chưa có dữ liệu trạm trong khu vực này. Bản đồ vẫn hiển thị vị trí bạn chọn; không suy diễn trạng thái trạm chưa có dữ liệu."
+            : "Bộ lọc chỉ áp dụng cho bản đồ và tổng quan khu vực."}
+        </p>
+      ) : null}
+      <div className="section-step">
+        <span>02</span>
+        <div>
+          <h3>Đánh giá nhu cầu &amp; điều phối</h3>
+          <p>
+            Chọn điều kiện nhu cầu và số xe. Bản đồ cập nhật theo kịch bản; so
+            sánh chiến lược sử dụng toàn bộ {stations.length} trạm trong mạng
+            lưới.
+          </p>
+        </div>
+      </div>
       <div className="operator-toolbar">
         <ScenarioSelector
           scenario={scenario}
@@ -167,7 +265,11 @@ export function OperatorPage() {
       <div className="operator-workspace">
         <section className="operator-map-card">
           <div className="operator-map-card__head">
-            <h3>Bản đồ trạm sạc</h3>
+            <h3>Bản đồ khả năng phục vụ</h3>
+            <p className="metric-note">
+              Dự báo còn chỗ sau 30 phút kể từ mốc quan sát. Màu sắc không biểu
+              thị số xe đang chờ.
+            </p>
           </div>
           {pressure.status === "loading" ? (
             <p className="status-message" role="status">
@@ -196,7 +298,7 @@ export function OperatorPage() {
           </div>
           <p className="map-card-footer" role="status">
             {pressure.result
-              ? "Bản đồ minh họa"
+              ? `Đang hiển thị ${knownPressure.length} trạm có dự báo. Màu thể hiện nguy cơ không còn cổng khi xe đến.`
               : "Bấm Áp dụng kịch bản để xem lớp áp lực."}
           </p>
         </section>

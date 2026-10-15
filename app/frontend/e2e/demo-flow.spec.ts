@@ -43,7 +43,7 @@ test("driver demo: plan, reset, empty battery and recovery", async ({
     });
     await page.waitForTimeout(1800); // Readable hold for the explicitly requested backup recording.
   }
-  await page.getByRole("button", { name: "Đặt lại demo" }).click();
+  await page.getByRole("button", { name: "Đặt lại phiên" }).click();
   await expect(page.getByText(/Đã đặt lại tải phân bổ/)).toBeVisible();
   await expect(page.getByTestId("plan-hero")).toHaveCount(0);
   expect(recommends).toBe(1);
@@ -72,7 +72,7 @@ test("operator demo: pressure then an actual same-fixture comparison", async ({
   await page
     .getByRole("button", { name: "Áp dụng kịch bản", exact: true })
     .click();
-  await expect(page.getByText(/Bản đồ minh họa/)).toBeVisible();
+  await expect(page.getByText(/Đang hiển thị .* trạm có dự báo/)).toBeVisible();
   const responsesPromise = Promise.all(
     ["nearest", "currently_available", "ai_allocation"].map((strategy) =>
       page.waitForResponse(

@@ -320,7 +320,7 @@ export function DriverForm({
               />
             </label>
             <label>
-              Giờ demo (+07:00)
+              Giờ quan sát (+07:00)
               <input
                 className="input-datetime"
                 type="text"
@@ -343,11 +343,11 @@ export function DriverForm({
         className="status-message driver-toolbar__hint"
       >
         {runtime?.places_available
-          ? "Gõ địa chỉ rồi chọn gợi ý Goong để lấy tọa độ. Nút ▾ mở danh sách; Danh mục demo là nguồn riêng."
+          ? "Tìm địa điểm hoặc mở ▾ để chọn, rồi bấm Tìm kế hoạch sạc."
           : "Gõ rồi chọn địa điểm trong danh sách."}{" "}
-        Dữ liệu trạm hiện phủ vùng demo TP.HCM–Vũng Tàu.
+        Chỉ các trạm có dữ liệu phù hợp mới được đề xuất.
         {runtime
-          ? ` ${runtime.message} Phạm vi dự báo tối đa ${runtime.max_horizon_minutes} phút.`
+          ? ` ${runtime.clock_mode === "replay" ? "Đang xem dữ liệu mô phỏng, không phải trạng thái trực tiếp." : runtime.clock_mode === "live" ? "Trạng thái từ nguồn trạm." : "Dữ liệu minh họa."} Dự báo tối đa ${runtime.max_horizon_minutes} phút.`
           : ""}
       </p>
       {runtimeError ? (
@@ -360,7 +360,7 @@ export function DriverForm({
           {routeInvalid
             ? "Chọn hai địa điểm khác nhau trong danh sách gợi ý."
             : timeInvalid
-              ? "Giờ demo phải là +07:00, căn 5 phút (ví dụ 2026-10-13T16:00:00+07:00)."
+              ? "Giờ quan sát phải là +07:00, căn 5 phút (ví dụ 2026-10-13T16:00:00+07:00)."
               : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
         </p>
       ) : null}

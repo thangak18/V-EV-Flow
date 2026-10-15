@@ -25,6 +25,7 @@ describe("routes and shared status UI", () => {
     expect(
       screen.getByRole("heading", { name: /Chưa tìm trạm sạc/i }),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Chuyển không gian/));
     expect(screen.getByRole("link", { name: "Tài xế" })).toHaveClass(
       "nav-link--active",
     );
@@ -32,6 +33,7 @@ describe("routes and shared status UI", () => {
 
   test("marks operator nav active", () => {
     renderApp("/operator");
+    fireEvent.click(screen.getByText(/Chuyển không gian/));
     expect(screen.getByRole("link", { name: "Điều hành" })).toHaveClass(
       "nav-link--active",
     );

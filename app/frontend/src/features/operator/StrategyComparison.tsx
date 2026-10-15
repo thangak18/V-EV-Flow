@@ -45,6 +45,11 @@ export function StrategyComparison({ rows, meta }: Props) {
     return (
       <section className="strategy-comparison" aria-labelledby="strategy-title">
         <h2 id="strategy-title">So sánh chiến lược</h2>
+        <p className="strategy-guide">
+          Gần nhất: ưu tiên khoảng cách. Đang trống: xét chỗ trống lúc xuất
+          phát. Phân bổ AI: dự báo chỗ trống khi đến và phân tán nhu cầu giữa
+          các trạm.
+        </p>
         <div className="strategy-empty" role="status">
           <div className="strategy-empty__icon" aria-hidden>
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
@@ -76,8 +81,8 @@ export function StrategyComparison({ rows, meta }: Props) {
           </div>
           <h3>Chưa có kết quả mô phỏng</h3>
           <p>
-            Chọn kịch bản, seed và số xe rồi bấm So sánh 3 chiến lược. Ba chiến
-            lược sẽ dùng cùng một tập xe.
+            Chọn kịch bản và số xe rồi bấm So sánh 3 chiến lược. Ba chiến lược
+            sẽ dùng cùng một tập xe.
           </p>
           <p className="strategy-empty__hint">
             Áp dụng kịch bản cập nhật bản đồ. So sánh chạy mô phỏng.
@@ -101,10 +106,22 @@ export function StrategyComparison({ rows, meta }: Props) {
   return (
     <section className="strategy-comparison" aria-labelledby="strategy-title">
       <h2 id="strategy-title">So sánh chiến lược</h2>
+      <p className="strategy-guide">
+        Gần nhất: ưu tiên khoảng cách. Đang trống: xét chỗ trống lúc xuất phát.
+        Phân bổ AI: dự báo chỗ trống khi đến và phân tán nhu cầu giữa các trạm.
+      </p>
       {meta ? (
         <p className="strategy-meta">
-          Kịch bản {meta.scenario} · {meta.vehicleCount} xe · seed {meta.seed}.
-          Không chọn sẵn người thắng — số liệu từ mô phỏng.
+          Kịch bản{" "}
+          {(
+            {
+              normal: "Ngày thường",
+              holiday_30_4: "Lễ 30/4",
+              tet: "Tết",
+            } as Record<string, string>
+          )[meta.scenario] ?? meta.scenario}{" "}
+          · {meta.vehicleCount} xe · mã lần chạy {meta.seed}. So sánh cùng nhóm
+          xe và điều kiện trạm.
         </p>
       ) : null}
 
@@ -214,9 +231,9 @@ export function StrategyComparison({ rows, meta }: Props) {
           <thead>
             <tr>
               <th scope="col">Chiến lược</th>
-              <th scope="col">Đường vòng</th>
-              <th scope="col">Chờ</th>
-              <th scope="col">Thất bại</th>
+              <th scope="col">Đi thêm trung bình</th>
+              <th scope="col">Chờ trung bình</th>
+              <th scope="col">Xe chưa được phục vụ</th>
             </tr>
           </thead>
           <tbody>

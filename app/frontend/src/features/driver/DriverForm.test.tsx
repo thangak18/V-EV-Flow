@@ -184,7 +184,7 @@ describe("DriverForm", () => {
 
   test("rejects demo time without timezone", () => {
     const { onSubmit } = renderForm();
-    fireEvent.change(screen.getByLabelText(/Giờ demo/i), {
+    fireEvent.change(screen.getByLabelText(/Giờ quan sát/i), {
       target: { value: "abc" },
     });
     expect(

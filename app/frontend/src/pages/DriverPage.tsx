@@ -191,6 +191,19 @@ export function DriverPage() {
 
   return (
     <main className="driver-page">
+      <section className="page-intro driver-intro">
+        <div>
+          <p className="eyebrow">HÀNH TRÌNH CỦA BẠN</p>
+          <h2>Chọn trạm sạc cho hành trình.</h2>
+          <p>
+            Chọn hành trình để tìm trạm phù hợp, xem pin khi đến và chuẩn bị một
+            phương án dự phòng.
+          </p>
+        </div>
+        <span className="intro-chip">
+          <span aria-hidden>◈</span> Dự báo theo thời điểm đến
+        </span>
+      </section>
       <DriverForm
         pending={status === "loading"}
         locations={locations}

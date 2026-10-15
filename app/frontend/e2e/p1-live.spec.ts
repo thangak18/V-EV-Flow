@@ -41,9 +41,7 @@ test("live Driver uses actual TreeSHAP and reports time-shift evaluation honestl
       ),
   ).toBeCloseTo(explanation.raw_score, 6);
   expect(explanation.calibrated_probability).toBe(result.primary.p_available);
-  await page
-    .getByText("Vì sao có xác suất này? (TreeSHAP)", { exact: true })
-    .click();
+  await page.getByText("Vì sao có dự báo này?", { exact: true }).click();
   await expect(page.getByTestId("shap-explanation")).toContainText(
     "không cộng trực tiếp vào % xác suất",
   );
@@ -88,8 +86,13 @@ test("live what-if: actual 100-vehicle added capacity and twenty shifted departu
   });
   for (const kind of ["add_ports", "shift_departures"]) {
     await page
-      .getByRole("combobox", { name: "Thay đổi", exact: true })
-      .selectOption(kind);
+      .getByRole("radio", {
+        name:
+          kind === "add_ports"
+            ? /Bổ sung cổng sạc/
+            : /Chuyển xe sang giờ thấp điểm/,
+      })
+      .check();
     const responsePromise = page.waitForResponse(
       (response) =>
         response.url().endsWith("/api/whatif") &&
@@ -111,7 +114,7 @@ test("live what-if: actual 100-vehicle added capacity and twenty shifted departu
         : expectedModel,
     );
     await expect(page.getByTestId("whatif-result")).toContainText(
-      "100 xe · seed 42",
+      "100 xe · mã lần chạy 42",
     );
     if (kind === "shift_departures") {
       expect(result.shifted_vehicle_count).toBe(20);
@@ -121,8 +124,8 @@ test("live what-if: actual 100-vehicle added capacity and twenty shifted departu
     } else
       await expect(page.getByTestId("whatif-result")).toContainText(
         result.prediction_mode === "capacity_retrained"
-          ? "model riêng đã train cho capacity mới"
-          : "Dự báo ML giữ theo capacity gốc",
+          ? "mô hình riêng phù hợp với số cổng mới"
+          : "Dự báo vẫn dùng cấu hình trạm ban đầu",
       );
     await expect(
       page

@@ -35,7 +35,8 @@ test("driver renders real calibrated API result and model provenance", async ({
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByText("Chi tiết kỹ thuật", { exact: true }).click();
+  await page.getByText("Cách tính & độ tin cậy", { exact: true }).click();
+  await page.getByText("Thông tin kiểm chứng mô hình", { exact: true }).click();
   await expect(
     page.getByText(`Phiên bản mô hình: ${result.model_version}`, {
       exact: true,

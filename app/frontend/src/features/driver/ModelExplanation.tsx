@@ -47,7 +47,11 @@ export function ModelExplanation({
       className="tech-details shap-explanation"
       data-testid="shap-explanation"
     >
-      <summary>Vì sao có xác suất này? (TreeSHAP)</summary>
+      <summary>Vì sao có dự báo này?</summary>
+      <p className="metric-note">
+        Các yếu tố bên dưới làm tăng hoặc giảm dự báo còn cổng tại giờ bạn đến.
+        Chúng không bảo đảm trạm sẽ còn chỗ.
+      </p>
       <p>
         5 đặc trưng ảnh hưởng nhất tới điểm LightGBM trước hiệu chỉnh. Đơn vị
         log-odds, không cộng trực tiếp vào % xác suất và không chứng minh quan

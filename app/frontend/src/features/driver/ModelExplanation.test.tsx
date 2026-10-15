@@ -5,7 +5,7 @@ import { ModelExplanation } from "./ModelExplanation";
 
 test("explains signed raw-margin contributions without presenting them as probability", () => {
   render(<ModelExplanation explanation={explanationFixture} />);
-  fireEvent.click(screen.getByText("Vì sao có xác suất này? (TreeSHAP)"));
+  fireEvent.click(screen.getByText("Vì sao có dự báo này?"));
   expect(screen.getByText("Cổng trống hiện tại")).toBeInTheDocument();
   expect(screen.getByText("Số phút tới ETA")).toBeInTheDocument();
   expect(screen.getByText("Tăng điểm +0.500")).toBeInTheDocument();

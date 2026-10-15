@@ -85,7 +85,7 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
               <dl className="plan-hero__metrics">
                 <div>
                   <dd>{displayDistance(primary.distance_km)} km</dd>
-                  <dt>Khoảng cách</dt>
+                  <dt>Từ điểm xuất phát</dt>
                 </div>
                 <div>
                   <dd>
@@ -95,21 +95,12 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
                 </div>
                 <div>
                   <dd>+{displayDistance(primary.detour_km)} km</dd>
-                  <dt>Đường vòng</dt>
+                  <dt>Đi thêm để ghé trạm</dt>
                 </div>
               </dl>
               {result.plan_p != null ? (
                 <p className="plan-confidence">
-                  Ước lượng kế hoạch {formatPct(result.plan_p)}
-                  {result.plan_p_assumption ? (
-                    <span className="plan-confidence__hint">
-                      {" "}
-                      · giả định{" "}
-                      {result.plan_p_assumption === "independent_stations"
-                        ? "hai trạm độc lập"
-                        : result.plan_p_assumption}
-                    </span>
-                  ) : null}
+                  Khả năng kế hoạch có chỗ: {formatPct(result.plan_p)}
                 </p>
               ) : null}
               <button
@@ -122,13 +113,57 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
             </div>
           ) : null}
 
+          {backup ? (
+            <article className="plan-backup">
+              <p className="plan-hero__label">Trạm dự phòng</p>
+              <span className="backup-step">PHƯƠNG ÁN B</span>
+              <h3>{backupName}</h3>
+              <p className="backup-explainer">
+                Nếu trạm chính không còn chỗ, bạn có thể tiếp tục tới trạm này.
+                Thời gian và pin bên dưới đã tính cho hành trình qua trạm chính.
+              </p>
+              <dl className="plan-backup__metrics">
+                <div>
+                  <dt>Khả năng có cổng</dt>
+                  <dd data-probability={backup.p_available}>
+                    {formatPct(backup.p_available)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Đến lúc</dt>
+                  <dd>{formatEtaTime(backup.eta)}</dd>
+                </div>
+                <div>
+                  <dt>Pin khi tới trạm dự phòng</dt>
+                  <dd>{backup.arrival_soc_pct.toFixed(1)}%</dd>
+                </div>
+                <div>
+                  <dt>Tổng quãng đường tới dự phòng</dt>
+                  <dd>{displayDistance(backup.distance_km)} km</dd>
+                </div>
+              </dl>
+              <p className="metric-note">
+                Xác suất còn cổng tại giờ đến dự kiến; chưa phải xác nhận giữ
+                chỗ.
+              </p>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={onFocusMap}
+              >
+                Xem trạm dự phòng trên bản đồ
+              </button>
+            </article>
+          ) : (
+            <p className="status-message">Không có trạm dự phòng.</p>
+          )}
+
           {primary?.explanation ? (
             <ModelExplanation explanation={primary.explanation} />
           ) : null}
           {result.time_shift_evaluated && !result.time_shift_estimate ? (
             <p className="status-message" data-testid="time-shift-none">
-              Chưa có giờ khởi hành muộn nào cải thiện ít nhất 5 điểm % trong
-              phạm vi dự báo của model.
+              Giữ giờ khởi hành hiện tại — chưa có gợi ý đổi giờ phù hợp.
             </p>
           ) : null}
           {result.time_shift_estimate ? (
@@ -158,49 +193,65 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
               </details>
             </aside>
           ) : null}
-
-          {backup ? (
-            <article className="plan-backup">
-              <p className="plan-hero__label">Trạm dự phòng</p>
-              <h3>{backupName}</h3>
-              <dl className="plan-backup__metrics">
-                <div>
-                  <dt>Khả năng có cổng</dt>
-                  <dd data-probability={backup.p_available}>
-                    {formatPct(backup.p_available)}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Đến lúc</dt>
-                  <dd>{formatEtaTime(backup.eta)}</dd>
-                </div>
-              </dl>
-            </article>
-          ) : (
-            <p className="status-message">Không có trạm dự phòng.</p>
-          )}
         </>
       )}
 
       {result.reasons.length > 0 ? (
-        <ul className="reason-list">
-          {result.reasons.map((reason) => (
-            <li key={reason}>{displayReason(reason)}</li>
-          ))}
-        </ul>
+        hasPlan ? (
+          <details className="plan-reasons">
+            <summary>Vì sao kế hoạch này phù hợp?</summary>
+            <ul className="reason-list">
+              {result.reasons.map((reason) => (
+                <li key={reason}>{displayReason(reason)}</li>
+              ))}
+            </ul>
+          </details>
+        ) : (
+          <ul className="reason-list">
+            {result.reasons.map((reason) => (
+              <li key={reason}>{displayReason(reason)}</li>
+            ))}
+          </ul>
+        )
       ) : null}
 
       <details className="tech-details">
-        <summary>Chi tiết kỹ thuật</summary>
-        <div className="tech-details__body">
-          {result.plan_p != null && result.plan_p_assumption ? (
-            <p>Giả định ước lượng: {result.plan_p_assumption}</p>
-          ) : null}
-          <p>Phiên bản mô hình: {result.model_version}</p>
-          <p>Cách phân bổ: {result.allocation_method}</p>
-          {primary ? <p>Mã trạm chính: {primary.station_id}</p> : null}
-          {backup ? <p>Mã trạm dự phòng: {backup.station_id}</p> : null}
-        </div>
+        <summary>Cách tính &amp; độ tin cậy</summary>
+        <p>
+          Phần trăm cho biết khả năng còn ít nhất một cổng phù hợp khi bạn đến.
+          Đây là dự báo, không phải xác nhận đặt chỗ.
+        </p>
+        <p>
+          Pin khi đến là lượng pin ước tính còn lại sau quãng đường di chuyển.
+          Đường vòng là quãng đường đi thêm để ghé trạm.
+        </p>
+        {result.plan_p_assumption === "independent_stations" ? (
+          <p>
+            Ước lượng cho cả kế hoạch dùng giả định hai trạm độc lập. Hai trạm
+            có thể cùng đông khách nên xác suất thực tế có thể khác.
+          </p>
+        ) : null}
+        <p>
+          Nguồn trạng thái:{" "}
+          {result.data_type === "simulated"
+            ? "dữ liệu mô phỏng"
+            : result.data_type === "real"
+              ? "dữ liệu từ nguồn trạm"
+              : "dữ liệu minh họa hoặc hỗn hợp"}
+          .
+        </p>
+        <details className="verification-details">
+          <summary>Thông tin kiểm chứng mô hình</summary>
+          <div className="tech-details__body">
+            {result.plan_p != null && result.plan_p_assumption ? (
+              <p>Giả định ước lượng: {result.plan_p_assumption}</p>
+            ) : null}
+            <p>Phiên bản mô hình: {result.model_version}</p>
+            <p>Cách phân bổ: {result.allocation_method}</p>
+            {primary ? <p>Mã trạm chính: {primary.station_id}</p> : null}
+            {backup ? <p>Mã trạm dự phòng: {backup.station_id}</p> : null}
+          </div>
+        </details>
       </details>
     </section>
   );

@@ -21,7 +21,7 @@ function renderControls() {
     onSeedChange,
     onVehicleCountChange,
     onRun,
-    seed: screen.getByLabelText(/Seed/),
+    seed: screen.getByLabelText(/Mã lần chạy/),
     vehicles: screen.getByLabelText(/Số xe/),
     submit: screen.getByRole("button", { name: /So sánh 3 chiến lược/i }),
   };
@@ -52,7 +52,9 @@ describe("SimulationControls", () => {
     expect(seed).toHaveValue("");
     expect(vehicles).toHaveValue("");
     expect(submit).toBeDisabled();
-    expect(screen.getByText("Seed phải là số nguyên")).toBeInTheDocument();
+    expect(
+      screen.getByText("Mã lần chạy phải là số nguyên"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Số xe phải là số nguyên lớn hơn hoặc bằng 1"),
     ).toBeInTheDocument();
@@ -75,7 +77,9 @@ describe("SimulationControls", () => {
     fireEvent.change(seed, { target: { value: "" } });
     typeSequentially(seed, "1.5");
     expect(seed).toHaveValue("1.5");
-    expect(screen.getByText("Seed phải là số nguyên")).toBeInTheDocument();
+    expect(
+      screen.getByText("Mã lần chạy phải là số nguyên"),
+    ).toBeInTheDocument();
     expect(submit).toBeDisabled();
 
     fireEvent.change(vehicles, { target: { value: "" } });
@@ -92,7 +96,7 @@ describe("SimulationControls", () => {
     expect(seed).toHaveValue("15");
     expect(vehicles).toHaveValue("15");
     expect(
-      screen.queryByText("Seed phải là số nguyên"),
+      screen.queryByText("Mã lần chạy phải là số nguyên"),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByText("Số xe phải là số nguyên lớn hơn hoặc bằng 1"),

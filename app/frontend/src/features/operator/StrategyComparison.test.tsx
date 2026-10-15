@@ -78,7 +78,7 @@ describe("StrategyComparison", () => {
     expect(screen.getAllByText(/Lỗi: timeout/).length).toBeGreaterThanOrEqual(
       1,
     );
-    expect(screen.getByText(/Không chọn sẵn người thắng/)).toBeInTheDocument();
+    expect(screen.getByText(/So sánh cùng nhóm xe/)).toBeInTheDocument();
     expect(screen.getAllByText("10").length).toBeGreaterThanOrEqual(1);
     const tech = screen.getByText("Chi tiết mô phỏng").closest("details");
     expect(tech).not.toHaveAttribute("open");

@@ -20,10 +20,10 @@ test("operator live simulate: 100 vehicles, three strategies, no hardcoded winne
   await expect(page.getByText("Đang trống").first()).toBeVisible();
   await expect(page.getByText("Phân bổ AI").first()).toBeVisible();
   await expect(
-    page.getByText(/100 xe · seed 42/i),
+    page.getByText(/100 xe · mã lần chạy 42/i),
   ).toBeVisible();
   await expect(
-    page.getByText(/Không chọn sẵn người thắng/i),
+    page.getByText(/So sánh cùng nhóm xe/i),
   ).toBeVisible();
 
   // Phase 0 FakeSimulationRunner returns identical metrics → UI must show tie.
@@ -81,7 +81,7 @@ test("operator compare derives leader from injected runner rates", async ({
   await expect(page.getByText("92.0%").first()).toBeVisible();
   await expect(page.getByText("80.0%").first()).toBeVisible();
   await expect(
-    page.getByText(/Không chọn sẵn người thắng/i),
+    page.getByText(/So sánh cùng nhóm xe/i),
   ).toBeVisible();
 });
 

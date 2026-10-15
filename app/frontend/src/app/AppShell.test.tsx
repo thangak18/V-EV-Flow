@@ -80,7 +80,7 @@ test("successful reset clears the plan and restores idle without another recomme
   );
   fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
   await screen.findByTestId("plan-hero");
-  fireEvent.click(screen.getByRole("button", { name: "Đặt lại demo" }));
+  fireEvent.click(screen.getByRole("button", { name: "Đặt lại phiên" }));
   expect(await screen.findByText(/Đã đặt lại tải phân bổ/)).toBeInTheDocument();
   expect(screen.queryByTestId("plan-hero")).not.toBeInTheDocument();
   expect(
@@ -107,12 +107,12 @@ test("failed reset preserves the plan and lets the user retry", async () => {
   );
   fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
   await screen.findByTestId("plan-hero");
-  fireEvent.click(screen.getByRole("button", { name: "Đặt lại demo" }));
+  fireEvent.click(screen.getByRole("button", { name: "Đặt lại phiên" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Chưa đặt lại được demo",
+    "Chưa đặt lại được phiên",
   );
   expect(screen.getByTestId("plan-hero")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Đặt lại demo" }));
+  fireEvent.click(screen.getByRole("button", { name: "Đặt lại phiên" }));
   await waitFor(() =>
     expect(screen.queryByTestId("plan-hero")).not.toBeInTheDocument(),
   );
@@ -135,9 +135,9 @@ test("unconfirmed reset never clears the current plan", async () => {
   );
   fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
   await screen.findByTestId("plan-hero");
-  fireEvent.click(screen.getByRole("button", { name: "Đặt lại demo" }));
+  fireEvent.click(screen.getByRole("button", { name: "Đặt lại phiên" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Chưa đặt lại được demo",
+    "Chưa đặt lại được phiên",
   );
   expect(screen.getByTestId("plan-hero")).toBeInTheDocument();
 });

@@ -14,8 +14,8 @@ type Props = {
 
 function seedErrorMessage(draft: string): string | null {
   const value = parseInteger(draft);
-  if (value === null) return "Seed phải là số nguyên";
-  return value < 0 ? "Seed không được âm" : null;
+  if (value === null) return "Mã lần chạy phải là số nguyên";
+  return value < 0 ? "Mã lần chạy không được âm" : null;
 }
 
 function vehiclesErrorMessage(draft: string): string | null {
@@ -62,30 +62,37 @@ export function SimulationControls({
 
   return (
     <form className="simulation-controls toolbar-card" onSubmit={handleSubmit}>
-      <div className="simulation-field field-chip">
-        <label className="field-chip__label" htmlFor="sim-seed">
-          Seed (mầm ngẫu nhiên)
-        </label>
-        <input
-          id="sim-seed"
-          type="text"
-          inputMode="numeric"
-          value={seedDraft}
-          onChange={(event) => {
-            const next = event.target.value;
-            // Keep decimal drafts visible (e.g. "1.5") — validate as integer separately.
-            if (isNumericDraft(next)) setSeedDraft(next);
-          }}
-          aria-invalid={seedError !== null}
-          aria-describedby={seedError ? "sim-seed-error" : undefined}
-          autoComplete="off"
-        />
-        {seedError ? (
-          <p id="sim-seed-error" className="field-error" role="alert">
-            {seedError}
-          </p>
-        ) : null}
-      </div>
+      <details className="simulation-advanced">
+        <summary>Thiết lập lần chạy</summary>
+        <p>
+          Mã lần chạy giúp giữ nguyên nhóm xe khi chạy lại hoặc so sánh phương
+          án.
+        </p>
+        <div className="simulation-field field-chip">
+          <label className="field-chip__label" htmlFor="sim-seed">
+            Mã lần chạy
+          </label>
+          <input
+            id="sim-seed"
+            type="text"
+            inputMode="numeric"
+            value={seedDraft}
+            onChange={(event) => {
+              const next = event.target.value;
+              // Keep decimal drafts visible (e.g. "1.5") — validate as integer separately.
+              if (isNumericDraft(next)) setSeedDraft(next);
+            }}
+            aria-invalid={seedError !== null}
+            aria-describedby={seedError ? "sim-seed-error" : undefined}
+            autoComplete="off"
+          />
+          {seedError ? (
+            <p id="sim-seed-error" className="field-error" role="alert">
+              {seedError}
+            </p>
+          ) : null}
+        </div>
+      </details>
       <div className="simulation-field field-chip">
         <label className="field-chip__label" htmlFor="sim-vehicles">
           Số xe

@@ -37,9 +37,7 @@ test("driver presents SHAP raw-score units and non-binding time-shift advice", a
   await expect(page.getByTestId("time-shift-suggestion")).toContainText(
     "chưa đổi kế hoạch hoặc ghi thêm phân bổ",
   );
-  await page
-    .getByText("Vì sao có xác suất này? (TreeSHAP)", { exact: true })
-    .click();
+  await page.getByText("Vì sao có dự báo này?", { exact: true }).click();
   await expect(page.getByTestId("shap-explanation")).toContainText("log-odds");
   await expect(page.getByTestId("shap-explanation")).toContainText(
     "Giảm điểm -0.200",
@@ -74,19 +72,20 @@ test("operator what-if follows current drafts, validates experiment identity and
     });
   });
   await page.goto("/operator");
-  await page.getByLabel("Seed (mầm ngẫu nhiên)").fill("91");
+  await page.getByText("Thiết lập lần chạy", { exact: true }).click();
+  await page.getByLabel("Mã lần chạy").fill("91");
   await page.getByLabel("Số xe", { exact: true }).fill("50");
   const run = page.getByRole("button", { name: "So sánh trước / sau" });
   await expect(run).toBeEnabled();
   await run.click();
   await expect(page.getByTestId("whatif-result")).toContainText(
-    "50 xe · seed 91",
+    "50 xe · mã lần chạy 91",
   );
   expect(observed).toMatchObject({
     seed: 91,
     vehicle_count: 50,
     change: { kind: "add_ports", station_id: "S001", ports: 2 },
   });
-  await page.getByLabel("Seed (mầm ngẫu nhiên)").fill("");
+  await page.getByLabel("Mã lần chạy").fill("");
   await expect(run).toBeDisabled();
 });

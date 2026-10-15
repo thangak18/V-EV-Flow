@@ -34,7 +34,7 @@ test("what-if is explicit and shows an honest before/after comparison", async ()
   expect(whatif).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "So sánh trước / sau" }));
   expect(await screen.findByTestId("whatif-result")).toHaveTextContent(
-    "100 xe · seed 42",
+    "100 xe · mã lần chạy 42",
   );
   expect(whatif).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -44,10 +44,14 @@ test("what-if is explicit and shows an honest before/after comparison", async ()
     }),
   );
   expect(
-    screen.getByText(/Dự báo ML giữ theo capacity gốc/),
+    screen.getByText(/Dự báo vẫn dùng cấu hình trạm ban đầu/),
   ).toBeInTheDocument();
-  expect(screen.getByText("80.0%")).toBeInTheDocument();
-  expect(screen.getByText("90.0%")).toBeInTheDocument();
+  expect(
+    screen.getByText("80.0%", { selector: ".whatif-value" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("90.0%", { selector: ".whatif-value" }),
+  ).toBeInTheDocument();
 });
 
 test("shift preset sends exactly the declared fraction and displays actual shifted count", async () => {
@@ -71,9 +75,9 @@ test("shift preset sends exactly the declared fraction and displays actual shift
       />
     </ApiProvider>,
   );
-  fireEvent.change(screen.getByLabelText("Thay đổi"), {
-    target: { value: "shift_departures" },
-  });
+  fireEvent.click(
+    screen.getByRole("radio", { name: /Chuyển xe sang giờ thấp điểm/ }),
+  );
   fireEvent.click(screen.getByRole("button", { name: "So sánh trước / sau" }));
   expect(await screen.findByTestId("whatif-result")).toHaveTextContent(
     "Đã dịch 20 xe",
@@ -120,7 +124,7 @@ test("failed what-if exposes retry instead of fabricated metrics", async () => {
   );
   fireEvent.click(screen.getByRole("button", { name: "So sánh trước / sau" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "chưa bật what-if",
+    "chưa hỗ trợ đánh giá phương án",
   );
   expect(screen.queryByTestId("whatif-result")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "So sánh trước / sau" }));

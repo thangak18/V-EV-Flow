@@ -66,7 +66,9 @@ describe("PlanSummary", () => {
     expect(screen.getByText(/giả định hai trạm độc lập/i)).toBeInTheDocument();
     expect(screen.getByText(/16:40/)).toBeInTheDocument();
 
-    const details = screen.getByText("Chi tiết kỹ thuật").closest("details");
+    const details = screen
+      .getByText("Cách tính & độ tin cậy")
+      .closest("details");
     expect(details).not.toHaveAttribute("open");
     details?.setAttribute("open", "");
     expect(screen.getByText(/example-v1/)).toBeInTheDocument();

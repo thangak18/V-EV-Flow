@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useApiClient } from "./useApiClient";
 
@@ -28,6 +28,10 @@ function BrandMark() {
 
 export function AppShell() {
   const client = useApiClient();
+  const operator = useLocation().pathname.startsWith("/operator");
+  useEffect(() => {
+    document.title = `${operator ? "Điều hành" : "Tài xế"} · V-EV Flow`;
+  }, [operator]);
   const [runtime, setRuntime] = useState<Awaited<
     ReturnType<typeof client.ready>
   > | null>(null);
@@ -71,31 +75,41 @@ export function AppShell() {
   }
 
   return (
-    <div className="app-frame">
+    <div className={`app-frame app-frame--${operator ? "operator" : "driver"}`}>
       <header className="app-topbar">
         <div className="brand-block">
           <BrandMark />
           <h1 className="brand-title">V-EV Flow</h1>
         </div>
-        <nav className="app-nav" aria-label="Chính">
-          <NavLink
-            to="/driver"
-            className={({ isActive }) =>
-              isActive ? "nav-link nav-link--active" : "nav-link"
-            }
-          >
-            Tài xế
-          </NavLink>
-          <NavLink
-            to="/operator"
-            className={({ isActive }) =>
-              isActive ? "nav-link nav-link--active" : "nav-link"
-            }
-          >
-            Điều hành
-          </NavLink>
-        </nav>
-        <span className="data-badge data-badge--demo">Bản demo</span>
+        <span className="workspace-role">
+          {operator ? "TRUNG TÂM ĐIỀU HÀNH" : "DÀNH CHO TÀI XẾ"}
+        </span>
+        <details
+          className="workspace-menu"
+          key={operator ? "operator" : "driver"}
+        >
+          <summary>
+            Chuyển không gian <span aria-hidden>↗</span>
+          </summary>
+          <nav aria-label="Không gian làm việc">
+            <NavLink
+              to="/driver"
+              className={({ isActive }) =>
+                isActive ? "workspace-link nav-link--active" : "workspace-link"
+              }
+            >
+              Tài xế
+            </NavLink>
+            <NavLink
+              to="/operator"
+              className={({ isActive }) =>
+                isActive ? "workspace-link nav-link--active" : "workspace-link"
+              }
+            >
+              Điều hành
+            </NavLink>
+          </nav>
+        </details>
       </header>
       <div className="demo-controls">
         <p className="runtime-status" role="status">
@@ -105,7 +119,11 @@ export function AppShell() {
               ? "Đang kiểm tra backend…"
               : !runtime.ready
                 ? "Backend chưa sẵn sàng."
-                : `${runtime.route_backend === "goong" ? "Chỉ đường tài xế: Goong" : "Chỉ đường tài xế mô phỏng — khoảng cách và ETA là giả định"} · ${runtime.predictor_backend === "model" ? "Mô hình đã huấn luyện" : "Dự đoán minh họa"}`}
+                : operator
+                  ? runtime.predictor_backend === "model"
+                    ? "Mô hình dự báo đã kết nối · Phân tích theo kịch bản"
+                    : "Đang sử dụng dữ liệu minh họa"
+                  : `${runtime.route_backend === "goong" ? "Chỉ đường tài xế: Goong" : "Chỉ đường tài xế mô phỏng — khoảng cách và ETA là giả định"} · ${runtime.predictor_backend === "model" ? "Mô hình đã huấn luyện" : "Dự đoán minh họa"}`}
         </p>
         <button
           type="button"
@@ -113,17 +131,17 @@ export function AppShell() {
           disabled={resetting}
           onClick={() => void resetDemo()}
         >
-          {resetting ? "Đang đặt lại…" : "Đặt lại demo"}
+          {resetting ? "Đang đặt lại…" : "Đặt lại phiên"}
         </button>
       </div>
       {resetComplete ? (
         <p className="status-message" role="status">
-          Đã đặt lại tải phân bổ. Có thể chạy demo từ đầu.
+          Đã đặt lại tải phân bổ. Bạn có thể bắt đầu kế hoạch mới.
         </p>
       ) : null}
       {resetError ? (
         <p className="field-error" role="alert">
-          Chưa đặt lại được demo. Kết quả đang xem vẫn được giữ; hãy thử lại.
+          Chưa đặt lại được phiên. Kết quả đang xem vẫn được giữ; hãy thử lại.
         </p>
       ) : null}
       <Outlet key={resetVersion} />

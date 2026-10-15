@@ -137,8 +137,8 @@ describe("OperatorPage", () => {
     expect(screen.getByTestId("strategy-delta")).toHaveTextContent(
       /12\.0 điểm %/,
     );
-    expect(screen.getByText(/Không chọn sẵn người thắng/)).toBeInTheDocument();
-    expect(screen.getByText(/100 xe/)).toBeInTheDocument();
+    expect(screen.getByText(/So sánh cùng nhóm xe/)).toBeInTheDocument();
+    expect(screen.getByText(/100 xe · mã lần chạy/)).toBeInTheDocument();
   });
 
   test("keeps pressure stations textual when directory lacks coordinates", async () => {
@@ -227,7 +227,7 @@ test("what-if uses the current valid seed/count drafts and blocks invalid drafts
   );
   const button = screen.getByRole("button", { name: "So sánh trước / sau" });
   await waitFor(() => expect(button).toBeEnabled());
-  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+  fireEvent.change(screen.getByLabelText("Mã lần chạy"), {
     target: { value: "91" },
   });
   fireEvent.change(screen.getByLabelText("Số xe"), { target: { value: "50" } });
@@ -238,19 +238,19 @@ test("what-if uses the current valid seed/count drafts and blocks invalid drafts
     ),
   );
   await waitFor(() => expect(button).toBeEnabled());
-  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+  fireEvent.change(screen.getByLabelText("Mã lần chạy"), {
     target: { value: "" },
   });
   expect(button).toBeDisabled();
-  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+  fireEvent.change(screen.getByLabelText("Mã lần chạy"), {
     target: { value: "1.5" },
   });
   expect(button).toBeDisabled();
-  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+  fireEvent.change(screen.getByLabelText("Mã lần chạy"), {
     target: { value: "-1" },
   });
   expect(button).toBeDisabled();
-  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+  fireEvent.change(screen.getByLabelText("Mã lần chạy"), {
     target: { value: "0" },
   });
   expect(button).toBeEnabled();

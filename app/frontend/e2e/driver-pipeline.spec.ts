@@ -85,7 +85,7 @@ test.describe("driver pipeline-shaped recommend (route inject)", () => {
     await expect(list).toContainText("S999");
     await expect(list).not.toContainText("10.5500");
     const hero = page.getByTestId("plan-hero");
-    await expect(hero).toContainText("Ước lượng kế hoạch 85%");
+    await expect(hero).toContainText("Khả năng kế hoạch có chỗ: 85%");
     await expect(hero).not.toContainText("94%");
     await expect(hero).not.toContainText("independent_stations");
     await expect(

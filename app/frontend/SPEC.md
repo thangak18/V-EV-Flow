@@ -96,3 +96,16 @@ endpoints remain preselected. Per-field invalid state only marks the affected
 endpoint; duplicate coordinates invalidate both. Arrow/clear buttons, keyboard
 selection, cancellation of stale responses and bounded tablet/mobile popovers
 support the same selection flow.
+
+## Product workspaces and contextual explanations
+
+See [PRODUCT_UX.md](PRODUCT_UX.md) for the role-specific layouts, user flows and
+design references. Driver and Operator are separate destinations with a workspace
+menu instead of a shared tab strip. Production-facing copy omits demo branding
+while preserving explicit simulated/mock/real provenance. Backup arrival, battery,
+distance and forecast limitations are explained in context. Operator supports
+Goong area selection and a coordinate-radius view filter; scenario simulations
+and what-if retain their explicitly stated complete-network scope. Unknown areas
+produce no-data states rather than fabricated stations or metrics. Detailed
+calculation metadata, reproducibility controls and comparison tables are exposed
+on demand. No shared API or generated type changes are part of this redesign.

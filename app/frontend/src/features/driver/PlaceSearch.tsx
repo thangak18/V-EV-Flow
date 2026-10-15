@@ -69,7 +69,7 @@ function RemotePlaceSearch(props: Parameters<typeof PlaceSearch>[0]) {
         .catch(() => {
           if (!controller.signal.aborted)
             setError(
-              "Không tìm được địa chỉ qua Goong. Thử lại hoặc chọn nguồn Danh mục demo.",
+              "Không tìm được địa chỉ qua Goong. Thử lại hoặc chọn nguồn Danh mục trạm.",
             );
         })
         .finally(() => {
@@ -262,7 +262,7 @@ function RemotePlaceSearch(props: Parameters<typeof PlaceSearch>[0]) {
               aria-pressed={source === "demo"}
               onClick={() => changeSource("demo")}
             >
-              Danh mục demo
+              Danh mục trạm
             </button>
           </div>
           <ul
@@ -305,13 +305,13 @@ function RemotePlaceSearch(props: Parameters<typeof PlaceSearch>[0]) {
                   : itemsQuery === query
                     ? "Không tìm thấy địa điểm. Thử tên đường, quận hoặc thành phố."
                     : ""
-                : "Không có địa điểm demo khớp bộ lọc."}
+                : "Không có địa điểm trong danh mục khớp bộ lọc."}
             </p>
           ) : null}
           <small>
             {source === "goong"
               ? "Chọn một gợi ý để lấy tọa độ từ Goong."
-              : "Danh mục demo cố định, không phải kết quả tìm địa điểm Goong."}
+              : "Danh mục trạm cố định, không phải kết quả tìm địa điểm Goong."}
           </small>
         </div>
       ) : null}

@@ -69,15 +69,17 @@ export function WhatIfPanel({
     } catch (cause) {
       setError(
         cause instanceof ApiError && cause.code === "FEATURE_NOT_READY"
-          ? "Chế độ hiện tại chưa bật what-if. Hãy chạy bản demo file/model/stateful."
+          ? "Chế độ hiện tại chưa hỗ trợ đánh giá phương án. Cần kết nối bộ mô phỏng và mô hình dự báo."
           : cause instanceof Error
             ? cause.message
-            : "Chưa chạy được what-if.",
+            : "Chưa đánh giá được phương án.",
       );
     } finally {
       setPending(false);
     }
   }
+  const changedStationId =
+    result?.change.kind === "add_ports" ? result.change.station_id : null;
   const before = result?.before.metrics,
     after = result?.after.metrics;
   const delta = (value: number, unit: string) =>
@@ -87,10 +89,16 @@ export function WhatIfPanel({
       className="whatif-panel toolbar-card"
       aria-labelledby="whatif-title"
     >
-      <h2 id="whatif-title">Thử thay đổi phương án (what-if)</h2>
+      <div className="section-step">
+        <span>03</span>
+        <div>
+          <p className="eyebrow">LẬP KẾ HOẠCH NĂNG LỰC</p>
+          <h2 id="whatif-title">Thử phương án cải thiện</h2>
+        </div>
+      </div>
       <p>
-        Giữ cùng xe, seed và nhu cầu nền để so sánh trước/sau. Kết quả mô phỏng
-        có thể tốt hơn hoặc kém đi.
+        Chọn một thay đổi để xem số xe có chỗ sạc và thời gian chờ trước / sau.
+        Hai lượt dùng cùng nhóm xe và điều kiện trạm để so sánh công bằng.
       </p>
       <form
         className="whatif-controls"
@@ -99,60 +107,112 @@ export function WhatIfPanel({
           void run();
         }}
       >
-        <label>
-          Thay đổi
-          <select
-            disabled={pending}
-            value={kind}
-            onChange={(event) => setKind(event.target.value as typeof kind)}
+        <fieldset className="whatif-options">
+          <legend>1. Chọn thay đổi muốn đánh giá</legend>
+          <label
+            className={`whatif-option ${kind === "add_ports" ? "whatif-option--selected" : ""}`}
           >
-            <option value="add_ports">Thêm 2 cổng tại một trạm</option>
-            <option value="shift_departures">
-              Dịch 20% xe sang 21:00–21:55
-            </option>
-          </select>
-        </label>
-        {kind === "add_ports" ? (
+            <input
+              type="radio"
+              name="capacity-change"
+              value="add_ports"
+              aria-label="Bổ sung cổng sạc"
+              aria-describedby="add-ports-description"
+              checked={kind === "add_ports"}
+              disabled={pending}
+              onChange={() => setKind("add_ports")}
+            />
+            <span className="whatif-option__icon" aria-hidden>
+              +2
+            </span>
+            <span>
+              <strong>Bổ sung cổng sạc</strong>
+              <small id="add-ports-description">
+                Thêm 2 cổng tại một trạm để giảm nguy cơ thiếu chỗ.
+              </small>
+            </span>
+          </label>
+          <label
+            className={`whatif-option ${kind === "shift_departures" ? "whatif-option--selected" : ""}`}
+          >
+            <input
+              type="radio"
+              name="capacity-change"
+              value="shift_departures"
+              aria-label="Chuyển xe sang giờ thấp điểm"
+              aria-describedby="shift-hours-description"
+              checked={kind === "shift_departures"}
+              disabled={pending}
+              onChange={() => setKind("shift_departures")}
+            />
+            <span className="whatif-option__icon" aria-hidden>
+              21h
+            </span>
+            <span>
+              <strong>Chuyển xe sang giờ thấp điểm</strong>
+              <small id="shift-hours-description">
+                Dời 20% xe sang 21:00–21:55; giữ nguyên tổng số xe.
+              </small>
+            </span>
+          </label>
+        </fieldset>
+        <div className="whatif-parameters">
+          <p className="eyebrow">2. THIẾT LẬP PHƯƠNG ÁN</p>
+          {kind === "add_ports" ? (
+            <label>
+              Trạm cần bổ sung cổng
+              <select
+                disabled={pending || stations.length === 0}
+                value={stationId}
+                onChange={(event) => setStation(event.target.value)}
+              >
+                {stations.length === 0 ? (
+                  <option value="">Chưa có danh mục trạm</option>
+                ) : (
+                  stations.map((item) => (
+                    <option key={item.station_id} value={item.station_id}>
+                      {item.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+          ) : (
+            <p className="subtitle">
+              Nhóm xe được chọn cố định từ mã lần chạy. Giờ xuất phát của các xe
+              còn lại và điều kiện trạm không đổi.
+            </p>
+          )}
           <label>
-            Trạm thử thêm cổng
+            Phương thức điều phối
             <select
-              disabled={pending || stations.length === 0}
-              value={stationId}
-              onChange={(event) => setStation(event.target.value)}
+              disabled={pending}
+              value={strategy}
+              onChange={(event) => setStrategy(event.target.value as Strategy)}
             >
-              {stations.length === 0 ? (
-                <option value="">Chưa có danh mục trạm</option>
-              ) : (
-                stations.map((item) => (
-                  <option key={item.station_id} value={item.station_id}>
-                    {item.name}
-                  </option>
-                ))
-              )}
+              {Object.entries(STRATEGIES).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
             </select>
           </label>
-        ) : (
-          <p className="subtitle">
-            Dịch giờ một nhóm xe foreground cố định; không thay nhu cầu nền.
+          <p className="whatif-scope">
+            Phạm vi: toàn bộ {stations.length} trạm ·{" "}
+            {vehicleCount > 0 ? vehicleCount : "—"} xe · {SCENARIOS[scenario]}.
+            Bộ lọc bản đồ không thay đổi phạm vi mô phỏng.
           </p>
-        )}
-        <label>
-          Chiến lược what-if
-          <select
-            disabled={pending}
-            value={strategy}
-            onChange={(event) => setStrategy(event.target.value as Strategy)}
-          >
-            {Object.entries(STRATEGIES).map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" disabled={pending || !canRun}>
-          {pending ? "Đang so sánh what-if…" : "So sánh trước / sau"}
-        </button>
+        </div>
+        <div className="whatif-action">
+          <p>3. Xem tác động dự kiến</p>
+          <span>
+            Một phương án có thể tốt hơn hoặc kém hơn. Kết quả không tự thay đổi
+            cấu hình vận hành.
+          </span>
+          <button type="submit" disabled={pending || !canRun}>
+            {pending ? "Đang đánh giá phương án…" : "So sánh trước / sau"}
+          </button>
+        </div>
       </form>
       {error ? (
         <p className="field-error" role="alert">
@@ -160,19 +220,64 @@ export function WhatIfPanel({
         </p>
       ) : null}
       {result && before && after ? (
-        <div data-testid="whatif-result">
+        <div data-testid="whatif-result" className="whatif-result">
+          <div className="whatif-result__headline">
+            <div>
+              <p className="eyebrow">KẾT QUẢ ĐÁNH GIÁ</p>
+              <h3>
+                {after.success_rate > before.success_rate
+                  ? "Nhiều xe có chỗ sạc hơn"
+                  : after.success_rate < before.success_rate
+                    ? "Phương án làm giảm khả năng phục vụ"
+                    : "Chưa ghi nhận cải thiện về số xe có chỗ"}
+              </h3>
+            </div>
+            <span
+              className={`delta-pill ${after.success_rate < before.success_rate ? "delta-pill--negative" : after.success_rate === before.success_rate ? "delta-pill--neutral" : ""}`}
+            >
+              {delta(
+                (after.success_rate - before.success_rate) * 100,
+                "điểm %",
+              )}
+            </span>
+          </div>
+          <div className="whatif-kpis">
+            <article>
+              <span>Có cổng ngay khi đến</span>
+              <strong>
+                <span className="whatif-value whatif-value--before">
+                  {(before.success_rate * 100).toFixed(1)}%
+                </span>{" "}
+                <span aria-hidden>→</span>{" "}
+                <span className="whatif-value">
+                  {(after.success_rate * 100).toFixed(1)}%
+                </span>
+              </strong>
+            </article>
+            <article>
+              <span>Thời gian chờ trung bình</span>
+              <strong>
+                {before.mean_wait_minutes.toFixed(1)} <span aria-hidden>→</span>{" "}
+                {after.mean_wait_minutes.toFixed(1)} <small>phút</small>
+              </strong>
+            </article>
+          </div>
           <p>
             <strong>Dữ liệu mô phỏng</strong> ·{" "}
             {SCENARIOS[result.before.scenario]} ·{" "}
-            {result.before.metrics.vehicle_count} xe · seed {result.before.seed}{" "}
-            · {STRATEGIES[result.before.strategy]}
+            {result.before.metrics.vehicle_count} xe · mã lần chạy{" "}
+            {result.before.seed} · {STRATEGIES[result.before.strategy]}
           </p>
           {result.change.kind === "add_ports" ? (
             <p className="status-message">
-              Thêm {result.change.ports} cổng tại {result.change.station_id}.{" "}
+              Thêm {result.change.ports} cổng tại{" "}
+              {stations.find(
+                (station) => station.station_id === changedStationId,
+              )?.name ?? result.change.station_id}
+              .{" "}
               {result.prediction_mode === "capacity_retrained"
-                ? `Dự báo ML dùng model riêng đã train cho capacity mới (${result.capacity_model_version}). Thay đổi cả capacity và model, không tách tác động riêng của số cổng.`
-                : "Dự báo ML giữ theo capacity gốc; chỉ simulator và xếp hạng dùng capacity mới, không phải model đã retrain."}
+                ? "Đã dùng mô hình riêng phù hợp với số cổng mới. Kết quả thay đổi cả hạ tầng và mô hình dự báo."
+                : "Dự báo vẫn dùng cấu hình trạm ban đầu. Số cổng mới chỉ áp dụng trong bộ mô phỏng và cách chọn trạm; mô hình chưa được huấn luyện lại."}
             </p>
           ) : (
             <p className="status-message">
@@ -181,71 +286,85 @@ export function WhatIfPanel({
               tổng số xe giữ nguyên.
             </p>
           )}
-          <div className="table-wrap">
-            <table className="strategy-metrics-table">
-              <thead>
-                <tr>
-                  <th>Chỉ số</th>
-                  <th>Trước</th>
-                  <th>Sau</th>
-                  <th>Thay đổi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th>Có cổng ngay khi đến</th>
-                  <td>{(before.success_rate * 100).toFixed(1)}%</td>
-                  <td>{(after.success_rate * 100).toFixed(1)}%</td>
-                  <td>
-                    {delta(
-                      (after.success_rate - before.success_rate) * 100,
-                      "điểm %",
-                    )}
-                  </td>
-                </tr>
-                <tr>
-                  <th>Thời gian chờ</th>
-                  <td>{before.mean_wait_minutes.toFixed(1)} phút</td>
-                  <td>{after.mean_wait_minutes.toFixed(1)} phút</td>
-                  <td>
-                    {delta(
-                      after.mean_wait_minutes - before.mean_wait_minutes,
-                      "phút",
-                    )}
-                  </td>
-                </tr>
-                <tr>
-                  <th>Đường vòng</th>
-                  <td>{before.mean_detour_km.toFixed(1)} km</td>
-                  <td>{after.mean_detour_km.toFixed(1)} km</td>
-                  <td>
-                    {delta(after.mean_detour_km - before.mean_detour_km, "km")}
-                  </td>
-                </tr>
-                <tr>
-                  <th>Xe thất bại</th>
-                  <td>{before.failed_count}</td>
-                  <td>{after.failed_count}</td>
-                  <td>{after.failed_count - before.failed_count}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <details className="whatif-breakdown">
+            <summary>Xem đầy đủ chỉ số so sánh</summary>
+            <div className="table-wrap">
+              <table className="strategy-metrics-table">
+                <thead>
+                  <tr>
+                    <th>Chỉ số</th>
+                    <th>Trước</th>
+                    <th>Sau</th>
+                    <th>Thay đổi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th>Có cổng ngay khi đến</th>
+                    <td>{(before.success_rate * 100).toFixed(1)}%</td>
+                    <td>{(after.success_rate * 100).toFixed(1)}%</td>
+                    <td>
+                      {delta(
+                        (after.success_rate - before.success_rate) * 100,
+                        "điểm %",
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>Thời gian chờ</th>
+                    <td>{before.mean_wait_minutes.toFixed(1)} phút</td>
+                    <td>{after.mean_wait_minutes.toFixed(1)} phút</td>
+                    <td>
+                      {delta(
+                        after.mean_wait_minutes - before.mean_wait_minutes,
+                        "phút",
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>Quãng đường đi thêm</th>
+                    <td>{before.mean_detour_km.toFixed(1)} km</td>
+                    <td>{after.mean_detour_km.toFixed(1)} km</td>
+                    <td>
+                      {delta(
+                        after.mean_detour_km - before.mean_detour_km,
+                        "km",
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>Xe chưa được phục vụ</th>
+                    <td>{before.failed_count}</td>
+                    <td>{after.failed_count}</td>
+                    <td>{after.failed_count - before.failed_count}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
           <details className="tech-details">
-            <summary>Giả định và giới hạn what-if</summary>
-            <ul>
-              {result.assumptions.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            <summary>Cách so sánh &amp; nguồn dữ liệu</summary>
             <p>
-              Model: {result.after.model_version} · fixture{" "}
-              {result.after.fixture_hash.slice(0, 8)}
+              Hai phương án dùng cùng nhóm xe, mã lần chạy và điều kiện nền. Sự
+              khác biệt đã chọn được áp dụng trong bộ mô phỏng; chưa thay đổi
+              trạm ngoài thực tế.
             </p>
-            <p>
-              Cấu hình: {result.before_config_hash.slice(0, 8)} →{" "}
-              {result.after_config_hash.slice(0, 8)}
-            </p>
+            <details className="verification-details">
+              <summary>Thông tin kiểm chứng phép thử</summary>
+              <ul>
+                {result.assumptions.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <p>
+                Model: {result.after.model_version} · fixture{" "}
+                {result.after.fixture_hash.slice(0, 8)}
+              </p>
+              <p>
+                Cấu hình: {result.before_config_hash.slice(0, 8)} →{" "}
+                {result.after_config_hash.slice(0, 8)}
+              </p>
+            </details>
           </details>
         </div>
       ) : null}

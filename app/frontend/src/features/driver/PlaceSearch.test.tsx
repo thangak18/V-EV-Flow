@@ -111,7 +111,7 @@ describe("remote place selection", () => {
     );
     const input = screen.getByRole("combobox");
     fireEvent.focus(input);
-    fireEvent.click(screen.getByRole("button", { name: "Danh mục demo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Danh mục trạm" }));
     fireEvent.click(screen.getByRole("option", { name: "Trạm A" }));
     expect(onResolve).toHaveBeenCalledWith({
       label: "Trạm A",
