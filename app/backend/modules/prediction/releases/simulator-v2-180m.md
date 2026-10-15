@@ -17,7 +17,16 @@
 | Base ZIP SHA-256 | `54d2b92dbd07dd25571cb8b2a0a0fe77f920558b45318db30d0e3794386d360e` |
 | Capacity ZIP SHA-256 | `312f0e29f5062f0005d2de8d2f3bf9c1c280905c40c03ebfcd9f7505fc46ae6c` |
 
-[Private draft release](https://github.com/thangak18/V-EV-Flow/releases/tag/untagged-5b6c7684302cfd5114e5) has simulator-v2-180m.zip and S001-plus2.zip.
+[Private release catalog](https://github.com/thangak18/V-EV-Flow/releases) contains
+"Runtime V2 simulated model: 180m + S001 capacity variant" (draft), with
+simulator-v2-180m.zip and S001-plus2.zip. Draft UI URLs can change when edited,
+so use the stable release tag with the authenticated CLI:
+
+```bash
+gh release download model-runtime-v2-180m --repo thangak18/V-EV-Flow \
+  --pattern 'simulator-v2-180m.zip' --pattern 'S001-plus2.zip'
+```
+
 Unpack the base ZIP into a new directory. Unpack the capacity ZIP into
 `capacity-v2/S001-plus2/`. Verify each CHECKSUMS.sha256 before loading trusted
 joblib. Keep binaries, SQLite, histories, generated fixtures and caches outside Git.
