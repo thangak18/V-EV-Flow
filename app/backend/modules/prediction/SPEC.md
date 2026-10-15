@@ -270,3 +270,16 @@ checksum/missing-file failures. No runtime Predictor behavior changes here.
 ## P1 native local explanation
 
 `load_predictor(..., explain=True)` adds native LightGBM TreeSHAP. Full contributions plus bias reconstruct the binary raw margin; sigmoid gives raw probability, while calibrated_probability equals the public forecast. It does not explain the post-hoc calibrator, prove causality, refit the model or change pinned artifacts. Default remains rule context; no new dependency is required.
+
+## Offline Smarter Mobility benchmark
+
+`smarter_data.py` and `smarter_benchmark.py` audit the pinned public Belib CSV
+and benchmark station-level recorded availability at exact 15/30/60-minute ETAs.
+See [protocol, provenance, results and reproduction](SMARTER_BENCHMARK.md) and
+[full calibration metrics](SMARTER_BENCHMARK_RESULTS.json). The source clock
+has no published timezone offset; this offline analysis preserves that axis,
+excludes the ambiguous DST day and never exposes it as canonical runtime data.
+Other remains reserved/offline/out-of-order, separate from broken. Global
+60-minute embargo, backward exact lag joins, train-only station encoding and
+calibration-only calibrator selection prevent use of later split outcomes.
+This is an offline benchmark; the simulated serving model is unchanged.
