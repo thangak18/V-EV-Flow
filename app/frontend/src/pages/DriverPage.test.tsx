@@ -83,8 +83,11 @@ describe("DriverPage", () => {
     expect(screen.getByLabelText("Station text list")).toHaveTextContent(
       "10.7800",
     );
-    fireEvent.change(screen.getByLabelText("Hành lang"), {
-      target: { value: "vt_hcm" },
+    fireEvent.change(screen.getByLabelText("Điểm đi"), {
+      target: { value: "Vũng Tàu" },
+    });
+    fireEvent.change(screen.getByLabelText("Điểm đến"), {
+      target: { value: "TP. Hồ Chí Minh" },
     });
     await waitFor(() => {
       const list = screen.getByLabelText("Station text list");
@@ -224,13 +227,68 @@ describe("DriverPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     expect(await screen.findByText("S012")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Hành lang"), {
-      target: { value: "vt_hcm" },
+    fireEvent.change(screen.getByLabelText("Điểm đi"), {
+      target: { value: "Vũng Tàu" },
+    });
+    fireEvent.change(screen.getByLabelText("Điểm đến"), {
+      target: { value: "TP. Hồ Chí Minh" },
     });
     await waitFor(() => {
       expect(screen.queryByText("S012")).not.toBeInTheDocument();
       expect(screen.getByText(/Chưa tìm trạm sạc/i)).toBeInTheDocument();
     });
+  });
+
+  test("selects directory locations, sends their coordinates, and rejects unselected drafts", async () => {
+    const recommend = vi.fn().mockResolvedValue(planResult);
+    const client = createMockApiClient({
+      recommend,
+      listStations: vi.fn().mockResolvedValue({
+        stations: [
+          { station_id: "S099", name: "Long Thành", lat: 10.8, lng: 107.01 },
+        ],
+        data_type: "simulated",
+        source_notes: [],
+      }),
+    });
+    render(
+      <ApiProvider client={client}>
+        <MemoryRouter>
+          <DriverPage />
+        </MemoryRouter>
+      </ApiProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector('option[value="Long Thành (S099)"]'),
+      ).toBeInTheDocument(),
+    );
+    const origin = screen.getByLabelText("Điểm đi");
+    const destination = screen.getByLabelText("Điểm đến");
+    const submit = screen.getByRole("button", { name: /Tìm kế hoạch sạc/i });
+    fireEvent.change(origin, { target: { value: "địa chỉ chưa chọn" } });
+    expect(submit).toBeDisabled();
+    expect(screen.getByLabelText("Station text list")).not.toHaveTextContent(
+      "Điểm đi:",
+    );
+    fireEvent.change(origin, { target: { value: "Long Thành (S099)" } });
+    fireEvent.change(destination, { target: { value: "Long Thành (S099)" } });
+    expect(submit).toBeDisabled();
+    fireEvent.change(destination, { target: { value: "TP. Hồ Chí Minh" } });
+    fireEvent.click(submit);
+    await waitFor(() => expect(recommend).toHaveBeenCalledTimes(1));
+    expect(recommend.mock.calls[0]![0]).toMatchObject({
+      origin: { lat: 10.8, lng: 107.01 },
+      destination: { lat: 10.78, lng: 106.7 },
+    });
+    expect(screen.getByLabelText("Station text list")).toHaveTextContent(
+      "Điểm đi: Long Thành (S099) (10.8000, 107.0100)",
+    );
+    expect(await screen.findByText("S012")).toBeInTheDocument();
+    fireEvent.change(destination, { target: { value: "" } });
+    expect(screen.queryByText("S012")).not.toBeInTheDocument();
+    expect(submit).toBeDisabled();
+    expect(recommend).toHaveBeenCalledTimes(1);
   });
 
   test("shows directory failure notice when listStations errors", async () => {

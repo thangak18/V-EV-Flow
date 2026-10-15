@@ -893,3 +893,62 @@ def test_supported_horizon_does_not_swallow_unexpected_inference_failure() -> No
     predictor.transform = fail
     with pytest.raises(ValueError, match="corrupt inference features"):
         run(service(stations, routes, predictor, max_horizon=60))
+
+
+@pytest.mark.asyncio
+async def test_time_shift_probes_keep_observation_fixed_and_do_not_route_or_allocate() -> None:
+    from app.backend.contracts.recommendation import TimeShiftEstimate
+
+    stations = (station("S001"),)
+    repository = FakeStations(stations)
+    statuses = FakeStatuses(repository)
+
+    class HorizonPredictor:
+        def __init__(self):
+            self.requests = []
+
+        def predict(self, request: PredictRequest) -> PredictionResult:
+            self.requests.append(request)
+            probability = 0.5 if (request.eta - request.observed_at).total_seconds() < 1200 else 0.7
+            return PredictionResult(
+                station_id=request.station_id,
+                eta=request.eta,
+                p_available=probability,
+                reasons=[],
+                explanation_method="fake",
+                model_version="shift-test",
+                data_type=DataType.MOCK,
+            )
+
+    predictor = HorizonPredictor()
+    recommender = RecommendationService(
+        station_repository=repository,
+        status_repositories={Scenario.NORMAL: statuses},
+        route_provider=FakeRoutes({}),
+        predictors={Scenario.NORMAL: predictor},
+        ranking_config=RankingConfig(),
+        data_type=DataType.MOCK,
+        max_prediction_horizon_minutes={Scenario.NORMAL: 60},
+        time_shift_minutes=(15, 30),
+    )
+    original = PredictionResult(
+        station_id="S001",
+        eta=OBSERVED + timedelta(minutes=5),
+        p_available=0.5,
+        reasons=[],
+        explanation_method="fake",
+        model_version="shift-test",
+        data_type=DataType.MOCK,
+    )
+    estimate = recommender._time_shift_estimate(request(), predictor, original)
+    assert isinstance(estimate, TimeShiftEstimate)
+    assert estimate.minutes == 15
+    assert estimate.improvement == pytest.approx(0.2)
+    assert all(query.observed_at == OBSERVED for query in predictor.requests)
+    assert all(
+        query.eta - query.observed_at <= timedelta(minutes=60) for query in predictor.requests
+    )
+    predictor.requests.clear()
+    late = original.model_copy(update={"eta": OBSERVED + timedelta(minutes=55)})
+    assert recommender._time_shift_estimate(request(), predictor, late) is None
+    assert predictor.requests == []

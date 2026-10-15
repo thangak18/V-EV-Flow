@@ -8,6 +8,7 @@ import {
   RecommendationResultSchema,
   ResetResponseSchema,
   RuntimeStatusSchema,
+  WhatIfResultSchema,
   SimulationResultSchema,
   StationListResponseSchema,
 } from "./schemas";
@@ -105,6 +106,45 @@ export class ApiClient {
     );
   }
 
+  whatif(
+    body: JsonBody<"whatIf">,
+    signal?: AbortSignal,
+  ): Promise<JsonResponse<"whatIf">> {
+    return this.request("/whatif", { method: "POST", body, signal }).then(
+      (response) => {
+        // Runtime parsing is mandatory; strictNullChecks=false widens Zod union output.
+        const result = parseApiResponse(
+          WhatIfResultSchema,
+          response,
+          "whatif",
+        ) as JsonResponse<"whatIf">;
+        const before = result.before;
+        const expected = body.change;
+        const actual = result.change;
+        const changeMatches =
+          expected.kind === "add_ports" && actual.kind === "add_ports"
+            ? expected.station_id === actual.station_id &&
+              expected.ports === actual.ports
+            : expected.kind === "shift_departures" &&
+              actual.kind === "shift_departures" &&
+              expected.fraction === actual.fraction &&
+              expected.target_hour === actual.target_hour;
+        if (
+          before.scenario !== body.scenario ||
+          before.seed !== body.seed ||
+          before.strategy !== body.strategy ||
+          before.metrics.vehicle_count !== body.vehicle_count ||
+          !changeMatches
+        ) {
+          throw ApiError.invalidResponse(
+            "what-if response does not match the requested experiment",
+          );
+        }
+        return result;
+      },
+    );
+  }
+
   reset(
     body: JsonBody<"resetDemo">,
     signal?: AbortSignal,
@@ -181,3 +221,7 @@ export type Scenario = components["schemas"]["Scenario"];
 export type Strategy = components["schemas"]["Strategy"];
 export type DataType = components["schemas"]["DataType"];
 export type Plan = components["schemas"]["Plan"];
+
+export type ModelExplanation = components["schemas"]["ModelExplanation"];
+export type WhatIfRequest = components["schemas"]["WhatIfRequest"];
+export type WhatIfResult = components["schemas"]["WhatIfResult"];

@@ -10,8 +10,9 @@ import type {
   UnlocatedMapPoint,
 } from "../components/map/types";
 import {
-  CORRIDOR_PRESETS,
-  type CorridorPresetId,
+  DEFAULT_ORIGIN,
+  DEFAULT_DESTINATION,
+  tripLocations,
 } from "../features/driver/corridorPresets";
 import { DriverForm } from "../features/driver/DriverForm";
 import { PlanEmptyState, PlanSummary } from "../features/driver/PlanSummary";
@@ -26,7 +27,9 @@ export function DriverPage() {
   const [directoryDataType, setDirectoryDataType] = useState<DataType | null>(
     null,
   );
-  const [presetId, setPresetId] = useState<CorridorPresetId>("hcm_vt");
+  const [origin, setOrigin] = useState(DEFAULT_ORIGIN.label);
+  const [destination, setDestination] = useState(DEFAULT_DESTINATION.label);
+  const locations = useMemo(() => tripLocations(stations), [stations]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,26 +58,24 @@ export function DriverPage() {
   }, [stations]);
 
   const mapModel = useMemo<MapModel>(() => {
-    const corridor = CORRIDOR_PRESETS[presetId];
+    const selectedOrigin = locations.find(
+      (location) => location.label === origin,
+    );
+    const selectedDestination = locations.find(
+      (location) => location.label === destination,
+    );
     const index = new Map(
       stations.map((station) => [station.station_id, station]),
     );
-    const points: MapPoint[] = [
-      {
-        id: "origin",
-        lat: corridor.origin.lat,
-        lng: corridor.origin.lng,
-        label: corridor.originLabel,
-        role: "origin",
-      },
-      {
+    const points: MapPoint[] = [];
+    if (selectedOrigin)
+      points.push({ id: "origin", ...selectedOrigin, role: "origin" });
+    if (selectedDestination)
+      points.push({
         id: "destination",
-        lat: corridor.destination.lat,
-        lng: corridor.destination.lng,
-        label: corridor.destinationLabel,
+        ...selectedDestination,
         role: "destination",
-      },
-    ];
+      });
     const unlocated: UnlocatedMapPoint[] = [];
 
     const placeStation = (
@@ -104,10 +105,14 @@ export function DriverPage() {
     if (result?.backup) placeStation(result.backup.station_id, "backup");
 
     return { points, unlocated, fitBounds: true };
-  }, [presetId, result, stations]);
+  }, [origin, destination, locations, result, stations]);
 
-  function handlePresetChange(next: CorridorPresetId) {
-    setPresetId(next);
+  function handleLocationChange(
+    field: "origin" | "destination",
+    value: string,
+  ) {
+    if (field === "origin") setOrigin(value);
+    else setDestination(value);
     clear();
   }
 
@@ -123,8 +128,10 @@ export function DriverPage() {
     <main className="driver-page">
       <DriverForm
         pending={status === "loading"}
-        presetId={presetId}
-        onPresetChange={handlePresetChange}
+        locations={locations}
+        origin={origin}
+        destination={destination}
+        onLocationChange={handleLocationChange}
         onSubmit={submit}
       />
 

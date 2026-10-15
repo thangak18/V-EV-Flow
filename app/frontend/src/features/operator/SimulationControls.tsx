@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { isNumericDraft, parseInteger } from "../driver/numberField";
 
@@ -9,11 +9,13 @@ type Props = {
   onVehicleCountChange: (count: number) => void;
   onRun: (seed: number, vehicleCount: number) => void;
   pending: boolean;
+  onDraftChange?: (seed: number | null, vehicleCount: number | null) => void;
 };
 
 function seedErrorMessage(draft: string): string | null {
-  if (parseInteger(draft) !== null) return null;
-  return "Seed phải là số nguyên";
+  const value = parseInteger(draft);
+  if (value === null) return "Seed phải là số nguyên";
+  return value < 0 ? "Seed không được âm" : null;
 }
 
 function vehiclesErrorMessage(draft: string): string | null {
@@ -29,6 +31,7 @@ export function SimulationControls({
   onVehicleCountChange,
   onRun,
   pending,
+  onDraftChange,
 }: Props) {
   const [seedDraft, setSeedDraft] = useState(() => String(seed));
   const [vehiclesDraft, setVehiclesDraft] = useState(() =>
@@ -41,10 +44,17 @@ export function SimulationControls({
   const vehiclesError = vehiclesErrorMessage(vehiclesDraft);
   const invalid = seedError !== null || vehiclesError !== null;
 
+  useEffect(() => {
+    onDraftChange?.(
+      seedError === null ? parsedSeed : null,
+      vehiclesError === null ? parsedVehicles : null,
+    );
+  }, [onDraftChange, parsedSeed, parsedVehicles, seedError, vehiclesError]);
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (pending || parsedSeed === null || parsedVehicles === null) return;
-    if (parsedVehicles < 1) return;
+    if (parsedVehicles < 1 || parsedSeed < 0) return;
     onSeedChange(parsedSeed);
     onVehicleCountChange(parsedVehicles);
     onRun(parsedSeed, parsedVehicles);

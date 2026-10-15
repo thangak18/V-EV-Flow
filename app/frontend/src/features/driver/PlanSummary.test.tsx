@@ -100,3 +100,32 @@ describe("PlanSummary", () => {
     expect(screen.getByText(/Kết quả sẽ hiện tại đây/i)).toBeInTheDocument();
   });
 });
+
+test("displays a non-binding time-shift estimate without changing the current plan", () => {
+  render(
+    <PlanSummary
+      result={{
+        ...base,
+        time_shift: 15,
+        time_shift_estimate: {
+          minutes: 15,
+          station_id: "S012",
+          depart_time: "2026-10-13T16:15:00+07:00",
+          eta: "2026-10-13T16:55:00+07:00",
+          p_available: 0.95,
+          improvement: 0.096,
+          assumptions: ["Giữ snapshot hiện tại"],
+        },
+      }}
+    />,
+  );
+  expect(screen.getByTestId("time-shift-suggestion")).toHaveTextContent(
+    "Khởi hành muộn 15 phút",
+  );
+  expect(screen.getByTestId("time-shift-suggestion")).toHaveTextContent(
+    "chưa đổi kế hoạch hoặc ghi thêm phân bổ",
+  );
+  expect(screen.getByTestId("plan-hero")).toContainHTML(
+    'data-probability="0.854"',
+  );
+});

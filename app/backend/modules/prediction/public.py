@@ -18,6 +18,7 @@ def load_predictor(
     station_repository: StationRepository,
     *,
     status_data_type: DataType = DataType.MOCK,
+    explain: bool = False,
 ) -> Predictor:
     """Load a trusted artifact and bind existing shared repositories.
 
@@ -32,4 +33,5 @@ def load_predictor(
         status_repository=status_repository,
         station_repository=station_repository,
         status_data_type=status_data_type,
+        explain=explain,
     )

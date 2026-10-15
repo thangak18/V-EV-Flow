@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from math import isclose
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from .common import Coordinate, StrictModel
 from .enums import DataType, Scenario
+from .explanations import ModelExplanation
 from .prediction import _aware
 from .stations import StationStatus
 
@@ -35,12 +37,36 @@ class PlanLeg(StrictModel):
     detour_km: float = Field(ge=0)
     arrival_soc_pct: float = Field(ge=0, le=100)
     p_available: float = Field(ge=0, le=1)
+    explanation: ModelExplanation | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     _eta_aware = field_validator("eta")(classmethod(lambda cls, v: _aware(v)))
+
+    @model_validator(mode="after")
+    def explanation_matches_probability(self) -> "PlanLeg":
+        if self.explanation is not None and not isclose(
+            self.explanation.calibrated_probability, self.p_available, rel_tol=1e-8, abs_tol=1e-8
+        ):
+            raise ValueError("plan explanation probability must match its prediction")
+        return self
 
 
 class Plan(PlanLeg):
     pass
+
+
+class TimeShiftEstimate(StrictModel):
+    minutes: int = Field(gt=0, le=60, multiple_of=5)
+    station_id: str = Field(min_length=1)
+    depart_time: datetime
+    eta: datetime
+    p_available: float = Field(ge=0, le=1, allow_inf_nan=False)
+    improvement: float = Field(gt=0, le=1, allow_inf_nan=False)
+    assumptions: tuple[str, ...] = Field(min_length=1)
+
+    _depart_aware = field_validator("depart_time")(classmethod(lambda cls, v: _aware(v)))
+    _eta_aware = field_validator("eta")(classmethod(lambda cls, v: _aware(v)))
 
 
 class RecommendationResult(StrictModel):
@@ -50,11 +76,33 @@ class RecommendationResult(StrictModel):
     plan_p: float | None = Field(default=None, ge=0, le=1)
     plan_p_assumption: str | None = None
     reasons: list[str]
-    time_shift: int | None = None
+    time_shift: int | None = Field(default=None, gt=0, le=60, multiple_of=5)
+    time_shift_evaluated: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    time_shift_estimate: TimeShiftEstimate | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     model_version: str = Field(min_length=1)
     allocation_method: str = Field(min_length=1)
     data_type: DataType
     contract_version: str = "0.1.0"
+
+    @model_validator(mode="after")
+    def time_shift_matches_current_plan(self) -> "RecommendationResult":
+        estimate = self.time_shift_estimate
+        if estimate is not None:
+            if (
+                self.primary is None
+                or estimate.minutes != self.time_shift
+                or estimate.station_id != self.primary.station_id
+            ):
+                raise ValueError("time-shift estimate must refer to the primary plan and delay")
+            if estimate.eta != self.primary.eta + timedelta(minutes=estimate.minutes):
+                raise ValueError("time-shift ETA must preserve the original travel duration")
+            if not isclose(
+                estimate.p_available - self.primary.p_available, estimate.improvement, abs_tol=1e-8
+            ):
+                raise ValueError("time-shift improvement must match the probability difference")
+        return self
 
 
 class PressureStation(StrictModel):

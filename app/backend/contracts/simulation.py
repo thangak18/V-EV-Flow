@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -106,3 +106,71 @@ class DataManifest(StrictModel):
     data_type: DataType
 
     _generated_aware = field_validator("generated_at")(classmethod(lambda cls, v: _aware(v)))
+
+
+class AddPortsChange(StrictModel):
+    kind: Literal["add_ports"]
+    station_id: str = Field(min_length=1)
+    ports: int = Field(default=2, ge=1, le=20, strict=True)
+
+
+class ShiftDeparturesChange(StrictModel):
+    kind: Literal["shift_departures"]
+    fraction: float = Field(default=0.2, gt=0, le=1, allow_inf_nan=False, strict=True)
+    target_hour: int = Field(default=21, ge=20, le=21, strict=True)
+
+
+WhatIfChange = Annotated[AddPortsChange | ShiftDeparturesChange, Field(discriminator="kind")]
+
+
+class WhatIfRequest(SimulationRequest):
+    seed: int = Field(ge=0, strict=True)
+    vehicle_count: int = Field(gt=0, strict=True)
+    change: WhatIfChange
+
+    @model_validator(mode="after")
+    def shift_moves_a_vehicle(self) -> "WhatIfRequest":
+        if self.contract_version != "0.1.0":
+            raise ValueError("unsupported what-if contract version")
+        if (
+            isinstance(self.change, ShiftDeparturesChange)
+            and int(self.vehicle_count * self.change.fraction) < 1
+        ):
+            raise ValueError("population/fraction must shift at least one vehicle")
+        return self
+
+
+class WhatIfResult(StrictModel):
+    before: SimulationResult
+    after: SimulationResult
+    change: WhatIfChange
+    before_config_hash: FixtureHash
+    after_config_hash: FixtureHash
+    shifted_vehicle_count: int = Field(ge=0)
+    data_type: Literal[DataType.SIMULATED] = DataType.SIMULATED
+    assumptions: tuple[str, ...] = Field(min_length=1)
+    contract_version: Literal["0.1.0"] = "0.1.0"
+
+    @model_validator(mode="after")
+    def fair_pair(self) -> "WhatIfResult":
+        if self.before.contract_version != self.contract_version:
+            raise ValueError("what-if nested result contract version mismatch")
+        if self.before_config_hash == self.after_config_hash:
+            raise ValueError(
+                "before and after configurations must identify the counterfactual change"
+            )
+        for field in (
+            "scenario",
+            "seed",
+            "strategy",
+            "fixture_hash",
+            "model_version",
+            "contract_version",
+        ):
+            if getattr(self.before, field) != getattr(self.after, field):
+                raise ValueError("what-if must preserve scenario, seed, strategy and event fixture")
+        if self.before.metrics.vehicle_count != self.after.metrics.vehicle_count:
+            raise ValueError("what-if must preserve the population denominator")
+        if self.shifted_vehicle_count > self.before.metrics.vehicle_count:
+            raise ValueError("shifted count exceeds vehicle population")
+        return self

@@ -25,6 +25,7 @@ from app.backend.contracts.recommendation import (
     RouteRequest,
     RouteResult,
     StatusWindow,
+    TimeShiftEstimate,
     Vehicle,
 )
 from app.backend.contracts.stations import Station, StationStatus
@@ -74,6 +75,7 @@ class RecommendationService:
         max_prediction_horizon_minutes: Mapping[Scenario, int],
         allocation_method: str = "heuristic_ranking",
         virtual_load_provider: VirtualLoadReader | None = None,
+        time_shift_minutes: tuple[int, ...] = (),
     ) -> None:
         self._stations = station_repository
         self._statuses = {Scenario(key): value for key, value in status_repositories.items()}
@@ -101,6 +103,16 @@ class RecommendationService:
         self._data_type = DataType(data_type)
         self._allocation_method = allocation_method
         self._virtual_loads = virtual_load_provider
+        if any(
+            isinstance(delay, bool)
+            or not isinstance(delay, int)
+            or delay <= 0
+            or delay > 60
+            or delay % 5
+            for delay in time_shift_minutes
+        ):
+            raise ValueError("time-shift candidates must be positive five-minute delays up to 60")
+        self._shift_minutes = tuple(sorted(set(time_shift_minutes)))
 
     async def recommend(self, request: RecommendationRequest) -> RecommendationResult:
         request = RecommendationRequest.model_validate(request.model_dump())
@@ -291,8 +303,17 @@ class RecommendationService:
             await self._candidate_loads(backup_inputs, request.scenario),
         )
         backup = ranked_backups[0] if ranked_backups else None
-        primary_plan = self._plan(primary)
-        backup_plan = self._plan(backup) if backup is not None else None
+        primary_plan = self._plan(primary).model_copy(
+            update={"explanation": predictions[primary.station_id].explanation}
+        )
+        backup_plan = (
+            self._plan(backup).model_copy(
+                update={"explanation": predictions[backup.station_id].explanation}
+            )
+            if backup is not None
+            else None
+        )
+        shift = self._time_shift_estimate(request, predictor, predictions[primary.station_id])
         primary_probability = primary.p_available
         plan_probability = primary_probability
         assumption = None
@@ -338,11 +359,62 @@ class RecommendationService:
             plan_p=plan_probability,
             plan_p_assumption=assumption,
             reasons=reasons,
-            time_shift=None,
+            time_shift=shift.minutes if shift else None,
+            time_shift_estimate=shift,
+            time_shift_evaluated=True if self._shift_minutes else None,
             model_version=next(iter(model_versions)),
             allocation_method=self._allocation_method,
             data_type=result_data_type,
         )
+
+    def _time_shift_estimate(
+        self, request: RecommendationRequest, predictor: Predictor, original: PredictionResult
+    ) -> TimeShiftEstimate | None:
+        """Probe the same station from t0; never read a future snapshot or reserve again."""
+        best = None
+        for delay in self._shift_minutes:
+            eta = original.eta + timedelta(minutes=delay)
+            if (eta - request.observed_at).total_seconds() > self._horizons[request.scenario] * 60:
+                continue
+            prediction_request = PredictRequest(
+                station_id=original.station_id,
+                observed_at=request.observed_at,
+                eta=eta,
+                connector_type=request.vehicle.connector_type,
+                scenario=request.scenario,
+            )
+            result = PredictionResult.model_validate(
+                predictor.predict(prediction_request).model_dump()
+            )
+            if (
+                result.station_id != original.station_id
+                or result.eta != eta
+                or result.model_version != original.model_version
+                or result.data_type != original.data_type
+                or result.contract_version != original.contract_version
+            ):
+                raise DataSourceUnavailableError(
+                    "time-shift prediction provenance or identity mismatch"
+                )
+            improvement = result.p_available - original.p_available
+            if improvement < 0.05 or (best is not None and result.p_available <= best.p_available):
+                continue
+            best = TimeShiftEstimate(
+                minutes=delay,
+                station_id=original.station_id,
+                depart_time=request.depart_time + timedelta(minutes=delay),
+                eta=eta,
+                p_available=result.p_available,
+                improvement=improvement,
+                assumptions=(
+                    (
+                        "Giữ nguyên snapshot hiện tại và thời gian đi đường; "
+                        "không dự báo giao thông tương lai."
+                    ),
+                    "Chỉ là gợi ý cho trạm chính, chưa thay đổi kế hoạch hay ghi thêm phân bổ.",
+                ),
+            )
+        return best
 
     async def _candidate_loads(
         self,

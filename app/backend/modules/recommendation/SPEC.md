@@ -73,3 +73,8 @@ C8 calls `await container.allocation_coordinator.recommend(request)` with `Recom
 `RecommendationAllocationStrategy.select(AllocationContext)` remains synchronous and pure. Frozen v0 candidates lack travel duration/capacity, so upstream must inject verified `CandidateMetadata` and load by `(scenario, station_id, eta)`. It rejects missing eligible metadata and never accesses Driver storage, HTTP or models. Without verified fallback evidence it returns primary-only rather than claiming the second origin-feasible station is reachable through primary. API `/simulate` has not been bound to this strategy or the real runner/model; that joint A/B/C integration is post-C9. Charge-to, time-shift, what-if, physical reservations and distributed/persistent allocation remain outside implemented scope.
 
 Reproduction and exact HTTP examples: `docs/runbooks/backend-demo.md`; current command/count/revision evidence: `docs/runbooks/backend-verification-evidence.md`. Independent human review and fresh CI on the final clean revision remain the release gate.
+
+
+## P1 time-shift probes
+
+Optional time_shift_minutes=(15,30) probes the same selected primary from the unchanged observed_at. Travel time is held fixed and ETA cannot exceed the injected artifact capability. Keep the earliest delay tied at the best probability and require >=5 percentage-point improvement. Estimates are advisory only; current primary/backup and one C6 reservation stay unchanged. Evaluated-without-improvement is explicit, not fabricated positive advice.

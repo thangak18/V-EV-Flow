@@ -161,6 +161,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AddPortsChange */
+        AddPortsChange: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "add_ports";
+            /**
+             * Ports
+             * @default 2
+             */
+            ports: number;
+            /** Station Id */
+            station_id: string;
+        };
         /** Coordinate */
         Coordinate: {
             /** Lat */
@@ -182,10 +197,44 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** FeatureContribution */
+        FeatureContribution: {
+            /** Contribution */
+            contribution: number;
+            /** Feature */
+            feature: string;
+            /** Value */
+            value: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ModelExplanation */
+        ModelExplanation: {
+            /** Bias */
+            bias: number;
+            /** Calibrated Probability */
+            calibrated_probability: number;
+            /** Features */
+            features: components["schemas"]["FeatureContribution"][];
+            /**
+             * Method
+             * @default tree_shap
+             * @constant
+             */
+            method: "tree_shap";
+            /** Raw Probability */
+            raw_probability: number;
+            /** Raw Score */
+            raw_score: number;
+            /**
+             * Space
+             * @default raw_margin_log_odds
+             * @constant
+             */
+            space: "raw_margin_log_odds";
         };
         /** Plan */
         Plan: {
@@ -200,6 +249,7 @@ export interface components {
              * Format: date-time
              */
             eta: string;
+            explanation?: components["schemas"]["ModelExplanation"] | null;
             /** P Available */
             p_available: number;
             /** Station Id */
@@ -236,6 +286,7 @@ export interface components {
              * Format: date-time
              */
             eta: string;
+            explanation?: components["schemas"]["ModelExplanation"] | null;
             /** Explanation Method */
             explanation_method: string;
             /** Model Version */
@@ -316,6 +367,9 @@ export interface components {
             request_id: string;
             /** Time Shift */
             time_shift?: number | null;
+            time_shift_estimate?: components["schemas"]["TimeShiftEstimate"] | null;
+            /** Time Shift Evaluated */
+            time_shift_evaluated?: boolean | null;
         };
         /** ResetRequest */
         ResetRequest: {
@@ -340,6 +394,24 @@ export interface components {
          * @enum {string}
          */
         Scenario: "normal" | "holiday_30_4" | "tet";
+        /** ShiftDeparturesChange */
+        ShiftDeparturesChange: {
+            /**
+             * Fraction
+             * @default 0.2
+             */
+            fraction: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "shift_departures";
+            /**
+             * Target Hour
+             * @default 21
+             */
+            target_hour: number;
+        };
         /** SimulationMetrics */
         SimulationMetrics: {
             /** Failed Count */
@@ -422,6 +494,29 @@ export interface components {
          * @enum {string}
          */
         Strategy: "nearest" | "currently_available" | "ai_allocation";
+        /** TimeShiftEstimate */
+        TimeShiftEstimate: {
+            /** Assumptions */
+            assumptions: string[];
+            /**
+             * Depart Time
+             * Format: date-time
+             */
+            depart_time: string;
+            /**
+             * Eta
+             * Format: date-time
+             */
+            eta: string;
+            /** Improvement */
+            improvement: number;
+            /** Minutes */
+            minutes: number;
+            /** P Available */
+            p_available: number;
+            /** Station Id */
+            station_id: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -445,6 +540,49 @@ export interface components {
             consumption_kwh_per_km: number;
             /** Soc Pct */
             soc_pct: number;
+        };
+        /** WhatIfRequest */
+        WhatIfRequest: {
+            /** Change */
+            change: components["schemas"]["AddPortsChange"] | components["schemas"]["ShiftDeparturesChange"];
+            /**
+             * Contract Version
+             * @default 0.1.0
+             */
+            contract_version: string;
+            scenario: components["schemas"]["Scenario"];
+            /** Seed */
+            seed: number;
+            strategy: components["schemas"]["Strategy"];
+            /** Vehicle Count */
+            vehicle_count: number;
+        };
+        /** WhatIfResult */
+        WhatIfResult: {
+            after: components["schemas"]["SimulationResult"];
+            /** After Config Hash */
+            after_config_hash: string;
+            /** Assumptions */
+            assumptions: string[];
+            before: components["schemas"]["SimulationResult"];
+            /** Before Config Hash */
+            before_config_hash: string;
+            /** Change */
+            change: components["schemas"]["AddPortsChange"] | components["schemas"]["ShiftDeparturesChange"];
+            /**
+             * Contract Version
+             * @default 0.1.0
+             * @constant
+             */
+            contract_version: "0.1.0";
+            /**
+             * Data Type
+             * @default simulated
+             * @constant
+             */
+            data_type: "simulated";
+            /** Shifted Vehicle Count */
+            shifted_vehicle_count: number;
         };
     };
     responses: never;
@@ -726,9 +864,40 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WhatIfRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatIfResult"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;

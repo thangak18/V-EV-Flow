@@ -1,5 +1,27 @@
 components:
   schemas:
+    AddPortsChange:
+      additionalProperties: false
+      properties:
+        kind:
+          const: add_ports
+          title: Kind
+          type: string
+        ports:
+          default: 2
+          maximum: 20.0
+          minimum: 1.0
+          title: Ports
+          type: integer
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+      required:
+      - kind
+      - station_id
+      title: AddPortsChange
+      type: object
     Coordinate:
       additionalProperties: false
       properties:
@@ -45,6 +67,25 @@ components:
       - message
       title: ErrorResponse
       type: object
+    FeatureContribution:
+      additionalProperties: false
+      properties:
+        contribution:
+          title: Contribution
+          type: number
+        feature:
+          minLength: 1
+          title: Feature
+          type: string
+        value:
+          title: Value
+          type: number
+      required:
+      - feature
+      - value
+      - contribution
+      title: FeatureContribution
+      type: object
     HTTPValidationError:
       properties:
         detail:
@@ -53,6 +94,49 @@ components:
           title: Detail
           type: array
       title: HTTPValidationError
+      type: object
+    ModelExplanation:
+      additionalProperties: false
+      properties:
+        bias:
+          title: Bias
+          type: number
+        calibrated_probability:
+          maximum: 1.0
+          minimum: 0.0
+          title: Calibrated Probability
+          type: number
+        features:
+          items:
+            $ref: '#/components/schemas/FeatureContribution'
+          minItems: 1
+          title: Features
+          type: array
+        method:
+          const: tree_shap
+          default: tree_shap
+          title: Method
+          type: string
+        raw_probability:
+          maximum: 1.0
+          minimum: 0.0
+          title: Raw Probability
+          type: number
+        raw_score:
+          title: Raw Score
+          type: number
+        space:
+          const: raw_margin_log_odds
+          default: raw_margin_log_odds
+          title: Space
+          type: string
+      required:
+      - bias
+      - raw_score
+      - raw_probability
+      - calibrated_probability
+      - features
+      title: ModelExplanation
       type: object
     Plan:
       additionalProperties: false
@@ -74,6 +158,10 @@ components:
           format: date-time
           title: Eta
           type: string
+        explanation:
+          anyOf:
+          - $ref: '#/components/schemas/ModelExplanation'
+          - type: 'null'
         p_available:
           maximum: 1.0
           minimum: 0.0
@@ -134,6 +222,10 @@ components:
           format: date-time
           title: Eta
           type: string
+        explanation:
+          anyOf:
+          - $ref: '#/components/schemas/ModelExplanation'
+          - type: 'null'
         explanation_method:
           minLength: 1
           title: Explanation Method
@@ -297,9 +389,21 @@ components:
           type: string
         time_shift:
           anyOf:
-          - type: integer
+          - exclusiveMinimum: 0.0
+            maximum: 60.0
+            multipleOf: 5.0
+            type: integer
           - type: 'null'
           title: Time Shift
+        time_shift_estimate:
+          anyOf:
+          - $ref: '#/components/schemas/TimeShiftEstimate'
+          - type: 'null'
+        time_shift_evaluated:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Time Shift Evaluated
       required:
       - request_id
       - primary
@@ -340,6 +444,29 @@ components:
       - tet
       title: Scenario
       type: string
+    ShiftDeparturesChange:
+      additionalProperties: false
+      properties:
+        fraction:
+          default: 0.2
+          exclusiveMinimum: 0.0
+          maximum: 1.0
+          title: Fraction
+          type: number
+        kind:
+          const: shift_departures
+          title: Kind
+          type: string
+        target_hour:
+          default: 21
+          maximum: 21.0
+          minimum: 20.0
+          title: Target Hour
+          type: integer
+      required:
+      - kind
+      title: ShiftDeparturesChange
+      type: object
     SimulationMetrics:
       additionalProperties: false
       properties:
@@ -524,6 +651,53 @@ components:
       - ai_allocation
       title: Strategy
       type: string
+    TimeShiftEstimate:
+      additionalProperties: false
+      properties:
+        assumptions:
+          items:
+            type: string
+          minItems: 1
+          title: Assumptions
+          type: array
+        depart_time:
+          format: date-time
+          title: Depart Time
+          type: string
+        eta:
+          format: date-time
+          title: Eta
+          type: string
+        improvement:
+          exclusiveMinimum: 0.0
+          maximum: 1.0
+          title: Improvement
+          type: number
+        minutes:
+          exclusiveMinimum: 0.0
+          maximum: 60.0
+          multipleOf: 5.0
+          title: Minutes
+          type: integer
+        p_available:
+          maximum: 1.0
+          minimum: 0.0
+          title: P Available
+          type: number
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+      required:
+      - minutes
+      - station_id
+      - depart_time
+      - eta
+      - p_available
+      - improvement
+      - assumptions
+      title: TimeShiftEstimate
+      type: object
     ValidationError:
       properties:
         ctx:
@@ -576,6 +750,98 @@ components:
       - consumption_kwh_per_km
       - connector_type
       title: Vehicle
+      type: object
+    WhatIfRequest:
+      additionalProperties: false
+      properties:
+        change:
+          discriminator:
+            mapping:
+              add_ports: '#/components/schemas/AddPortsChange'
+              shift_departures: '#/components/schemas/ShiftDeparturesChange'
+            propertyName: kind
+          oneOf:
+          - $ref: '#/components/schemas/AddPortsChange'
+          - $ref: '#/components/schemas/ShiftDeparturesChange'
+          title: Change
+        contract_version:
+          default: 0.1.0
+          title: Contract Version
+          type: string
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        seed:
+          minimum: 0.0
+          title: Seed
+          type: integer
+        strategy:
+          $ref: '#/components/schemas/Strategy'
+        vehicle_count:
+          exclusiveMinimum: 0.0
+          title: Vehicle Count
+          type: integer
+      required:
+      - scenario
+      - seed
+      - vehicle_count
+      - strategy
+      - change
+      title: WhatIfRequest
+      type: object
+    WhatIfResult:
+      additionalProperties: false
+      properties:
+        after:
+          $ref: '#/components/schemas/SimulationResult'
+        after_config_hash:
+          pattern: ^[0-9a-f]{64}$
+          title: After Config Hash
+          type: string
+        assumptions:
+          items:
+            type: string
+          minItems: 1
+          title: Assumptions
+          type: array
+        before:
+          $ref: '#/components/schemas/SimulationResult'
+        before_config_hash:
+          pattern: ^[0-9a-f]{64}$
+          title: Before Config Hash
+          type: string
+        change:
+          discriminator:
+            mapping:
+              add_ports: '#/components/schemas/AddPortsChange'
+              shift_departures: '#/components/schemas/ShiftDeparturesChange'
+            propertyName: kind
+          oneOf:
+          - $ref: '#/components/schemas/AddPortsChange'
+          - $ref: '#/components/schemas/ShiftDeparturesChange'
+          title: Change
+        contract_version:
+          const: 0.1.0
+          default: 0.1.0
+          title: Contract Version
+          type: string
+        data_type:
+          const: simulated
+          default: simulated
+          title: Data Type
+          type: string
+        shifted_vehicle_count:
+          minimum: 0.0
+          title: Shifted Vehicle Count
+          type: integer
+      required:
+      - before
+      - after
+      - change
+      - before_config_hash
+      - after_config_hash
+      - shifted_vehicle_count
+      - assumptions
+      title: WhatIfResult
       type: object
 info:
   title: V-EV Flow API
@@ -769,11 +1035,37 @@ paths:
   /api/whatif:
     post:
       operationId: whatIf
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/WhatIfRequest'
+              - type: 'null'
+              title: Request
       responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhatIfResult'
+          description: Successful Response
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
         '503':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Successful Response
+          description: Service Unavailable
       summary: Whatif

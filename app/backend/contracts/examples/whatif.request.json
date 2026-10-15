@@ -1,0 +1,12 @@
+{
+  "scenario": "tet",
+  "seed": 42,
+  "vehicle_count": 100,
+  "strategy": "ai_allocation",
+  "contract_version": "0.1.0",
+  "change": {
+    "kind": "add_ports",
+    "station_id": "S001",
+    "ports": 2
+  }
+}

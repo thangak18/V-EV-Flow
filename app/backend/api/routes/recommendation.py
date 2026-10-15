@@ -19,6 +19,8 @@ from app.backend.contracts.simulation import (
     ResetResponse,
     SimulationRequest,
     SimulationResult,
+    WhatIfRequest,
+    WhatIfResult,
 )
 
 router = APIRouter()
@@ -87,13 +89,20 @@ def simulate(
 
 @router.post(
     "/whatif",
-    response_model=ErrorResponse,
-    status_code=503,
+    response_model=WhatIfResult,
     operation_id="whatIf",
-    responses={503: {"model": ErrorResponse}},
+    responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
 )
-def whatif() -> None:
-    raise FeatureNotReadyError("what-if is planned for P1")
+def whatif(
+    request: WhatIfRequest | None = None, container: AppContainer = Depends(get_container)
+) -> WhatIfResult:
+    if request is None:
+        raise FeatureNotReadyError("what-if requires an explicit experiment request")
+    if container.whatif_simulation is None:
+        raise FeatureNotReadyError("what-if requires file/model/stateful mode")
+    if request.seed < 0:
+        raise HTTPException(422, "what-if requires a nonnegative seed")
+    return container.whatif_simulation.run_whatif(request)
 
 
 @router.post("/reset", response_model=ResetResponse, operation_id="resetDemo")

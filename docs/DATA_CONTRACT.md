@@ -47,3 +47,15 @@ Thông số cần có: `seed`, thời gian, bước 5 phút, hệ số xe đến
 - `app/backend/infrastructure/cache/`: cache route có timestamp/TTL; không commit key hoặc toàn bộ raw response nhạy cảm.
 
 Chỉ gộp/migrate dữ liệu Tasco sau khi validate schema, quyền dùng và chất lượng. Thiếu số cổng/thông số không tự coi là thông tin thật.
+
+
+## P1 counterfactual và giải thích model
+
+SHAP vector đi cùng từng forecast (giá trị features quan sát/đã bù lag và đóng góp
+raw margin), không lưu thành lịch sử vận hành. Không dùng target/future snapshot
+làm feature. Capacity what-if không được chuyển vào fitted feature metadata của
+model cũ: giữ predictor/background gốc, thêm cổng chỉ ở engine/ranking, ghi giới
+hạn này trong response/UI. Shift chỉ đổi giờ của một subset xe foreground cố
+định từ seed, giữ ID/SOC/compliance/số xe và event fixture. Hai config hash phân
+biệt before/after dù fixture hash sự kiện giống nhau. Không ghi model, lịch sử
+Parquet hay kết quả video vào Git; summaries phải ghi simulated.

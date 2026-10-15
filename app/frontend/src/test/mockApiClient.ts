@@ -37,6 +37,7 @@ export function createMockApiClient(
     pressure: vi.fn(),
     simulate: vi.fn(),
     reset: vi.fn(),
+    whatif: vi.fn(),
     ...overrides,
   } as unknown as ApiClient;
 }

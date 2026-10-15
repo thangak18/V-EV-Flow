@@ -1,0 +1,45 @@
+{
+  "before": {
+    "scenario": "tet",
+    "seed": 42,
+    "strategy": "ai_allocation",
+    "model_version": "example-sim-v1",
+    "fixture_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "contract_version": "0.1.0",
+    "metrics": {
+      "success_rate": 0.6,
+      "mean_detour_km": 5.0,
+      "mean_wait_minutes": 8.0,
+      "failed_count": 20,
+      "vehicle_count": 100
+    }
+  },
+  "after": {
+    "scenario": "tet",
+    "seed": 42,
+    "strategy": "ai_allocation",
+    "model_version": "example-sim-v1",
+    "fixture_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "contract_version": "0.1.0",
+    "metrics": {
+      "success_rate": 0.65,
+      "mean_detour_km": 5.0,
+      "mean_wait_minutes": 6.0,
+      "failed_count": 10,
+      "vehicle_count": 100
+    }
+  },
+  "change": {
+    "kind": "add_ports",
+    "station_id": "S001",
+    "ports": 2
+  },
+  "before_config_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "after_config_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "shifted_vehicle_count": 0,
+  "data_type": "simulated",
+  "assumptions": [
+    "Ví dụ minh họa schema; các số và hash không phải kết quả đo."
+  ],
+  "contract_version": "0.1.0"
+}
