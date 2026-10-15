@@ -203,6 +203,11 @@ def test_background_history_omits_only_missing_past_and_requires_current(runtime
     repo = BackgroundStatusRepository(rows, stations, Scenario.NORMAL)
     start = rows.ts.min().to_pydatetime()
     assert len(repo.window("S001", start, (0, 15, 30, 60)).statuses) == 1
+    for lags in ((-5,), (65,), (True,), ()):
+        with pytest.raises(ValueError):
+            repo.window("S001", start, lags)
+    with pytest.raises(ValueError):
+        repo.window("S001", start + timedelta(seconds=1), (0,))
     with pytest.raises(DataSourceUnavailableError):
         repo.window("S001", start - timedelta(minutes=5), (0,))
 

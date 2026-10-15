@@ -82,6 +82,18 @@ class BackgroundStatusRepository:
         self, station_id: str, observed_at: datetime, lags: tuple[int, ...] = (15, 30, 60)
     ) -> StatusWindow:
         station = self.stations.get_station(station_id)
+        if (
+            observed_at.utcoffset() != timedelta(hours=7)
+            or observed_at.minute % 5
+            or observed_at.second
+            or observed_at.microsecond
+            or not lags
+            or any(
+                isinstance(lag, bool) or not isinstance(lag, int) or not 0 <= lag <= 60
+                for lag in lags
+            )
+        ):
+            raise ValueError("background window requires aligned +07 time and lags within 0..60")
         if (station_id, observed_at) not in self.rows:
             raise DataSourceUnavailableError("current background snapshot is unavailable")
         snapshots = []
@@ -194,6 +206,7 @@ class StatefulSimulation:
         if model_manifest.data_type != "simulated":
             raise ValueError("stateful demo requires a simulated model artifact")
         self.model_version = model_manifest.model_version
+        self.model_checksum = model_manifest.binary_sha256
         self.lock = Lock()
         self.prepare = lru_cache(maxsize=4)(self._prepare)
 
@@ -206,6 +219,14 @@ class StatefulSimulation:
         frame = generate_status_history(bundle, self.stations.list_stations(), config)
         statuses = BackgroundStatusRepository(frame, self.stations, scenario)
         try:
+            manifest = read_manifest(self.model_dir)
+            if (manifest.model_version, manifest.binary_sha256) != (
+                self.model_version,
+                self.model_checksum,
+            ):
+                raise ValueError(
+                    "simulation artifact changed after startup; restart with an immutable release"
+                )
             predictor = RuntimePredictor(
                 load_predictor(
                     self.model_dir, statuses, self.stations, status_data_type=DataType.SIMULATED
@@ -221,7 +242,7 @@ class StatefulSimulation:
             bucket = observed_at + timedelta(
                 minutes=max(5, ceil((eta - observed_at).total_seconds() / 300) * 5)
             )
-            return predictor.predict(
+            result = predictor.predict(
                 PredictRequest(
                     station_id=station_id,
                     observed_at=observed_at,
@@ -229,7 +250,12 @@ class StatefulSimulation:
                     connector_type=self.stations.get_station(station_id).connector_types[0],
                     scenario=scenario,
                 )
-            ).p_available
+            )
+            if result.model_version != self.model_version:
+                raise ModelNotReadyError(
+                    "simulation predictor version differs from the startup model"
+                )
+            return result.p_available
 
         return bundle, config, statuses, availability
 
