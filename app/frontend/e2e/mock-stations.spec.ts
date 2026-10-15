@@ -4,6 +4,8 @@ test("driver shell shows mock data badge and station text list", async ({
   page,
 }) => {
   await page.goto("/driver");
-  await expect(page.getByText("Dữ liệu minh họa")).toBeVisible();
+  await expect(
+    page.getByText("Dữ liệu minh họa", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByLabel("Station text list")).toBeVisible();
 });
