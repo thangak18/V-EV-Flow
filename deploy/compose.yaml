@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    environment:
+      DATA_BACKEND: ${DATA_BACKEND:-mock}
+      PREDICTOR_BACKEND: ${PREDICTOR_BACKEND:-fake}
+      ROUTE_BACKEND: ${ROUTE_BACKEND:-fake}
+      PLACES_BACKEND: ${PLACES_BACKEND:-disabled}
+      GOONG_REST_API_KEY: ${GOONG_REST_API_KEY:-}
+      DATA_DIR: /release-data
+      MODEL_DIR: /release/model
+      CAPACITY_MODELS_DIR: /capacity-models
+      SIMULATION_BACKEND: ${SIMULATION_BACKEND:-fake}
+      SIMULATION_SCENARIOS_PATH: /release/producer_scenarios.yaml
+      PREDICTION_EXPLANATIONS: ${PREDICTION_EXPLANATIONS:-false}
+      TIME_SHIFT_SUGGESTIONS: ${TIME_SHIFT_SUGGESTIONS:-false}
+      ALLOCATION_BACKEND: sqlite
+      ALLOCATION_DB_PATH: /state/allocation.sqlite3
+      GOONG_CACHE_DIR: /state/goong-routes
+      PARTNER_HISTORY_PATH: /state/partner.sqlite3
+      PARTNER_SOURCE: ${PARTNER_SOURCE:-}
+      PARTNER_INGEST_TOKEN: ${PARTNER_INGEST_TOKEN:-}
+    volumes:
+      - state:/state
+      - ${CAPACITY_MODELS_DIR:-./empty-capacity}:/capacity-models:ro
+      - ${RELEASE_DIR:-./empty-release}:/release:ro
+      - ${GENERATED_DATA_DIR:-./empty-data}:/release-data/generated:ro
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+      args:
+        VITE_GOONG_MAP_KEY: ${VITE_GOONG_MAP_KEY:-}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+volumes:
+  state:

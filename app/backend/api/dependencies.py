@@ -25,11 +25,13 @@ from app.backend.contracts.recommendation import (
     RecommendationResult,
 )
 from app.backend.core.settings import Settings
+from app.backend.infrastructure.locations.goong import GoongPlaces
 from app.backend.infrastructure.repositories.files import (
     FileStationRepository,
     ParquetStatusRepository,
 )
 from app.backend.infrastructure.repositories.mock import MockStationRepository, MockStatusRepository
+from app.backend.infrastructure.repositories.partner import PartnerHistory, PartnerStatusRepository
 from app.backend.infrastructure.routing.cache import RouteCache
 from app.backend.infrastructure.routing.goong import GoongRouteProvider
 from app.backend.infrastructure.services.fakes import (
@@ -39,6 +41,7 @@ from app.backend.infrastructure.services.fakes import (
     FakeSimulationRunner,
 )
 from app.backend.infrastructure.state.in_memory import InMemoryAllocationStore
+from app.backend.infrastructure.state.sqlite import SQLiteVirtualLoadStore
 from app.backend.infrastructure.state.virtual_load import VirtualLoadStore
 from app.backend.modules.prediction.public import load_predictor, read_manifest
 from app.backend.modules.recommendation.allocation import AllocationCoordinator
@@ -66,11 +69,16 @@ class AppContainer:
     predictors_by_scenario: Mapping[Scenario, Predictor]
     ranking_config: RankingConfig
     prediction_horizons: Mapping[Scenario, int]
-    virtual_load_store: VirtualLoadStore
+    virtual_load_store: VirtualLoadStore | SQLiteVirtualLoadStore
     allocation_coordinator: AllocationCoordinator
     owned_route_client: httpx.AsyncClient | None = None
+    places: GoongPlaces | None = None
+    owned_places_client: httpx.AsyncClient | None = None
+    partner_history: PartnerHistory | None = None
 
     async def close(self) -> None:
+        if self.owned_places_client is not None:
+            await self.owned_places_client.aclose()
         if self.owned_route_client is not None and not self.owned_route_client.is_closed:
             await self.owned_route_client.aclose()
 
@@ -82,8 +90,6 @@ class AppContainer:
 def build_container(
     settings: Settings, *, route_client: httpx.AsyncClient | None = None
 ) -> AppContainer:
-    if settings.data_backend == "real":
-        raise StartupConfigurationError("DATA_BACKEND=real has no approved adapter")
     stations = _build_station_repository(settings)
     statuses = _build_status_repositories(settings, stations)
     try:
@@ -91,7 +97,12 @@ def build_container(
     except (OSError, ValueError, TypeError, KeyError) as exc:
         raise StartupConfigurationError("model artifact is unavailable or incompatible") from exc
     ranking = RankingConfig(min_arrival_soc_pct=settings.min_arrival_soc_pct)
-    store = VirtualLoadStore(ttl=timedelta(seconds=settings.virtual_load_receipt_ttl_seconds))
+    ttl = timedelta(seconds=settings.virtual_load_receipt_ttl_seconds)
+    store = (
+        SQLiteVirtualLoadStore(settings.allocation_db_path, ttl=ttl)
+        if settings.allocation_backend == "sqlite"
+        else VirtualLoadStore(ttl=ttl)
+    )
     routes, owned_route_client = _build_route_provider(settings, route_client=route_client)
 
     def service_factory(reader: VirtualLoadReader) -> RecommendationService:
@@ -138,6 +149,14 @@ def build_container(
         allocation_coordinator=coordinator,
         owned_route_client=owned_route_client,
     )
+    if settings.places_backend == "goong" and settings.goong_rest_api_key:
+        places_client = route_client or httpx.AsyncClient()
+        container.places = GoongPlaces(settings.goong_rest_api_key, places_client)
+        container.owned_places_client = None if route_client is not None else places_client
+    if settings.data_backend == "real":
+        container.partner_history = PartnerHistory(
+            settings.partner_history_path, stations, settings.partner_source or ""
+        )
     container.recommendation = RecommendationFacade(container)
     return container
 
@@ -145,9 +164,16 @@ def build_container(
 def _build_station_repository(settings: Settings) -> StationRepository:
     if settings.data_backend == "mock":
         return MockStationRepository(settings.data_dir / "fixtures" / "stations.json")
-    if settings.data_backend == "file":
+    if settings.data_backend in ("file", "real"):
         try:
-            return FileStationRepository(settings.data_dir / "generated" / "stations.json")
+            repository = FileStationRepository(settings.data_dir / "generated" / "stations.json")
+            if settings.data_backend == "real" and any(
+                station.source != settings.partner_source for station in repository.list_stations()
+            ):
+                raise ValueError(
+                    "real station metadata must identify the configured partner source"
+                )
+            return repository
         except (DataSourceUnavailableError, OSError, ValueError) as exc:
             raise StartupConfigurationError(
                 "file station metadata is unavailable or invalid"
@@ -160,8 +186,18 @@ def _build_status_repositories(
 ) -> dict[Scenario, StatusRepository]:
     if settings.data_backend == "mock":
         return {scenario: MockStatusRepository(stations, scenario) for scenario in Scenario}  # type: ignore[arg-type]
+    if settings.data_backend == "real":
+        history = PartnerHistory(
+            settings.partner_history_path, stations, settings.partner_source or ""
+        )
+        return {scenario: PartnerStatusRepository(history, scenario) for scenario in Scenario}
     path = settings.data_dir / "generated" / "station_status.parquet"
-    return {scenario: ParquetStatusRepository(path, stations, scenario) for scenario in Scenario}
+    return {
+        scenario: ParquetStatusRepository(
+            path, stations, scenario, allow_missing_lags=settings.predictor_backend == "model"
+        )
+        for scenario in Scenario
+    }
 
 
 def _build_predictors(
@@ -186,7 +222,9 @@ def _build_predictors(
                 settings.model_dir,
                 statuses[scenario],
                 stations,
-                status_data_type=DataType.SIMULATED,
+                status_data_type=DataType.REAL
+                if settings.data_backend == "real"
+                else DataType.SIMULATED,
                 explain=settings.prediction_explanations,
             )
         )
@@ -209,11 +247,18 @@ def _build_simulation_runner(
         maximum_horizon=maximum_horizon,
         duration=settings.assumed_charge_duration_minutes,
         load=settings.expected_virtual_load,
+        capacity_models_dir=settings.capacity_models_dir,
     )
 
 
 def _recommendation_data_type(settings: Settings) -> DataType:
-    return DataType.SIMULATED if settings.data_backend == "file" else DataType.MOCK
+    return (
+        DataType.REAL
+        if settings.data_backend == "real"
+        else DataType.SIMULATED
+        if settings.data_backend == "file"
+        else DataType.MOCK
+    )
 
 
 def _build_route_provider(
@@ -229,6 +274,7 @@ def _build_route_provider(
         client,
         RouteCache(settings.goong_cache_dir, timedelta(seconds=settings.goong_cache_ttl_seconds)),
         clock=lambda: datetime.now(UTC),
+        retries=1,
     ), (client if route_client is None else None)
 
 

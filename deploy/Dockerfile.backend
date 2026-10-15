@@ -1,0 +1,13 @@
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir uv==0.13.0
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
+COPY app/backend app/backend
+RUN mkdir -p /release-data/fixtures && cp app/backend/modules/station_data/fixtures/stations.json /release-data/fixtures/
+ENV PATH="/app/.venv/bin:$PATH"
+RUN useradd --uid 10001 --create-home appuser && mkdir -p /state && chown appuser:appuser /state
+USER appuser
+EXPOSE 8000
+CMD ["uvicorn", "app.backend.api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

@@ -3,6 +3,9 @@ import type { components, operations } from "../types/api.generated";
 import { ApiError, isAbortError } from "./errors";
 import {
   parseApiResponse,
+  PlaceSuggestionsSchema,
+  PlaceLocationSchema,
+  RuntimeContextSchema,
   PredictionResultSchema,
   PressureResponseSchema,
   RecommendationResultSchema,
@@ -37,6 +40,28 @@ export class ApiClient {
     private readonly fetcher: typeof fetch = (...args) => fetch(...args),
   ) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
+  }
+
+  runtime(scenario: Scenario, signal?: AbortSignal) {
+    return this.request(`/runtime?scenario=${encodeURIComponent(scenario)}`, {
+      signal,
+    }).then((body) =>
+      parseApiResponse(RuntimeContextSchema, body, "runtimeContext"),
+    );
+  }
+
+  searchPlaces(query: string, session: string, signal?: AbortSignal) {
+    const params = new URLSearchParams({ q: query, session });
+    return this.request(`/places/search?${params}`, { signal }).then((body) =>
+      parseApiResponse(PlaceSuggestionsSchema, body, "searchPlaces"),
+    );
+  }
+
+  resolvePlace(placeId: string, session: string, signal?: AbortSignal) {
+    const params = new URLSearchParams({ place_id: placeId, session });
+    return this.request(`/places/detail?${params}`, { signal }).then((body) =>
+      parseApiResponse(PlaceLocationSchema, body, "resolvePlace"),
+    );
   }
 
   ready(signal?: AbortSignal) {
@@ -225,3 +250,5 @@ export type Plan = components["schemas"]["Plan"];
 export type ModelExplanation = components["schemas"]["ModelExplanation"];
 export type WhatIfRequest = components["schemas"]["WhatIfRequest"];
 export type WhatIfResult = components["schemas"]["WhatIfResult"];
+
+export type RuntimeContext = components["schemas"]["RuntimeContext"];

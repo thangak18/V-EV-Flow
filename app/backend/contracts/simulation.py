@@ -149,6 +149,13 @@ class WhatIfResult(StrictModel):
     shifted_vehicle_count: int = Field(ge=0)
     data_type: Literal[DataType.SIMULATED] = DataType.SIMULATED
     assumptions: tuple[str, ...] = Field(min_length=1)
+    prediction_mode: Literal["capacity_retrained"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    capacity_model_version: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    capacity_history_hash: FixtureHash | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     contract_version: Literal["0.1.0"] = "0.1.0"
 
     @model_validator(mode="after")
@@ -159,12 +166,24 @@ class WhatIfResult(StrictModel):
             raise ValueError(
                 "before and after configurations must identify the counterfactual change"
             )
+        if self.prediction_mode == "capacity_retrained":
+            if (
+                not isinstance(self.change, AddPortsChange)
+                or self.capacity_model_version != self.after.model_version
+                or not self.capacity_history_hash
+            ):
+                raise ValueError("retrained capacity requires matching model and history evidence")
+        elif (
+            self.before.model_version != self.after.model_version
+            or self.capacity_model_version is not None
+            or self.capacity_history_hash is not None
+        ):
+            raise ValueError("what-if model mismatch without explicit capacity retraining")
         for field in (
             "scenario",
             "seed",
             "strategy",
             "fixture_hash",
-            "model_version",
             "contract_version",
         ):
             if getattr(self.before, field) != getattr(self.after, field):

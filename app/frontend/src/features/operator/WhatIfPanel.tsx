@@ -169,9 +169,10 @@ export function WhatIfPanel({
           </p>
           {result.change.kind === "add_ports" ? (
             <p className="status-message">
-              Thêm {result.change.ports} cổng tại {result.change.station_id}. Dự
-              báo ML giữ theo capacity gốc; chỉ simulator và xếp hạng dùng
-              capacity mới, không phải model đã retrain.
+              Thêm {result.change.ports} cổng tại {result.change.station_id}.{" "}
+              {result.prediction_mode === "capacity_retrained"
+                ? `Dự báo ML dùng model riêng đã train cho capacity mới (${result.capacity_model_version}). Thay đổi cả capacity và model, không tách tác động riêng của số cổng.`
+                : "Dự báo ML giữ theo capacity gốc; chỉ simulator và xếp hạng dùng capacity mới, không phải model đã retrain."}
             </p>
           ) : (
             <p className="status-message">

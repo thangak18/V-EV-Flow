@@ -1253,3 +1253,43 @@ dd {
   width: 100%;
   min-width: 0;
 }
+
+.place-search {
+  position: relative;
+}
+.place-search__dropdown {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  width: max(100%, 20rem);
+  max-width: calc(100vw - 2rem);
+  background: white;
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+.place-search__dropdown ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+.place-search__dropdown li {
+  padding: 0.65rem;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.place-search__dropdown li:hover,
+.place-search__dropdown li[aria-selected="true"] {
+  background: #e5f0e9;
+}
+.place-search__dropdown small,
+.place-search__dropdown p {
+  display: block;
+  padding: 0.4rem;
+  font-size: 0.8rem;
+}

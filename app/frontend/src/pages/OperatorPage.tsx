@@ -22,6 +22,24 @@ export function OperatorPage() {
   const client = useApiClient();
   const [scenario, setScenario] = useState<Scenario>("normal");
   const [time, setTime] = useState("2026-10-13T16:00:00+07:00");
+  const [runtimeNotice, setRuntimeNotice] = useState("");
+  const [runtimeReady, setRuntimeReady] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    client
+      .runtime(scenario, controller.signal)
+      .then((context) => {
+        if (controller.signal.aborted) return;
+        if (context.observed_at) setTime(context.observed_at);
+        setRuntimeNotice(context.message);
+        setRuntimeReady(context.available);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setRuntimeNotice("Không lấy được thời gian/dữ liệu từ backend.");
+      });
+    return () => controller.abort();
+  }, [client, scenario]);
   const [seed, setSeed] = useState(42);
   const [vehicleCount, setVehicleCount] = useState(100);
   const [draft, setDraft] = useState<{
@@ -109,14 +127,22 @@ export function OperatorPage() {
         {pressure.result ? <DataTypeBadge dataType={pressureDataType} /> : null}
       </header>
 
+      {runtimeNotice ? (
+        <p className="status-message" role="status">
+          {runtimeNotice}
+        </p>
+      ) : null}
       <div className="operator-toolbar">
         <ScenarioSelector
           scenario={scenario}
           time={time}
-          onScenarioChange={setScenario}
+          onScenarioChange={(next) => {
+            setRuntimeReady(false);
+            setScenario(next);
+          }}
           onTimeChange={setTime}
           onApply={() => void pressure.load(scenario, time)}
-          pending={pressure.status === "loading"}
+          pending={pressure.status === "loading" || !runtimeReady}
         />
         <SimulationControls
           seed={seed}

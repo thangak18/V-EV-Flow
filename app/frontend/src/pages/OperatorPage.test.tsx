@@ -57,7 +57,9 @@ describe("OperatorPage", () => {
     fireEvent.change(screen.getByLabelText("Kịch bản"), {
       target: { value: "tet" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Áp dụng kịch bản/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Áp dụng kịch bản/i }),
+    );
     await waitFor(() => expect(getPressure).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/áp lực 0\.60/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Chú thích áp lực")).toBeInTheDocument();
@@ -120,7 +122,9 @@ describe("OperatorPage", () => {
       </ApiProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Áp dụng kịch bản/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Áp dụng kịch bản/i }),
+    );
     expect(await screen.findByText("Dữ liệu mô phỏng")).toBeInTheDocument();
 
     fireEvent.click(
@@ -169,7 +173,9 @@ describe("OperatorPage", () => {
       </ApiProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Áp dụng kịch bản/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Áp dụng kịch bản/i }),
+    );
     expect(await screen.findByText(/chưa có tọa độ/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Station text list")).toHaveTextContent(
       "UNKNOWN",

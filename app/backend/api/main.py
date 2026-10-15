@@ -33,11 +33,15 @@ def create_app(
         allow_headers=["*"],
     )
 
+    from app.backend.api.routes.locations import router as locations_router
     from app.backend.api.routes.prediction import router as prediction_router
     from app.backend.api.routes.recommendation import router as recommendation_router
+    from app.backend.api.routes.runtime import router as runtime_router
     from app.backend.api.routes.stations import router as stations_router
 
     app.include_router(stations_router, prefix="/api")
+    app.include_router(locations_router, prefix="/api")
+    app.include_router(runtime_router, prefix="/api")
     app.include_router(prediction_router, prefix="/api")
     app.include_router(recommendation_router, prefix="/api")
 
@@ -47,8 +51,10 @@ def create_app(
 
     @app.get("/api/ready", operation_id="ready")
     def ready() -> dict[str, object]:
+        from app.backend.api.routes.runtime import runtime_context
+
         return {
-            "ready": container.ready,
+            "ready": container.ready and runtime_context(container=container).available,
             "data_backend": selected.data_backend,
             "predictor_backend": selected.predictor_backend,
             "route_backend": selected.route_backend,

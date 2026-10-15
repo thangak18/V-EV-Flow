@@ -86,3 +86,14 @@ Executable setup, generation, all endpoints, error/retry/reset sequences and tro
 ## P1 contract extension
 
 POST /whatif accepts a typed WhatIfRequest and returns WhatIfResult in file/model/stateful mode, or typed 503 when unavailable. Legacy bodyless/null requests preserve 503 without running an experiment; malformed supplied bodies return 422. SHAP/shift flags default false for existing compositions; api.demo enables them. Optional prediction/plan explanations and shift estimates are omitted when absent. OpenAPI/types and examples are generated/validated together; update strict consumers before enabling P1. See docs/runbooks/p1-demo.md.
+
+## Runtime V2 composition
+
+New optional location endpoints and RuntimeContext are generated into OpenAPI.
+PartnerSnapshot batches require explicit real source, bearer credential and valid
+station metadata. Unknown/future/conflicting snapshots fail without fallback.
+`/ready` also considers current runtime data availability. Simulation stays on
+simulated history. Capacity variants are loaded only for matched add_ports AI
+experiments and include different model version/history evidence. Missing variants
+retain the declared frozen experiment. See runtime-completion.md and evidence for
+new 180-minute model, multi-seed benchmark, persistent state and packaging.

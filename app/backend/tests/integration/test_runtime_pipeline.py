@@ -332,3 +332,119 @@ def test_whatif_rejects_unknown_station_without_mutating_driver(runtime_files) -
             asyncio.run(app.state.container.virtual_load_store.snapshot(observed, Scenario.NORMAL))
             == {}
         )
+
+
+def test_capacity_retrained_model_has_explicit_identity_and_rejects_corruption(
+    runtime_files,
+) -> None:
+    import hashlib
+
+    root, parent, _ = runtime_files
+    stations = FileStationRepository(root / "generated/stations.json").list_stations()
+    modified = [
+        s.model_copy(update={"n_ports": s.n_ports + 2}) if s.station_id == "S001" else s
+        for s in stations
+    ]
+    specs = load_scenario_specs()
+    frames = []
+    for scenario in Scenario:
+        spec = specs[scenario].history_spec(2, datetime.fromisoformat("2026-10-13T23:55:00+07:00"))
+        frames.append(
+            generate_status_history(
+                generate_fixture_bundle(spec, stations, 12), modified, spec.to_config()
+            )
+        )
+    frame = pd.concat(frames, ignore_index=True)
+    split = temporal_split(
+        build_labels(frame, [15, 30, 60]),
+        train_end="2026-10-12T10:00:00+07:00",
+        calibration_end="2026-10-12T20:00:00+07:00",
+        max_horizon_minutes=60,
+    )
+    pipeline = train_candidate(
+        split,
+        TrainingConfig(
+            n_estimators=8, min_child_samples=3, source="capacity-test", data_type="simulated"
+        ),
+        status_frame=frame,
+        stations=modified,
+        seed=42,
+    )
+    capacity = root / "variants" / "S001-plus2"
+    capacity.mkdir(parents=True, exist_ok=True)
+    model = save_pipeline(pipeline, capacity / "model", data_version="test-capacity")
+    metadata = json.dumps([s.model_dump(mode="json") for s in modified]).encode()
+    (capacity / "stations.json").write_bytes(metadata)
+    frame.to_parquet(capacity / "station_status.parquet", index=False)
+    evidence = dict(
+        base_model_sha256=parent.binary_sha256,
+        station_id="S001",
+        ports=2,
+        data_type="simulated",
+        model_version=model.model_version,
+        stations_sha256=hashlib.sha256(metadata).hexdigest(),
+        history_sha256=hashlib.sha256(
+            (capacity / "station_status.parquet").read_bytes()
+        ).hexdigest(),
+    )
+    (capacity / "variant.json").write_text(json.dumps(evidence))
+    app = create_app(
+        settings_for(root, simulation_backend="stateful", capacity_models_dir=root / "variants")
+    )
+    with TestClient(app) as client:
+        request = dict(
+            scenario="tet",
+            seed=42,
+            vehicle_count=12,
+            strategy="ai_allocation",
+            change={"kind": "add_ports", "station_id": "S001", "ports": 2},
+        )
+        response = client.post("/api/whatif", json=request)
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["prediction_mode"] == "capacity_retrained"
+        assert (
+            result["after"]["model_version"]
+            == result["capacity_model_version"]
+            == model.model_version
+        )
+        assert result["before"]["model_version"] == parent.model_version
+        (capacity / "station_status.parquet").write_bytes(b"corrupted")
+        invalid = client.post("/api/whatif", json=request)
+        assert invalid.status_code == 503 and invalid.json()["code"] == "MODEL_NOT_READY"
+
+
+def test_file_model_imputes_missing_past_but_current_snapshot_stays_mandatory(
+    runtime_files, tmp_path
+) -> None:
+    root, _, frame = runtime_files
+    partial = tmp_path / "generated"
+    partial.mkdir()
+    (partial / "stations.json").write_bytes((root / "generated/stations.json").read_bytes())
+    observed = frame.ts.min() + timedelta(hours=3)
+    frame[frame.ts == observed].to_parquet(partial / "station_status.parquet", index=False)
+    app = create_app(
+        Settings(
+            data_backend="file",
+            predictor_backend="model",
+            data_dir=tmp_path,
+            model_dir=root / "model",
+        )
+    )
+    request = dict(
+        station_id="S001",
+        scenario="normal",
+        connector_type="CCS2",
+        observed_at=observed.isoformat(),
+        eta=(observed + timedelta(minutes=30)).isoformat(),
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/predict", json=request)
+        assert response.status_code == 200, response.text
+        assert 0 <= response.json()["p_available"] <= 1
+        missing = client.post(
+            "/api/predict",
+            json={**request, "observed_at": (observed - timedelta(minutes=5)).isoformat()},
+        )
+        assert missing.status_code == 503
+        assert missing.json()["code"] == "DATA_SOURCE_UNAVAILABLE"

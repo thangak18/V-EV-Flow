@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 
-import type { RecommendationRequest, Scenario } from "../../services/api";
+import type {
+  RecommendationRequest,
+  Scenario,
+  RuntimeContext,
+} from "../../services/api";
 import { isPlus07FiveMinuteBucket } from "../../services/errors";
 import {
   DEFAULT_ORIGIN,
@@ -8,6 +12,7 @@ import {
   DEFAULT_DEMO_TIME,
   type TripLocation,
 } from "./corridorPresets";
+import { PlaceSearch } from "./PlaceSearch";
 import { isNumericDraft, parseLocaleNumber } from "./numberField";
 
 type Props = {
@@ -16,6 +21,16 @@ type Props = {
   origin?: string;
   destination?: string;
   onLocationChange?: (field: "origin" | "destination", value: string) => void;
+  runtime?: RuntimeContext;
+  runtimeError?: string;
+  runtimeLoading?: boolean;
+  onScenarioChange?: (scenario: Scenario) => void;
+  onResolveLocation?: (
+    field: "origin" | "destination",
+    location: TripLocation,
+  ) => void;
+  resolvedOrigin?: TripLocation;
+  resolvedDestination?: TripLocation;
   onSubmit: (request: RecommendationRequest) => void;
 };
 
@@ -41,6 +56,13 @@ export function DriverForm({
   origin = DEFAULT_ORIGIN.label,
   destination = DEFAULT_DESTINATION.label,
   onLocationChange,
+  runtime,
+  runtimeError,
+  runtimeLoading,
+  onScenarioChange,
+  onResolveLocation,
+  resolvedOrigin,
+  resolvedDestination,
   onSubmit,
 }: Props) {
   const [socPct, setSocPct] = useState("20");
@@ -48,7 +70,8 @@ export function DriverForm({
   const [consumption, setConsumption] = useState("0.18");
   const [connector, setConnector] = useState("CCS2");
   const [scenario, setScenario] = useState<Scenario>("normal");
-  const [demoTime, setDemoTime] = useState(DEFAULT_DEMO_TIME);
+  const [demoTimeDraft, setDemoTime] = useState<string | null>(null);
+  const demoTime = demoTimeDraft ?? runtime?.observed_at ?? DEFAULT_DEMO_TIME;
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [lastPayload, setLastPayload] = useState<Omit<
     RecommendationRequest,
@@ -60,12 +83,14 @@ export function DriverForm({
   const parsedBattery = parseLocaleNumber(batteryKwh);
   const parsedConsumption = parseLocaleNumber(consumption);
 
-  const selectedOrigin = locations.find(
-    (location) => location.label === origin,
-  );
-  const selectedDestination = locations.find(
-    (location) => location.label === destination,
-  );
+  const selectedOrigin =
+    (resolvedOrigin?.label === origin ? resolvedOrigin : undefined) ??
+    locations.find((location) => location.label === origin);
+  const selectedDestination =
+    (resolvedDestination?.label === destination
+      ? resolvedDestination
+      : undefined) ??
+    locations.find((location) => location.label === destination);
   const routeInvalid =
     !selectedOrigin ||
     !selectedDestination ||
@@ -146,23 +171,17 @@ export function DriverForm({
     <form className="driver-toolbar" onSubmit={handleSubmit} noValidate>
       <div className="driver-toolbar__fields">
         {(["origin", "destination"] as const).map((field) => (
-          <label className="field-chip" key={field}>
-            <span className="field-chip__label">
-              {field === "origin" ? "Điểm đi" : "Điểm đến"}
-            </span>
-            <input
-              type="text"
-              list="trip-locations"
-              autoComplete="off"
-              value={field === "origin" ? origin : destination}
-              placeholder="Gõ để chọn địa điểm…"
-              aria-invalid={routeInvalid}
-              aria-describedby="trip-location-help"
-              onChange={(event) =>
-                onLocationChange?.(field, event.target.value)
-              }
-            />
-          </label>
+          <PlaceSearch
+            key={field}
+            label={field === "origin" ? "Điểm đi" : "Điểm đến"}
+            value={field === "origin" ? origin : destination}
+            locations={locations}
+            enabled={runtime?.places_available ?? false}
+            resolved={field === "origin" ? resolvedOrigin : resolvedDestination}
+            invalid={routeInvalid}
+            onChange={(value) => onLocationChange?.(field, value)}
+            onResolve={(location) => onResolveLocation?.(field, location)}
+          />
         ))}
         <datalist id="trip-locations">
           {locations.map((location) => (
@@ -173,7 +192,11 @@ export function DriverForm({
           <span className="field-chip__label">Kịch bản</span>
           <select
             value={scenario}
-            onChange={(event) => setScenario(event.target.value as Scenario)}
+            onChange={(event) => {
+              setScenario(event.target.value as Scenario);
+              setDemoTime(null);
+              onScenarioChange?.(event.target.value as Scenario);
+            }}
           >
             <option value="normal">Ngày thường</option>
             <option value="holiday_30_4">Lễ 30/4</option>
@@ -205,7 +228,13 @@ export function DriverForm({
         <button
           type="submit"
           className="btn-primary"
-          disabled={pending || invalid}
+          disabled={
+            pending ||
+            invalid ||
+            runtimeLoading ||
+            !!runtimeError ||
+            runtime?.available === false
+          }
         >
           {pending ? "Đang tìm…" : "Tìm kế hoạch sạc"}
         </button>
@@ -287,9 +316,19 @@ export function DriverForm({
         id="trip-location-help"
         className="status-message driver-toolbar__hint"
       >
-        Gõ rồi chọn địa điểm trong danh sách. Trạm sạc hiện chỉ phủ khu vực demo
-        TP.HCM–Vũng Tàu.
+        {runtime?.places_available
+          ? "Tìm địa chỉ bằng Goong hoặc chọn địa điểm trong danh mục."
+          : "Gõ rồi chọn địa điểm trong danh sách."}{" "}
+        Dữ liệu trạm hiện phủ vùng demo TP.HCM–Vũng Tàu.
+        {runtime
+          ? ` ${runtime.message} Phạm vi dự báo tối đa ${runtime.max_horizon_minutes} phút.`
+          : ""}
       </p>
+      {runtimeError ? (
+        <p className="field-error" role="alert">
+          {runtimeError}
+        </p>
+      ) : null}
       {invalid ? (
         <p className="field-error driver-toolbar__error" role="alert">
           {routeInvalid

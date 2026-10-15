@@ -47,6 +47,11 @@ describe("DriverPage", () => {
     );
     expect(await screen.findByText("Dữ liệu mô phỏng")).toBeInTheDocument();
     expect(screen.queryByText("Dữ liệu minh họa")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+      ).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     expect(await screen.findByText("Dữ liệu hỗn hợp")).toBeInTheDocument();
     expect(screen.queryByText("Dữ liệu mô phỏng")).not.toBeInTheDocument();
@@ -65,6 +70,11 @@ describe("DriverPage", () => {
     );
 
     expect(recommend).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+      ).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     await waitFor(() => expect(recommend).toHaveBeenCalledTimes(1));
     expect(await screen.findByText("S012")).toBeInTheDocument();
@@ -116,6 +126,12 @@ describe("DriverPage", () => {
           <DriverPage />
         </MemoryRouter>
       </ApiProvider>,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+      ).toBeEnabled(),
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
@@ -192,6 +208,12 @@ describe("DriverPage", () => {
       </ApiProvider>,
     );
 
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+      ).toBeEnabled(),
+    );
+
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     expect(await screen.findByTestId("plan-hero")).toHaveTextContent(
       "Long Dien Crossing",
@@ -222,6 +244,12 @@ describe("DriverPage", () => {
           <DriverPage />
         </MemoryRouter>
       </ApiProvider>,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+      ).toBeEnabled(),
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));

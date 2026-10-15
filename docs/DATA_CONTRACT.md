@@ -59,3 +59,14 @@ hạn này trong response/UI. Shift chỉ đổi giờ của một subset xe for
 định từ seed, giữ ID/SOC/compliance/số xe và event fixture. Hai config hash phân
 biệt before/after dù fixture hash sự kiện giống nhau. Không ghi model, lịch sử
 Parquet hay kết quả video vào Git; summaries phải ghi simulated.
+
+## Canonical partner feed (runtime V2)
+
+The opt-in feed uses StationStatus with strict integer counts, +07 five-minute
+observed timestamps, capacity conservation, unique keys and normal scenario only.
+Source identity and station metadata hash bind one SQLite history; a source change
+requires a separate database. Current snapshots remain mandatory; missing past
+lags may use the model's persisted training medians, never future observations.
+All station metadata must name the configured partner source. Authenticated feed
+assertions are not independent verification of occupancy or model accuracy.
+The current team demo remains simulated because no partner feed has been supplied.

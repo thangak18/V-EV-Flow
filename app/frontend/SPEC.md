@@ -72,3 +72,14 @@ aborts stale requests and clears the previous plan. No automatic recommendations
 or geocoding calls occur while typing. Coverage remains the simulated demo region;
 this is not nationwide address autocomplete. Native dropdown presentation varies
 by browser. Directory failures retain the two city options and show a warning.
+
+## Runtime V2 behavior
+
+Driver uses backend runtime clock/capabilities, blocks submit while loading or when
+source data is unavailable, and clears stale plans when the observation changes.
+Goong autocomplete/detail use ApiClient, debounce and AbortController; typed text
+alone cannot supply coordinates. Local directory coordinates remain an explicit
+offline choice. Remote selectors support keyboard selection and ignore late
+resolved details after edits. Operator initializes time from the same source.
+Capacity what-if displays an explicitly retrained model when the response carries
+validated model/history evidence; otherwise the frozen-capacity caveat remains.
