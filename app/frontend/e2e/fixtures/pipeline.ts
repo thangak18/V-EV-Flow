@@ -51,6 +51,9 @@ export const UNLOCATED_RECOMMEND = {
     station_id: "S999",
   },
   backup: null,
+  plan_p: PIPELINE_RECOMMEND.primary.p_available,
+  plan_p_assumption: null,
+  reasons: ["Đủ pin để tới trạm chính; không có trạm dự phòng"],
 } as const;
 
 export function simulateResult(

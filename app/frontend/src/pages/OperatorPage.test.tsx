@@ -101,7 +101,7 @@ describe("OperatorPage", () => {
           success_rate: rates[body.strategy] ?? 0.5,
           mean_detour_km: 2,
           mean_wait_minutes: 3,
-          failed_count: 10,
+          failed_count: Math.round(100 * (1 - (rates[body.strategy] ?? 0.5))),
           vehicle_count: 100,
         },
       }));
