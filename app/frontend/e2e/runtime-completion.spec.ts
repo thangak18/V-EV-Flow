@@ -3,8 +3,13 @@ import { expect, test } from "@playwright/test";
 test("Goong place selection resolves coordinates and editing invalidates the old plan", async ({
   page,
 }) => {
-  await page.route("**/api/runtime?*", (route) =>
-    route.fulfill({
+  let releaseRuntime!: () => void;
+  const capabilities = new Promise<void>((resolve) => {
+    releaseRuntime = resolve;
+  });
+  await page.route("**/api/runtime?*", async (route) => {
+    await capabilities;
+    return route.fulfill({
       json: {
         clock_mode: "replay",
         scenario: "normal",
@@ -18,8 +23,8 @@ test("Goong place selection resolves coordinates and editing invalidates the old
         message: "Replay lịch sử simulated.",
         allocation_backend: "sqlite",
       },
-    }),
-  );
+    });
+  });
   await page.route("**/api/places/search?*", (route) =>
     route.fulfill({
       json: {
@@ -47,6 +52,9 @@ test("Goong place selection resolves coordinates and editing invalidates the old
   await page.route("**/tiles.goong.io/**", (route) => route.abort());
   await page.goto("/driver");
   const origin = page.getByRole("combobox", { name: "Điểm đi", exact: true });
+  await expect(origin).toBeDisabled();
+  releaseRuntime();
+  await expect(origin).toBeEnabled();
   await origin.fill("Nhà hát");
   await expect(
     page.getByRole("button", { name: "Tìm kế hoạch sạc", exact: true }),

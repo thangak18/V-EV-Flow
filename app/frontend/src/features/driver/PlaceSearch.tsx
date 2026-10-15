@@ -8,6 +8,7 @@ export function PlaceSearch(props: {
   value: string;
   locations: TripLocation[];
   enabled: boolean;
+  disabled?: boolean;
   resolved?: TripLocation;
   invalid: boolean;
   onChange: (value: string) => void;
@@ -19,6 +20,7 @@ export function PlaceSearch(props: {
       <span className="field-chip__label">{props.label}</span>
       <input
         type="text"
+        disabled={props.disabled}
         list="trip-locations"
         autoComplete="off"
         value={props.value}
@@ -131,6 +133,7 @@ function RemotePlaceSearch(props: Parameters<typeof PlaceSearch>[0]) {
         {props.label}
       </label>
       <input
+        disabled={props.disabled}
         id={id}
         role="combobox"
         autoComplete="off"

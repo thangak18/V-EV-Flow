@@ -148,7 +148,14 @@ export function DriverForm({
         lng: selectedDestination.lng,
       },
       observed_at: demoTime,
-      depart_time: demoTime,
+      // Live observation may lag the click by a few minutes. Keep that source
+      // timestamp for features, but depart now instead of replaying a past trip.
+      depart_time:
+        runtime?.clock_mode === "live"
+          ? new Date(Date.now() + 7 * 60 * 60 * 1000)
+              .toISOString()
+              .replace("Z", "+07:00")
+          : demoTime,
       scenario,
       vehicle: {
         soc_pct: parsedSoc,
@@ -177,6 +184,7 @@ export function DriverForm({
             value={field === "origin" ? origin : destination}
             locations={locations}
             enabled={runtime?.places_available ?? false}
+            disabled={runtimeLoading || !!runtimeError}
             resolved={field === "origin" ? resolvedOrigin : resolvedDestination}
             invalid={routeInvalid}
             onChange={(value) => onLocationChange?.(field, value)}

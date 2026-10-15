@@ -27,6 +27,59 @@ const planResult = {
 };
 
 describe("DriverPage", () => {
+  test("blocks address entry until provider capability bootstrap completes", async () => {
+    const response = {
+      clock_mode: "mock" as const,
+      scenario: "normal" as const,
+      data_type: "mock" as const,
+      observed_at: "2026-10-13T16:00:00+07:00",
+      history_start: null,
+      history_end: null,
+      max_horizon_minutes: 180,
+      places_available: true,
+      available: true,
+      message: "Capabilities ready",
+      allocation_backend: "memory" as const,
+    };
+    let finish!: (value: typeof response) => void;
+    const runtime = vi.fn().mockImplementation(
+      () =>
+        new Promise<typeof response>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const recommend = vi.fn();
+    const client = createMockApiClient({
+      runtime,
+      recommend,
+      searchPlaces: vi
+        .fn()
+        .mockResolvedValue({ provider: "goong", predictions: [] }),
+    });
+    render(
+      <ApiProvider client={client}>
+        <MemoryRouter>
+          <DriverPage />
+        </MemoryRouter>
+      </ApiProvider>,
+    );
+    expect(screen.getByLabelText("Điểm đi")).toBeDisabled();
+    finish(response);
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Điểm đi" })).toBeEnabled(),
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Điểm đi" }), {
+      target: { value: "Nhà hát" },
+    });
+    expect(screen.getByRole("combobox", { name: "Điểm đi" })).toHaveValue(
+      "Nhà hát",
+    );
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+    ).toBeDisabled();
+    expect(recommend).not.toHaveBeenCalled();
+  });
+
   test("labels the directory source before submit and the prediction source afterwards", async () => {
     const client = createMockApiClient({
       listStations: vi.fn().mockResolvedValue({

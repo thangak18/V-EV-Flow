@@ -12,6 +12,41 @@ function renderForm(overrides: { pending?: boolean } = {}) {
 }
 
 describe("DriverForm", () => {
+  test("live departures use click time while retaining the observed snapshot timestamp", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-13T16:02:10+07:00"));
+    try {
+      const onSubmit = vi.fn();
+      render(
+        <DriverForm
+          pending={false}
+          onSubmit={onSubmit}
+          runtime={{
+            clock_mode: "live",
+            scenario: "normal",
+            data_type: "real",
+            observed_at: "2026-10-13T16:00:00+07:00",
+            history_start: null,
+            history_end: null,
+            max_horizon_minutes: 180,
+            places_available: false,
+            available: true,
+            message: "Live snapshot",
+            allocation_backend: "sqlite",
+          }}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit.mock.calls[0]![0]).toMatchObject({
+        observed_at: "2026-10-13T16:00:00+07:00",
+        depart_time: "2026-10-13T16:02:10.000+07:00",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("uses independent endpoints and default vehicle values", () => {
     const { onSubmit } = renderForm();
 
