@@ -7,13 +7,14 @@ for calibration, test, and inference. No outcome at ETA enters ``X``.
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import cast
 
 import numpy as np
 import pandas as pd
 
 from app.backend.contracts.enums import Scenario
-from app.backend.contracts.stations import Station
+from app.backend.contracts.stations import Station, StationStatus
 from app.backend.modules.prediction.dataset import COUNT_COLUMNS, KEY_COLUMNS, STATUS_COLUMNS
 from app.backend.modules.prediction.labels import LABEL_COLUMNS
 
@@ -108,6 +109,58 @@ class FeatureBuilder:
         if bool(X.isna().any().any()):
             raise ValueError("unexpected missing model feature after lag imputation")
         return FeatureDataset(frame=result, X=X, y=result["target_available"].copy())
+
+    def observation_features(
+        self, current: StationStatus, snapshots: Sequence[StationStatus], horizon: int
+    ) -> pd.DataFrame:
+        """Encode an already validated inference window without training-table joins.
+
+        ModelPredictor validates the exact current snapshot, lag keys, timestamps,
+        counts and station/scenario consistency before calling this method.
+        Training metadata and fitted missing-lag medians remain unchanged.
+        """
+        if not self._fitted:
+            raise ValueError("fit the FeatureBuilder before inference")
+        metadata = next(
+            (
+                row
+                for row in self._metadata.itertuples(index=False, name=None)
+                if row[0] == current.station_id
+            ),
+            None,
+        )
+        if metadata is None:
+            raise ValueError("station in labels is absent from station metadata")
+        values = {name: float(getattr(current, name)) for name in COUNT_COLUMNS}
+        by_time = {row.ts: row for row in snapshots}
+        for minutes in LAG_MINUTES:
+            past = by_time.get(current.ts - timedelta(minutes=minutes))
+            values[f"lag_{minutes}_missing"] = float(past is None)
+            for count in COUNT_COLUMNS:
+                name = f"{count}_lag_{minutes}"
+                values[name] = float(getattr(past, count)) if past else self._lag_fill_values[name]
+        hour = current.ts.hour + current.ts.minute / 60
+        angle = 2 * np.pi * hour / 24
+        values.update(
+            hour_sin=float(np.sin(angle)),
+            hour_cos=float(np.cos(angle)),
+            weekday=float(current.ts.weekday()),
+            is_weekend=float(current.ts.weekday() >= 5),
+            is_holiday_scenario=float(current.scenario != Scenario.NORMAL),
+            n_ports=float(metadata[1]),
+            power_kw=float(metadata[2]),
+            station_type_urban=float(metadata[3] == "urban"),
+            station_type_highway=float(metadata[3] == "highway"),
+            station_type_other=float(metadata[3] not in ("urban", "highway")),
+            horizon_minutes=float(horizon),
+        )
+        for scenario in Scenario:
+            values[f"scenario_{scenario.value}"] = float(current.scenario == scenario)
+        return pd.DataFrame(
+            [[values[name] for name in FEATURE_COLUMNS]],
+            columns=list(FEATURE_COLUMNS),
+            dtype="float64",
+        )
 
     def _raw_features(self, status_frame: pd.DataFrame, labels: pd.DataFrame) -> pd.DataFrame:
         if not isinstance(status_frame, pd.DataFrame):

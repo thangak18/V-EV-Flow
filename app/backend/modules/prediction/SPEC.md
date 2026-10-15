@@ -283,3 +283,11 @@ Other remains reserved/offline/out-of-order, separate from broken. Global
 60-minute embargo, backward exact lag joins, train-only station encoding and
 calibration-only calibrator selection prevent use of later split outcomes.
 This is an offline benchmark; the simulated serving model is unchanged.
+
+## Validated single-observation inference
+
+Serving uses `FeatureBuilder.observation_features` after strict window validation,
+avoiding supervised-table reconstruction and joins per candidate. The batch builder
+remains the reference; parity regression covers every feature and probability
+across three scenarios and missing lags. Artifact feature order, medians, model
+and calibrator are unchanged. See [performance evidence](INFERENCE_PERFORMANCE.md).

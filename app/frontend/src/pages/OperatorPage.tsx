@@ -137,6 +137,7 @@ export function OperatorPage() {
           scenario={scenario}
           time={time}
           onScenarioChange={(next) => {
+            if (next === scenario) return;
             setRuntimeReady(false);
             setScenario(next);
           }}

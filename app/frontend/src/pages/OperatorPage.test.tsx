@@ -255,3 +255,22 @@ test("what-if uses the current valid seed/count drafts and blocks invalid drafts
   });
   expect(button).toBeEnabled();
 });
+
+test("reselecting the active scenario keeps Apply enabled", async () => {
+  const client = createMockApiClient();
+  const runtime = vi.spyOn(client, "runtime");
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <OperatorPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  const apply = await screen.findByRole("button", { name: "Áp dụng kịch bản" });
+  await waitFor(() => expect(apply).toBeEnabled());
+  fireEvent.change(screen.getByLabelText("Kịch bản"), {
+    target: { value: "normal" },
+  });
+  expect(apply).toBeEnabled();
+  expect(runtime).toHaveBeenCalledTimes(1);
+});

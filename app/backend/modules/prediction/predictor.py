@@ -7,6 +7,7 @@ feature imputer fills missing *past* windows; future statuses are never read.
 
 from dataclasses import dataclass
 from datetime import timedelta
+from numbers import Integral
 
 import pandas as pd
 
@@ -19,7 +20,6 @@ from app.backend.modules.prediction.artifacts import ModelManifest
 from app.backend.modules.prediction.dataset import validate_status_frame
 from app.backend.modules.prediction.explain import explain_prediction
 from app.backend.modules.prediction.features import LAG_MINUTES
-from app.backend.modules.prediction.labels import LABEL_COLUMNS
 from app.backend.modules.prediction.training import TrainedPipeline
 
 
@@ -50,23 +50,10 @@ class ModelPredictor:
         window = self.status_repository.window(
             request.station_id, request.observed_at, lags=(0, *LAG_MINUTES)
         )
-        current, frame = self._frame_from_window(window, request, station)
-        # The target is a sentinel required by the training feature-builder's
-        # labeled-frame API. It is NEVER used in feature construction/inference.
-        labels = pd.DataFrame(
-            [
-                {
-                    "station_id": request.station_id,
-                    "scenario": request.scenario.value,
-                    "observed_at": request.observed_at,
-                    "eta": request.eta,
-                    "horizon_minutes": horizon,
-                    "target_available": 0,
-                }
-            ],
-            columns=list(LABEL_COLUMNS),
+        current = self._validated_current(window, request, station)
+        features = self.pipeline.feature_builder.observation_features(
+            current, window.statuses, horizon
         )
-        features = self.pipeline.feature_builder.build(frame, labels).X
         self._verify_station_metadata(features, station)
         probability = float(self.pipeline.predict_proba(features)[0, 1])
 
@@ -123,13 +110,27 @@ class ModelPredictor:
         return int(seconds // 60)
 
     @staticmethod
-    def _frame_from_window(
+    def _validated_current(
         window: StatusWindow, request: PredictRequest, station: Station
-    ) -> tuple[StationStatus, pd.DataFrame]:
+    ) -> StationStatus:
         if window.station_id != request.station_id or window.observed_at != request.observed_at:
             raise ValueError("status window station/observed_at mismatch")
         expected = {request.observed_at - timedelta(minutes=lag) for lag in (0, *LAG_MINUTES)}
+        seen = set()
         for snapshot in window.statuses:
+            if snapshot.ts.utcoffset() != timedelta(hours=7):
+                raise ValueError("status ts must use the +07:00 timezone offset")
+            counts = (snapshot.ports_free, snapshot.ports_busy, snapshot.ports_broken)
+            if any(
+                isinstance(value, bool) or not isinstance(value, Integral) or value < 0
+                for value in counts
+            ):
+                raise ValueError("port counts must be nonnegative integers")
+            if sum(counts) != station.n_ports:
+                raise ValueError("port counts do not match station capacity")
+            if snapshot.ts in seen:
+                raise ValueError("station_status keys must be unique")
+            seen.add(snapshot.ts)
             if snapshot.station_id != request.station_id:
                 raise ValueError("status window station mismatch")
             if snapshot.scenario != request.scenario:
@@ -143,6 +144,14 @@ class ModelPredictor:
         current = [item for item in window.statuses if item.ts == request.observed_at]
         if len(current) != 1:
             raise ValueError("exactly one current status snapshot at observed_at is required")
+        return current[0]
+
+    @staticmethod
+    def _frame_from_window(
+        window: StatusWindow, request: PredictRequest, station: Station
+    ) -> tuple[StationStatus, pd.DataFrame]:
+        """Reference batch representation used for parity checks, outside serving."""
+        current = ModelPredictor._validated_current(window, request, station)
         records = [
             {
                 "station_id": item.station_id,
@@ -155,7 +164,7 @@ class ModelPredictor:
             for item in window.statuses
         ]
         frame = validate_status_frame(pd.DataFrame(records), [station])
-        return current[0], frame
+        return current, frame
 
     @staticmethod
     def _verify_station_metadata(features: pd.DataFrame, station: Station) -> None:

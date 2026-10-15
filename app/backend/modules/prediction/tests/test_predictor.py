@@ -264,3 +264,38 @@ def test_provenance_marks_mixed_sources(runtime, sample_request, training_bundle
     predictor = load_predictor(directory, windows, stations, status_data_type=DataType.MOCK)
     assert isinstance(predictor, ModelPredictor)
     assert predictor.predict(sample_request).data_type == DataType.MIXED
+
+
+@pytest.mark.parametrize("scenario", list(Scenario))
+@pytest.mark.parametrize("missing", [(), (15,), (15, 30, 60)])
+def test_observation_features_equal_batch_builder(runtime, sample_request, scenario, missing):
+    predictor, windows, stations, pipeline, _ = runtime
+    windows.omit = set(missing)
+    request = sample_request.model_copy(update={"scenario": scenario})
+    original = windows.window(request.station_id, request.observed_at, (0, 15, 30, 60))
+    window = original.model_copy(
+        update={
+            "statuses": tuple(
+                s.model_copy(update={"scenario": scenario}) for s in original.statuses
+            )
+        }
+    )
+    current, frame = predictor._frame_from_window(window, request, stations.get_station("S001"))
+    labels = pd.DataFrame(
+        [
+            dict(
+                station_id="S001",
+                scenario=scenario.value,
+                observed_at=request.observed_at,
+                eta=request.eta,
+                horizon_minutes=30,
+                target_available=0,
+            )
+        ]
+    )
+    expected = pipeline.feature_builder.build(frame, labels).X
+    actual = pipeline.feature_builder.observation_features(current, window.statuses, 30)
+    pd.testing.assert_frame_equal(actual, expected, check_dtype=False, atol=1e-12, rtol=0)
+    np.testing.assert_allclose(
+        pipeline.predict_proba(actual), pipeline.predict_proba(expected), rtol=0, atol=1e-12
+    )
