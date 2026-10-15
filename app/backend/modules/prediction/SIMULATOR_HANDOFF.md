@@ -1,5 +1,7 @@
 # Bàn giao model từ simulator Bảo cho Kiên
 
+**Bộ artifact đã chốt:** [ARTIFACT_RELEASE.md](ARTIFACT_RELEASE.md) — version/hash cố định, ZIP ngoài Git và ví dụ load qua file repositories đã có của Kiên.
+
 **Dùng artifact này thay demo `synthetic-correlated-integration-demo-v1`.**
 Nguồn mới là `bao-stateful-simulator`, data version `station-data-0.1.0`,
 14 trạm CCS2, 3 kịch bản, seed 42 và 14 ngày lịch sử. Đây vẫn là **simulated**:

@@ -1,5 +1,7 @@
 # Bàn giao Predictor cho Kiên
 
+**Bộ artifact đã chốt:** [ARTIFACT_RELEASE.md](ARTIFACT_RELEASE.md) — version/hash cố định, ZIP ngoài Git và ví dụ load qua file repositories đã có của Kiên.
+
 **Artifact khuyên dùng hiện tại:** [model từ simulator Bảo](SIMULATOR_HANDOFF.md),
 14 trạm và 14 ngày/kịch bản. Phần demo synthetic bên dưới giữ để chạy smoke
 nhỏ; không dùng nó thay model simulator khi tích hợp mới.
@@ -139,7 +141,7 @@ viết integration test với artifact/repositories thực.
 | Station không tồn tại | Lỗi lookup của repository, thường KeyError | 404 |
 | Artifact thiếu/checksum/schema/contract không khớp | FileNotFoundError / ValueError | Startup unavailable; 503 khi gọi |
 | Current snapshot thiếu, history invalid, metadata đã đổi | ValueError | Source/model unavailable; 503 |
-| Lag quá khứ thiếu | Imputation + missing indicators | Dự đoán bình thường |
+| Lag quá khứ thiếu | Predictor impute nếu repository trả partial window; ParquetStatusRepository hiện báo DataSourceUnavailableError | Tùy adapter: dự đoán hoặc source unavailable (503 theo policy) |
 | Joblib không deserialize được | Lỗi serialization/dependency | Startup unavailable; 503, log internal details |
 
 Không map mọi ValueError sang cùng status: phân biệt validation request và
@@ -165,3 +167,11 @@ probability/model version/provenance khớp CLI; test 404/422/503, thiếu curre
 missing past lags và startup model lỗi. Không cần Goong hoặc dữ liệu Bảo để
 thử binding demo. Khi dữ liệu Bảo đến, đối chiếu schema và training lại rồi
 thực hiện integration proof với nguồn simulator đó.
+
+## Ca inference đối chiếu C5
+
+Xem [INFERENCE_CASES.md](INFERENCE_CASES.md): 9 payload hợp lệ và 15 ca partial/file history, horizon, loader failure; lệnh chạy lại và output/lỗi thực tế. Không phải proof HTTP wiring.
+
+## Phối hợp C5/API/UI
+
+Xem [C5_INTEGRATION.md](C5_INTEGRATION.md): snapshot/scenario, đề xuất bucket ETA chờ Kiên xác nhận, tool HTTP parity và checklist E2E sau wiring. Production composition hiện vẫn fake; không coi test-only binding là tích hợp hoàn tất.

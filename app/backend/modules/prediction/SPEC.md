@@ -250,3 +250,18 @@ four-way test/later-seed metrics and public-port smoke. Generated histories,
 joblib, manifests and ZIP delivery remain ignored under artifacts/simulator-v1.
 Source is bao-stateful-simulator and data_type remains simulated. Runner/API
 binding and ETA bucket/fallback policy remain the backend owner’s responsibility.
+
+
+## Verification CLI scope
+
+`check_inference.py` and `check_api.py` are prediction-domain acceptance CLIs,
+colocated with domain tests and handoff docs. They are not repository automation:
+no Make/CI/root tooling or shared contracts are changed by this owner PR.
+HTTP parity verifies valid requests including explanation parity; error mapping,
+artifact startup, recommendation and UI require separate integration checks.
+Partial-window fixtures test model capability only, not approval of permissive
+runtime adapters. Reports identify them separately from file/loader checks.
+The acceptance CLI deliberately reloads the trusted artifact through the public
+loader for independent repository/fault cases. This is an offline verification
+cost, not a runtime serving pattern; avoid caching fault loads, which would hide
+checksum/missing-file failures. No runtime Predictor behavior changes here.
