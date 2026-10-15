@@ -327,9 +327,12 @@ input[aria-invalid="true"] {
 
 .driver-toolbar__fields {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.4fr) repeat(
+      3,
+      minmax(0, 1fr)
+    );
   gap: 0.65rem;
-  flex: 1 1 36rem;
+  flex: 1 1 50rem;
   min-width: 0;
 }
 
@@ -341,6 +344,7 @@ input[aria-invalid="true"] {
   margin-left: auto;
 }
 
+.driver-toolbar__hint,
 .driver-toolbar__error {
   flex: 1 1 100%;
 }

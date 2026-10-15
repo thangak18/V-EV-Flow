@@ -5,23 +5,17 @@ import { DriverForm } from "./DriverForm";
 
 function renderForm(overrides: { pending?: boolean } = {}) {
   const onSubmit = vi.fn();
-  const onPresetChange = vi.fn();
   render(
-    <DriverForm
-      pending={overrides.pending ?? false}
-      presetId="hcm_vt"
-      onPresetChange={onPresetChange}
-      onSubmit={onSubmit}
-    />,
+    <DriverForm pending={overrides.pending ?? false} onSubmit={onSubmit} />,
   );
-  return { onSubmit, onPresetChange };
+  return { onSubmit };
 }
 
 describe("DriverForm", () => {
-  test("uses corridor presets and default vehicle values", () => {
+  test("uses independent endpoints and default vehicle values", () => {
     const { onSubmit } = renderForm();
 
-    expect(screen.getByDisplayValue("TP.HCM → Vũng Tàu")).toBeInTheDocument();
+    expect(screen.getByLabelText("Điểm đi")).toBeInTheDocument();
     expect(screen.getByLabelText(/SOC %/)).toHaveValue("20");
     expect(screen.getByLabelText(/Dung lượng pin/)).toHaveValue("60");
     expect(screen.getByLabelText(/Tiêu hao/)).toHaveValue("0.18");
@@ -134,14 +128,8 @@ describe("DriverForm", () => {
 
   test("disables submit while pending and rejects invalid ranges", () => {
     const onSubmit = vi.fn();
-    const onPresetChange = vi.fn();
     const { rerender } = render(
-      <DriverForm
-        pending={false}
-        presetId="hcm_vt"
-        onPresetChange={onPresetChange}
-        onSubmit={onSubmit}
-      />,
+      <DriverForm pending={false} onSubmit={onSubmit} />,
     );
     fireEvent.change(screen.getByLabelText(/SOC %/), {
       target: { value: "120" },
@@ -150,14 +138,7 @@ describe("DriverForm", () => {
       screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
     ).toBeDisabled();
 
-    rerender(
-      <DriverForm
-        pending={true}
-        presetId="hcm_vt"
-        onPresetChange={onPresetChange}
-        onSubmit={onSubmit}
-      />,
-    );
+    rerender(<DriverForm pending={true} onSubmit={onSubmit} />);
     fireEvent.change(screen.getByLabelText(/SOC %/), {
       target: { value: "20" },
     });

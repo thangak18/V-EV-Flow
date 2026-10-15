@@ -61,3 +61,14 @@ server; normal CI blocks map dependencies and records no videos. See
 ## P1 UI
 
 Driver exposes native TreeSHAP raw-margin contributions in an optional disclosure and a non-binding shift estimate (or explicit no-improvement status). Operator what-if supports +2 ports and 20% shifted departures with before/after metrics and always-visible frozen-capacity-model limitations. SimulationControls reports current parsed drafts so what-if never uses an old seed/count; invalid drafts disable execution. HTTP stays inside ApiClient and validates returned experiment identity.
+
+## Editable trip endpoints
+
+Driver has independent searchable native dropdowns (input/datalist) for origin and
+destination, populated from the station directory plus the two demo city centres.
+Each selection resolves to its actual coordinates for map and recommendation;
+unknown/empty drafts and identical coordinates block submit. Editing either end
+aborts stale requests and clears the previous plan. No automatic recommendations
+or geocoding calls occur while typing. Coverage remains the simulated demo region;
+this is not nationwide address autocomplete. Native dropdown presentation varies
+by browser. Directory failures retain the two city options and show a warning.

@@ -3,16 +3,19 @@ import { useMemo, useState } from "react";
 import type { RecommendationRequest, Scenario } from "../../services/api";
 import { isPlus07FiveMinuteBucket } from "../../services/errors";
 import {
-  CORRIDOR_PRESETS,
+  DEFAULT_ORIGIN,
+  DEFAULT_DESTINATION,
   DEFAULT_DEMO_TIME,
-  type CorridorPresetId,
+  type TripLocation,
 } from "./corridorPresets";
 import { isNumericDraft, parseLocaleNumber } from "./numberField";
 
 type Props = {
   pending: boolean;
-  presetId: CorridorPresetId;
-  onPresetChange: (presetId: CorridorPresetId) => void;
+  locations?: TripLocation[];
+  origin?: string;
+  destination?: string;
+  onLocationChange?: (field: "origin" | "destination", value: string) => void;
   onSubmit: (request: RecommendationRequest) => void;
 };
 
@@ -34,8 +37,10 @@ function onDraftNumberChange(
 
 export function DriverForm({
   pending,
-  presetId,
-  onPresetChange,
+  locations = [DEFAULT_ORIGIN, DEFAULT_DESTINATION],
+  origin = DEFAULT_ORIGIN.label,
+  destination = DEFAULT_DESTINATION.label,
+  onLocationChange,
   onSubmit,
 }: Props) {
   const [socPct, setSocPct] = useState("20");
@@ -55,6 +60,17 @@ export function DriverForm({
   const parsedBattery = parseLocaleNumber(batteryKwh);
   const parsedConsumption = parseLocaleNumber(consumption);
 
+  const selectedOrigin = locations.find(
+    (location) => location.label === origin,
+  );
+  const selectedDestination = locations.find(
+    (location) => location.label === destination,
+  );
+  const routeInvalid =
+    !selectedOrigin ||
+    !selectedDestination ||
+    (selectedOrigin.lat === selectedDestination.lat &&
+      selectedOrigin.lng === selectedDestination.lng);
   const timeInvalid = !isPlus07FiveMinuteBucket(demoTime);
   const socInvalid = parsedSoc === null || parsedSoc < 0 || parsedSoc > 100;
   const batteryInvalid = parsedBattery === null || parsedBattery <= 0;
@@ -70,6 +86,7 @@ export function DriverForm({
 
   const invalid = useMemo(() => {
     return (
+      routeInvalid ||
       timeInvalid ||
       socInvalid ||
       batteryInvalid ||
@@ -77,6 +94,7 @@ export function DriverForm({
       connectorInvalid
     );
   }, [
+    routeInvalid,
     timeInvalid,
     socInvalid,
     batteryInvalid,
@@ -89,6 +107,8 @@ export function DriverForm({
     if (
       pending ||
       invalid ||
+      !selectedOrigin ||
+      !selectedDestination ||
       parsedSoc === null ||
       parsedBattery === null ||
       parsedConsumption === null
@@ -96,10 +116,12 @@ export function DriverForm({
       return;
     }
 
-    const preset = CORRIDOR_PRESETS[presetId];
     const payload: Omit<RecommendationRequest, "request_id"> = {
-      origin: preset.origin,
-      destination: preset.destination,
+      origin: { lat: selectedOrigin.lat, lng: selectedOrigin.lng },
+      destination: {
+        lat: selectedDestination.lat,
+        lng: selectedDestination.lng,
+      },
       observed_at: demoTime,
       depart_time: demoTime,
       scenario,
@@ -123,21 +145,30 @@ export function DriverForm({
   return (
     <form className="driver-toolbar" onSubmit={handleSubmit} noValidate>
       <div className="driver-toolbar__fields">
-        <label className="field-chip">
-          <span className="field-chip__label">Hành lang</span>
-          <select
-            value={presetId}
-            onChange={(event) =>
-              onPresetChange(event.target.value as CorridorPresetId)
-            }
-          >
-            {Object.values(CORRIDOR_PRESETS).map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {(["origin", "destination"] as const).map((field) => (
+          <label className="field-chip" key={field}>
+            <span className="field-chip__label">
+              {field === "origin" ? "Điểm đi" : "Điểm đến"}
+            </span>
+            <input
+              type="text"
+              list="trip-locations"
+              autoComplete="off"
+              value={field === "origin" ? origin : destination}
+              placeholder="Gõ để chọn địa điểm…"
+              aria-invalid={routeInvalid}
+              aria-describedby="trip-location-help"
+              onChange={(event) =>
+                onLocationChange?.(field, event.target.value)
+              }
+            />
+          </label>
+        ))}
+        <datalist id="trip-locations">
+          {locations.map((location) => (
+            <option key={location.label} value={location.label} />
+          ))}
+        </datalist>
         <label className="field-chip">
           <span className="field-chip__label">Kịch bản</span>
           <select
@@ -252,11 +283,20 @@ export function DriverForm({
         </details>
       </div>
 
+      <p
+        id="trip-location-help"
+        className="status-message driver-toolbar__hint"
+      >
+        Gõ rồi chọn địa điểm trong danh sách. Trạm sạc hiện chỉ phủ khu vực demo
+        TP.HCM–Vũng Tàu.
+      </p>
       {invalid ? (
         <p className="field-error driver-toolbar__error" role="alert">
-          {timeInvalid
-            ? "Giờ demo phải là +07:00, căn 5 phút (ví dụ 2026-10-13T16:00:00+07:00)."
-            : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
+          {routeInvalid
+            ? "Chọn hai địa điểm khác nhau trong danh sách gợi ý."
+            : timeInvalid
+              ? "Giờ demo phải là +07:00, căn 5 phút (ví dụ 2026-10-13T16:00:00+07:00)."
+              : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
         </p>
       ) : null}
     </form>
