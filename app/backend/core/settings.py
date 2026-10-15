@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     data_backend: BackendKind = "mock"
     predictor_backend: PredictorKind = "fake"
     route_backend: RouteKind = "fake"
+    simulation_backend: Literal["fake", "stateful"] = "fake"
+    simulation_scenarios_path: Path = Path(
+        "app/backend/modules/station_data/fixtures/scenarios.yaml"
+    )
     data_dir: Path = Path("app/backend/modules/station_data")
     model_dir: Path = Path("app/backend/modules/prediction/artifacts")
     demo_seed: int = 42
@@ -45,6 +49,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_selected_backends(self) -> "Settings":
+        if self.predictor_backend == "model" and self.data_backend != "file":
+            raise ValueError("model prediction requires DATA_BACKEND=file")
+        if self.simulation_backend == "stateful" and (
+            self.data_backend != "file" or self.predictor_backend != "model"
+        ):
+            raise ValueError("stateful simulation requires file data and model prediction")
         if self.route_backend == "goong" and not self.goong_rest_api_key:
             raise ValueError("GOONG_REST_API_KEY is required for ROUTE_BACKEND=goong")
         if self.predictor_backend == "model" and not self.model_dir.exists():

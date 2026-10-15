@@ -1,5 +1,9 @@
 # FastAPI and Composition Specification — C/Kiên
 
+## Current runtime integration
+
+Runtime integration now supports `DATA_BACKEND=file`, `PREDICTOR_BACKEND=model` and `SIMULATION_BACKEND=stateful`. The historical C7–C9 fake-only limitations below are superseded for this explicit selection; defaults remain mock/fake. `runtime.py` binds the public model loader, scenario-specific histories/horizons, real simulator and pure AI allocation. See `docs/runbooks/runtime-integration.md` for launch, provenance, checks and limitations.
+
 ## Objective
 
 Expose the agreed `/api` endpoints, assemble the modular monolith, and map typed domain results/errors to the committed OpenAPI contract.

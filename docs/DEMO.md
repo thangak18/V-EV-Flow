@@ -1,5 +1,9 @@
 # Demo, nghiệm thu và việc hỏi mentor
 
+## Chạy demo tích hợp model và simulator
+
+Dùng [runtime integration runbook](runbooks/runtime-integration.md). Chế độ `file/model/stateful` chạy LightGBM + calibrator và ba chiến lược thật từ dữ liệu **simulated**; các ghi chú Phase 0/fake bên dưới chỉ mô tả chế độ mặc định hoặc bằng chứng lịch sử, không phải chế độ này.
+
 ## Luồng 3–5 phút
 
 1. Reset phân bổ; chọn preset hành lang, normal, xe 20% pin.

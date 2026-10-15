@@ -202,3 +202,40 @@ def test_free_ports_is_only_available_during_a_run() -> None:
     runner = make_runner(make_bundle(make_vehicles(1)))
     with pytest.raises(RuntimeError):
         runner.free_ports("S001")
+
+
+def test_runtime_horizon_excludes_candidates_before_model_without_clipping() -> None:
+    from app.backend.contracts.common import Coordinate
+    from app.backend.modules.simulation.engine import SimulationEngine
+    from app.backend.modules.simulation.trips import VehicleTrip
+
+    calls = []
+    config = make_config()
+    runner = DefaultSimulationRunner(
+        lambda request: make_bundle(make_vehicles(1)),
+        STATIONS,
+        {Scenario.NORMAL: config},
+        availability=lambda station, now, eta: calls.append((now, eta)) or 0.5,
+        max_prediction_horizon_minutes=5,
+    )
+    engine = SimulationEngine(STATIONS, Scenario.NORMAL)
+    engine.step(START)
+    trip = VehicleTrip(
+        "v",
+        make_vehicles(1)[0],
+        Coordinate(lat=10.80, lng=106.70),
+        Coordinate(lat=10.40, lng=107.05),
+        START,
+        True,
+    )
+    candidates = runner._candidates(trip, START, engine)
+    assert [item.station_id for item in candidates] == ["S001"]
+    assert calls == [(START, START)]  # True zero-distance ETA, not clipped to five minutes.
+    for maximum in (0, -5, 7):
+        with pytest.raises(ValueError, match="horizon"):
+            DefaultSimulationRunner(
+                lambda request: make_bundle(make_vehicles(1)),
+                STATIONS,
+                {Scenario.NORMAL: config},
+                max_prediction_horizon_minutes=maximum,
+            )

@@ -1,5 +1,9 @@
 # Simulation Module Specification — A/Bảo
 
+## Current runtime integration
+
+The runtime integration now binds `DefaultSimulationRunner` through `api/runtime.py`. Optional `max_prediction_horizon_minutes` excludes candidates whose actual travel exceeds the supported model horizon before availability is called, identically for all three strategies; it never clips ETA. Availability buckets positive horizons up to five-minute boundaries while actual trip ETA stays unchanged. Each request uses a fresh runner and AI allocation state. See `docs/runbooks/runtime-integration.md`.
+
 ## Objective
 
 Implement a stateful 5-minute charging simulator and a reproducible 100-vehicle comparison runner for `nearest`, `currently_available`, and injected `ai_allocation` strategies.

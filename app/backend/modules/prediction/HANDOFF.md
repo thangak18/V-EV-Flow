@@ -8,7 +8,7 @@ nhỏ; không dùng nó thay model simulator khi tích hợp mới.
 
 Module này cung cấp mô hình và shared `Predictor` port. Kiên tích hợp vào
 composition root/API; tài liệu này không đổi DTO, OpenAPI hay route handlers.
-Backend trên main vẫn chọn fake predictor cho đến khi Kiên thay binding.
+Backend mặc định giữ fake predictor; explicit `file/model/stateful` đã có composition binding. Xem `docs/runbooks/runtime-integration.md` để chạy artifact đã chốt.
 
 ## Model demo và cách tạo lại
 

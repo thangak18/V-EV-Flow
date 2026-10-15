@@ -1,5 +1,9 @@
 # Infrastructure Adapters Specification — C/Kiên
 
+## Current runtime integration
+
+The composition root now supports explicit file/model/stateful runtime mode. Its adapters live in `api/runtime.py`; they use only public domain interfaces. Historical fake-only statements in the C9 handoff below apply to defaults, not the new explicit selection. Read `docs/runbooks/runtime-integration.md`.
+
 ## Objective
 
 Implement replaceable adapters for persistence and routing without leaking provider/file formats into domain modules.

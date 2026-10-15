@@ -66,6 +66,7 @@ class DefaultSimulationRunner:
         speed_kmh: float = 50.0,
         charge_to_pct: float = 80.0,
         charging_efficiency: float = 0.9,
+        max_prediction_horizon_minutes: int | None = None,
     ) -> None:
         self._load = fixture_loader
         self._stations = tuple(stations)
@@ -76,6 +77,11 @@ class DefaultSimulationRunner:
         self._speed_kmh = speed_kmh
         self._charge_to_pct = charge_to_pct
         self._efficiency = charging_efficiency
+        if max_prediction_horizon_minutes is not None and (
+            max_prediction_horizon_minutes <= 0 or max_prediction_horizon_minutes % 5
+        ):
+            raise ValueError("prediction horizon must be a positive five-minute multiple")
+        self._max_horizon = max_prediction_horizon_minutes
         self._engine: SimulationEngine | None = None
 
     def free_ports(self, station_id: str) -> int:
@@ -260,6 +266,8 @@ class DefaultSimulationRunner:
             if soc < self._min_soc_pct:
                 continue
             eta = now + timedelta(hours=distance / self._speed_kmh)
+            if self._max_horizon is not None and (eta - now > timedelta(minutes=self._max_horizon)):
+                continue  # Same supported candidate set for every compared strategy; never clip.
             if self._availability is not None:
                 probability = self._availability(station.station_id, now, eta)
             else:

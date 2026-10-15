@@ -108,6 +108,20 @@ export function StrategyComparison({ rows, meta }: Props) {
         </p>
       ) : null}
 
+      {successRows.length > 0 ? (
+        <p className="status-message" data-testid="simulation-source">
+          {successRows.some((row) => row.result.model_version === "fake-sim-v1")
+            ? "Dữ liệu minh họa (mock) — chưa chạy simulator thực."
+            : successRows.every(
+                  (row) =>
+                    row.result.model_version === "simulated-baseline-v1" ||
+                    row.result.model_version.startsWith("lightgbm-"),
+                )
+              ? "Dữ liệu mô phỏng (simulated), không phải vận hành thật. AI dự báo từ lịch sử nền; chiến lược Đang trống đọc trạng thái trong lượt chạy."
+              : "Kết quả thử nghiệm; xem phiên bản và nguồn trong chi tiết mô phỏng."}
+        </p>
+      ) : null}
+
       {leaders.length === 0 ? null : isTie ? (
         <p className="strategy-delta" data-testid="strategy-delta">
           Đồng hạng tỷ lệ thành công cao nhất (

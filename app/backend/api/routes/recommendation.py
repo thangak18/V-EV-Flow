@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.backend.api.dependencies import AppContainer, get_container
 from app.backend.api.errors import FeatureNotReadyError
@@ -43,7 +43,7 @@ def pressure(
     time: datetime = Query(...),
     container: AppContainer = Depends(get_container),
 ) -> PressureResponse:
-    horizon_minutes = container.settings.fake_prediction_horizon_minutes
+    horizon_minutes = container.prediction_horizons[scenario]
     if horizon_minutes < 30:
         raise ValueError("configured prediction horizon does not support pressure proxy")
     eta = time + timedelta(minutes=30)
@@ -80,6 +80,8 @@ def _pressure_station(station, scenario: Scenario, observed_at: datetime, eta: d
 def simulate(
     request: SimulationRequest, container: AppContainer = Depends(get_container)
 ) -> SimulationResult:
+    if container.settings.simulation_backend == "stateful" and request.seed < 0:
+        raise HTTPException(422, "stateful simulation requires a nonnegative seed")
     return container.simulation.run(request, container.allocation)
 
 

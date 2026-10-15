@@ -32,7 +32,7 @@ def test_real_and_model_backends_fail_explicitly() -> None:
 
     for settings in (
         Settings(data_backend="real"),
-        Settings(predictor_backend="model", model_dir=Path(".")),
+        Settings(data_backend="file", predictor_backend="model", model_dir=Path(".")),
     ):
         try:
             build_container(settings)

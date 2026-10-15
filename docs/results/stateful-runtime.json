@@ -1,0 +1,240 @@
+{
+  "source": "simulated",
+  "model_version": "lightgbm-c721ddae6c9223ad",
+  "predictions": [
+    {
+      "scenario": "normal",
+      "horizon": 15,
+      "station_id": "S001",
+      "eta": "2026-10-13T16:15:00+07:00",
+      "p_available": 0.9666233203294322,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    },
+    {
+      "scenario": "normal",
+      "horizon": 30,
+      "station_id": "S001",
+      "eta": "2026-10-13T16:30:00+07:00",
+      "p_available": 0.9666233203294322,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    },
+    {
+      "scenario": "normal",
+      "horizon": 60,
+      "station_id": "S001",
+      "eta": "2026-10-13T17:00:00+07:00",
+      "p_available": 0.9666233203294322,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    },
+    {
+      "scenario": "holiday_30_4",
+      "horizon": 15,
+      "station_id": "S001",
+      "eta": "2026-10-13T16:15:00+07:00",
+      "p_available": 0.7898318654923937,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    },
+    {
+      "scenario": "holiday_30_4",
+      "horizon": 30,
+      "station_id": "S001",
+      "eta": "2026-10-13T16:30:00+07:00",
+      "p_available": 0.7779005524861878,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    },
+    {
+      "scenario": "holiday_30_4",
+      "horizon": 60,
+      "station_id": "S001",
+      "eta": "2026-10-13T17:00:00+07:00",
+      "p_available": 0.7480851063829788,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    },
+    {
+      "scenario": "tet",
+      "horizon": 15,
+      "station_id": "S001",
+      "eta": "2026-10-13T16:15:00+07:00",
+      "p_available": 0.29273084479371303,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    },
+    {
+      "scenario": "tet",
+      "horizon": 30,
+      "station_id": "S001",
+      "eta": "2026-10-13T16:30:00+07:00",
+      "p_available": 0.30238726790450926,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    },
+    {
+      "scenario": "tet",
+      "horizon": 60,
+      "station_id": "S001",
+      "eta": "2026-10-13T17:00:00+07:00",
+      "p_available": 0.33018867924528306,
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "data_type": "simulated"
+    }
+  ],
+  "simulations": [
+    {
+      "scenario": "normal",
+      "seed": 42,
+      "strategy": "nearest",
+      "model_version": "simulated-baseline-v1",
+      "metrics": {
+        "success_rate": 0.9,
+        "mean_detour_km": 6.657895449696455,
+        "mean_wait_minutes": 1.15,
+        "failed_count": 0,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 0.56,
+      "fixture_hash_prefix": "288684cf18ef"
+    },
+    {
+      "scenario": "normal",
+      "seed": 42,
+      "strategy": "currently_available",
+      "model_version": "simulated-baseline-v1",
+      "metrics": {
+        "success_rate": 0.93,
+        "mean_detour_km": 7.481434902047002,
+        "mean_wait_minutes": 0.85,
+        "failed_count": 0,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 0.09,
+      "fixture_hash_prefix": "288684cf18ef"
+    },
+    {
+      "scenario": "normal",
+      "seed": 42,
+      "strategy": "ai_allocation",
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "metrics": {
+        "success_rate": 0.97,
+        "mean_detour_km": 8.928624658779123,
+        "mean_wait_minutes": 0.4,
+        "failed_count": 0,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 9.34,
+      "fixture_hash_prefix": "288684cf18ef"
+    },
+    {
+      "scenario": "holiday_30_4",
+      "seed": 42,
+      "strategy": "nearest",
+      "model_version": "simulated-baseline-v1",
+      "metrics": {
+        "success_rate": 0.58,
+        "mean_detour_km": 6.657895449696455,
+        "mean_wait_minutes": 6.15,
+        "failed_count": 6,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 0.63,
+      "fixture_hash_prefix": "b81c51f3d26a"
+    },
+    {
+      "scenario": "holiday_30_4",
+      "seed": 42,
+      "strategy": "currently_available",
+      "model_version": "simulated-baseline-v1",
+      "metrics": {
+        "success_rate": 0.75,
+        "mean_detour_km": 9.402650900723707,
+        "mean_wait_minutes": 3.2,
+        "failed_count": 1,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 0.16,
+      "fixture_hash_prefix": "b81c51f3d26a"
+    },
+    {
+      "scenario": "holiday_30_4",
+      "seed": 42,
+      "strategy": "ai_allocation",
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "metrics": {
+        "success_rate": 0.82,
+        "mean_detour_km": 12.003016313165752,
+        "mean_wait_minutes": 2.1,
+        "failed_count": 0,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 9.23,
+      "fixture_hash_prefix": "b81c51f3d26a"
+    },
+    {
+      "scenario": "tet",
+      "seed": 42,
+      "strategy": "nearest",
+      "model_version": "simulated-baseline-v1",
+      "metrics": {
+        "success_rate": 0.44,
+        "mean_detour_km": 6.657895449696455,
+        "mean_wait_minutes": 13.7,
+        "failed_count": 29,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 0.76,
+      "fixture_hash_prefix": "d734d388a7e1"
+    },
+    {
+      "scenario": "tet",
+      "seed": 42,
+      "strategy": "currently_available",
+      "model_version": "simulated-baseline-v1",
+      "metrics": {
+        "success_rate": 0.58,
+        "mean_detour_km": 9.006054675173816,
+        "mean_wait_minutes": 9.3,
+        "failed_count": 16,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 0.23,
+      "fixture_hash_prefix": "d734d388a7e1"
+    },
+    {
+      "scenario": "tet",
+      "seed": 42,
+      "strategy": "ai_allocation",
+      "model_version": "lightgbm-c721ddae6c9223ad",
+      "metrics": {
+        "success_rate": 0.64,
+        "mean_detour_km": 11.13974473081271,
+        "mean_wait_minutes": 7.85,
+        "failed_count": 12,
+        "vehicle_count": 100
+      },
+      "contract_version": "0.1.0",
+      "elapsed_seconds": 9.52,
+      "fixture_hash_prefix": "d734d388a7e1"
+    }
+  ],
+  "base_revision": "83295ec",
+  "seed": 42,
+  "vehicle_count": 100,
+  "data_version": "station-data-0.1.0",
+  "routing": "simulator assumed road distance 1.3 x great-circle; speed 50 km/h",
+  "scope": "simulated background history; common candidate travel horizon <=60 minutes; not real-world accuracy",
+  "verification": "Full SHA-256 fixture hashes match across strategies and match saved producer manifests; prefixes only in this summary."
+}
