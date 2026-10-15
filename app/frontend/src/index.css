@@ -1293,3 +1293,58 @@ dd {
   padding: 0.4rem;
   font-size: 0.8rem;
 }
+
+.place-search__input {
+  position: relative;
+  min-width: 0;
+}
+.place-search__input input {
+  width: 100%;
+  padding-right: 3rem;
+}
+.place-search--open .place-search__input input {
+  padding-right: 5.5rem;
+}
+.place-search__buttons {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+}
+.place-search__buttons button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+}
+.place-search__buttons button:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.place-search__sources {
+  display: flex;
+  gap: 0.4rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.place-search__sources button {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  background: var(--bg);
+}
+.place-search__sources button[aria-pressed="true"],
+.place-search__sources button:hover:not(:disabled) {
+  color: white;
+  background: var(--accent);
+}
+@media (min-width: 561px) and (max-width: 899px) {
+  .place-search:nth-child(2) .place-search__dropdown {
+    left: auto;
+    right: 0;
+  }
+}

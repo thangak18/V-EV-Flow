@@ -85,12 +85,16 @@ export function DriverForm({
 
   const selectedOrigin =
     (resolvedOrigin?.label === origin ? resolvedOrigin : undefined) ??
-    locations.find((location) => location.label === origin);
+    (runtime?.places_available
+      ? undefined
+      : locations.find((location) => location.label === origin));
   const selectedDestination =
     (resolvedDestination?.label === destination
       ? resolvedDestination
       : undefined) ??
-    locations.find((location) => location.label === destination);
+    (runtime?.places_available
+      ? undefined
+      : locations.find((location) => location.label === destination));
   const routeInvalid =
     !selectedOrigin ||
     !selectedDestination ||
@@ -186,7 +190,21 @@ export function DriverForm({
             enabled={runtime?.places_available ?? false}
             disabled={runtimeLoading || !!runtimeError}
             resolved={field === "origin" ? resolvedOrigin : resolvedDestination}
-            invalid={routeInvalid}
+            invalid={
+              field === "origin"
+                ? !selectedOrigin ||
+                  !!(
+                    selectedDestination &&
+                    selectedOrigin.lat === selectedDestination.lat &&
+                    selectedOrigin.lng === selectedDestination.lng
+                  )
+                : !selectedDestination ||
+                  !!(
+                    selectedOrigin &&
+                    selectedOrigin.lat === selectedDestination.lat &&
+                    selectedOrigin.lng === selectedDestination.lng
+                  )
+            }
             onChange={(value) => onLocationChange?.(field, value)}
             onResolve={(location) => onResolveLocation?.(field, location)}
           />
@@ -325,7 +343,7 @@ export function DriverForm({
         className="status-message driver-toolbar__hint"
       >
         {runtime?.places_available
-          ? "Tìm địa chỉ bằng Goong hoặc chọn địa điểm trong danh mục."
+          ? "Gõ địa chỉ rồi chọn gợi ý Goong để lấy tọa độ. Nút ▾ mở danh sách; Danh mục demo là nguồn riêng."
           : "Gõ rồi chọn địa điểm trong danh sách."}{" "}
         Dữ liệu trạm hiện phủ vùng demo TP.HCM–Vũng Tàu.
         {runtime

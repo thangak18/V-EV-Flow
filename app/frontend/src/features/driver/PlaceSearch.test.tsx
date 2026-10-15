@@ -111,6 +111,7 @@ describe("remote place selection", () => {
     );
     const input = screen.getByRole("combobox");
     fireEvent.focus(input);
+    fireEvent.click(screen.getByRole("button", { name: "Danh mục demo" }));
     fireEvent.click(screen.getByRole("option", { name: "Trạm A" }));
     expect(onResolve).toHaveBeenCalledWith({
       label: "Trạm A",
@@ -118,4 +119,67 @@ describe("remote place selection", () => {
       lng: 106,
     });
   });
+});
+
+test("empty online dropdown asks for a query instead of listing demo stations", () => {
+  const client = createMockApiClient();
+  render(
+    <ApiProvider client={client}>
+      <PlaceSearch
+        label="Điểm đến"
+        value=""
+        enabled
+        invalid
+        locations={[{ label: "Trạm mẫu", lat: 10, lng: 106 }]}
+        onChange={vi.fn()}
+        onResolve={vi.fn()}
+      />
+    </ApiProvider>,
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Mở danh sách Điểm đến" }),
+  );
+  expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  expect(screen.getByText(/Nhập từ 2 ký tự/)).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Địa điểm Goong" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a known preset label still searches the map provider when the dropdown opens", async () => {
+  const client = createMockApiClient({
+    searchPlaces: vi.fn().mockResolvedValue({
+      provider: "goong",
+      predictions: [
+        { place_id: "real-place", description: "Vũng Tàu từ Goong" },
+      ],
+    }),
+  });
+  render(
+    <ApiProvider client={client}>
+      <PlaceSearch
+        label="Điểm đến"
+        value="Vũng Tàu"
+        enabled
+        invalid={false}
+        locations={[{ label: "Vũng Tàu", lat: 10, lng: 106 }]}
+        onChange={vi.fn()}
+        onResolve={vi.fn()}
+      />
+    </ApiProvider>,
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Mở danh sách Điểm đến" }),
+  );
+  expect(
+    await screen.findByRole("option", { name: "Vũng Tàu từ Goong" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("option", { name: "Vũng Tàu" }),
+  ).not.toBeInTheDocument();
+  expect(client.searchPlaces).toHaveBeenCalledWith(
+    "Vũng Tàu",
+    expect.any(String),
+    expect.any(AbortSignal),
+  );
 });

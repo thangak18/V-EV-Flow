@@ -83,3 +83,16 @@ offline choice. Remote selectors support keyboard selection and ignore late
 resolved details after edits. Operator initializes time from the same source.
 Capacity what-if displays an explicitly retrained model when the response carries
 validated model/history evidence; otherwise the frozen-capacity caveat remains.
+
+## Driver place dropdown
+
+When Goong Places is enabled, opening either endpoint dropdown searches the
+provider for the current query (including known preset names). An empty query
+asks for at least two characters; it does not list fixture stations as map search
+results. A source filter exposes the explicitly labelled demo directory separately.
+Editing a resolved endpoint invalidates its coordinates, even when the new text
+matches a demo label, until the user explicitly chooses a suggestion. Initial demo
+endpoints remain preselected. Per-field invalid state only marks the affected
+endpoint; duplicate coordinates invalidate both. Arrow/clear buttons, keyboard
+selection, cancellation of stale responses and bounded tablet/mobile popovers
+support the same selection flow.

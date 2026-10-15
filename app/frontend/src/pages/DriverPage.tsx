@@ -33,9 +33,12 @@ export function DriverPage() {
   const [runtimeLoading, setRuntimeLoading] = useState(true);
   const lastTime = useRef<string | null>(null);
   const [runtimeError, setRuntimeError] = useState("");
-  const [resolvedOrigin, setResolvedOrigin] = useState<TripLocation>();
-  const [resolvedDestination, setResolvedDestination] =
-    useState<TripLocation>();
+  const [resolvedOrigin, setResolvedOrigin] = useState<
+    TripLocation | undefined
+  >(DEFAULT_ORIGIN);
+  const [resolvedDestination, setResolvedDestination] = useState<
+    TripLocation | undefined
+  >(DEFAULT_DESTINATION);
   useEffect(() => {
     const controller = new AbortController();
     const refresh = () =>

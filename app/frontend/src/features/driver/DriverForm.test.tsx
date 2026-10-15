@@ -243,3 +243,18 @@ describe("DriverForm", () => {
     expect(screen.getByLabelText(/Dung lượng pin/)).toBeVisible();
   });
 });
+
+test("an unfinished destination does not mark the valid origin as invalid", () => {
+  render(<DriverForm pending={false} destination="" onSubmit={vi.fn()} />);
+  expect(screen.getByLabelText("Điểm đi")).toHaveAttribute(
+    "aria-invalid",
+    "false",
+  );
+  expect(screen.getByLabelText("Điểm đến")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  expect(
+    screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+  ).toBeDisabled();
+});
