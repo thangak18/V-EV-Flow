@@ -33,6 +33,22 @@ const base: RecommendationResult = {
 };
 
 describe("PlanSummary", () => {
+  test("does not round near certainty into a false 0 or 100 percent", () => {
+    render(
+      <PlanSummary
+        result={{
+          ...base,
+          primary: { ...base.primary!, p_available: 0.999 },
+          backup: { ...base.backup!, p_available: 0.001 },
+          plan_p: 0.9999,
+        }}
+      />,
+    );
+    expect(screen.getAllByText(">99%").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("<1%")).toBeInTheDocument();
+    expect(screen.queryByText("100%")).not.toBeInTheDocument();
+  });
+
   test("renders hero focus primary backup and hides tech until details open", () => {
     render(
       <PlanSummary
@@ -47,9 +63,7 @@ describe("PlanSummary", () => {
     expect(screen.getByText("Trạm dự phòng")).toBeInTheDocument();
     expect(screen.getByText(/15,5%/)).toBeInTheDocument();
     expect(screen.getByText("Đủ pin để tới trạm chính")).toBeInTheDocument();
-    expect(
-      screen.getByText(/giả định independent_stations/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/giả định hai trạm độc lập/i)).toBeInTheDocument();
     expect(screen.getByText(/16:40/)).toBeInTheDocument();
 
     const details = screen.getByText("Chi tiết kỹ thuật").closest("details");

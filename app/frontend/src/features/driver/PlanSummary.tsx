@@ -1,5 +1,7 @@
 import type { RecommendationResult } from "../../services/api";
 
+import { displayDistance, displayReason } from "./presentation";
+
 type Props = {
   result: RecommendationResult;
   stationNames?: Record<string, string>;
@@ -7,6 +9,8 @@ type Props = {
 };
 
 function formatPct(value: number): string {
+  if (value > 0 && value < 0.01) return "<1%";
+  if (value > 0.99 && value < 1) return ">99%";
   return `${Math.round(value * 100)}%`;
 }
 
@@ -73,7 +77,7 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
               />
               <dl className="plan-hero__metrics">
                 <div>
-                  <dd>{primary.distance_km.toFixed(0)} km</dd>
+                  <dd>{displayDistance(primary.distance_km)} km</dd>
                   <dt>Khoảng cách</dt>
                 </div>
                 <div>
@@ -83,7 +87,7 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
                   <dt>Pin khi đến</dt>
                 </div>
                 <div>
-                  <dd>+{primary.detour_km.toFixed(0)} km</dd>
+                  <dd>+{displayDistance(primary.detour_km)} km</dd>
                   <dt>Đường vòng</dt>
                 </div>
               </dl>
@@ -93,7 +97,10 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
                   {result.plan_p_assumption ? (
                     <span className="plan-confidence__hint">
                       {" "}
-                      · giả định {result.plan_p_assumption}
+                      · giả định{" "}
+                      {result.plan_p_assumption === "independent_stations"
+                        ? "hai trạm độc lập"
+                        : result.plan_p_assumption}
                     </span>
                   ) : null}
                 </p>
@@ -134,7 +141,7 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
       {result.reasons.length > 0 ? (
         <ul className="reason-list">
           {result.reasons.map((reason) => (
-            <li key={reason}>{reason}</li>
+            <li key={reason}>{displayReason(reason)}</li>
           ))}
         </ul>
       ) : null}

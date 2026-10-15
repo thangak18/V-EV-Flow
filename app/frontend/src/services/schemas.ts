@@ -60,6 +60,14 @@ const SimulationMetricsSchema = z
     }
   });
 
+/** Validated subset of the existing dictionary-shaped /ready response. */
+export const RuntimeStatusSchema = z.object({
+  ready: z.boolean(),
+  data_backend: z.enum(["mock", "file", "real"]),
+  predictor_backend: z.enum(["fake", "model"]),
+  route_backend: z.enum(["fake", "goong"]),
+});
+
 export const StationListResponseSchema = z.strictObject({
   stations: z.array(StationSchema),
   data_type: DataTypeSchema,

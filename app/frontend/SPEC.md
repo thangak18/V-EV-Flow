@@ -33,3 +33,26 @@ Do not call `/recommend` during render or passive refetch because it records vir
 ## Freedom, Tests, and Done Criteria
 
 Tú chooses component composition and visual styling within `docs/UI_SPEC.md`. Test the API service, core states, responsive Driver layout, Operator metrics, map failure fallback, and the mock vertical slice. Done means production build succeeds, generated types are current, screenshots cover Driver/Operator, and no UI fixture contradicts OpenAPI examples.
+
+## P0 demo completion
+
+AppShell reads the existing dictionary-shaped `/ready` endpoint once to display the
+configured Driver routing/prediction mode. This is configuration information, not a
+live provider-health probe. All calls still pass through ApiClient; mounting or
+resetting a page never calls `/recommend` automatically.
+
+The explicit Đặt lại demo button calls the existing versioned `/reset` request,
+then remounts the current page only after a confirmed success. Failed or
+unconfirmed resets preserve the visible result and support retry. Reset clears
+Driver virtual allocation/receipts; it does not rewrite histories, model files or
+Goong caches. Operator output is independently reproducible from the same seed.
+
+Known backend feasibility reasons are translated for the Driver; unknown reasons
+are preserved. Technical identifiers remain in collapsed details. Short nonzero
+road distances are no longer displayed as 0 km, and probabilities near zero/one
+use <1%/>99% rather than implying exact certainty through integer rounding.
+
+`e2e/demo-flow.spec.ts` exercises plan/reset/no-plan/recovery and pressure/compare.
+RECORD_DEMO=1 enables browser-only backup videos against a caller-selected live
+server; normal CI blocks map dependencies and records no videos. See
+`docs/runbooks/demo-flow.md` for the presenter sequence and configuration.

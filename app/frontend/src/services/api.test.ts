@@ -477,3 +477,28 @@ test("rejects unknown fields because schemas are strict", async () => {
     new ApiClient("/api", fetcher as typeof fetch).listStations(),
   ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
 });
+
+test("ready validates adapter modes from the existing readiness endpoint", async () => {
+  const fetcher = mockFetch(200, {
+    ready: true,
+    data_backend: "file",
+    predictor_backend: "model",
+    route_backend: "goong",
+  });
+  const client = new ApiClient("/api", fetcher as typeof fetch);
+  expect((await client.ready()).route_backend).toBe("goong");
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/ready",
+    expect.objectContaining({ method: undefined }),
+  );
+});
+
+test("ready rejects incompatible response fields", async () => {
+  const client = new ApiClient(
+    "/api",
+    mockFetch(200, { ready: true, route_backend: "unknown" }) as typeof fetch,
+  );
+  await expect(client.ready()).rejects.toMatchObject({
+    code: "INVALID_API_RESPONSE",
+  });
+});
