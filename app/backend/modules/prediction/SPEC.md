@@ -265,3 +265,8 @@ The acceptance CLI deliberately reloads the trusted artifact through the public
 loader for independent repository/fault cases. This is an offline verification
 cost, not a runtime serving pattern; avoid caching fault loads, which would hide
 checksum/missing-file failures. No runtime Predictor behavior changes here.
+
+
+## P1 native local explanation
+
+`load_predictor(..., explain=True)` adds native LightGBM TreeSHAP. Full contributions plus bias reconstruct the binary raw margin; sigmoid gives raw probability, while calibrated_probability equals the public forecast. It does not explain the post-hoc calibrator, prove causality, refit the model or change pinned artifacts. Default remains rule context; no new dependency is required.

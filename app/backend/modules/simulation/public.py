@@ -17,6 +17,7 @@ from app.backend.modules.simulation.runner import (
     compare_strategies,
     strategy_for,
 )
+from app.backend.modules.simulation.trips import shift_to_offpeak
 
 __all__ = [
     "STATUS_COLUMNS",
@@ -26,6 +27,7 @@ __all__ = [
     "FixtureLoader",
     "NearestStrategy",
     "SimulationEngine",
+    "shift_to_offpeak",
     "build_status_window",
     "bundle_hash",
     "compare_strategies",

@@ -9,7 +9,7 @@ from .recommendation import (
     RouteResult,
     StatusWindow,
 )
-from .simulation import SimulationRequest, SimulationResult
+from .simulation import SimulationRequest, SimulationResult, WhatIfRequest, WhatIfResult
 from .stations import Station
 
 
@@ -47,3 +47,8 @@ class AllocationStrategy(Protocol):
 @runtime_checkable
 class SimulationRunner(Protocol):
     def run(self, request: SimulationRequest, strategy: AllocationStrategy) -> SimulationResult: ...
+
+
+@runtime_checkable
+class WhatIfRunner(Protocol):
+    def run_whatif(self, request: WhatIfRequest) -> WhatIfResult: ...

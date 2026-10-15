@@ -64,7 +64,16 @@ def test_unknown_station_is_404() -> None:
 
 
 def test_whatif_is_explicitly_not_ready() -> None:
-    response = TestClient(create_app()).post("/api/whatif", json={})
+    response = TestClient(create_app()).post(
+        "/api/whatif",
+        json={
+            "scenario": "normal",
+            "seed": 42,
+            "vehicle_count": 100,
+            "strategy": "ai_allocation",
+            "change": {"kind": "add_ports", "station_id": "S001", "ports": 2},
+        },
+    )
     assert response.status_code == 503
     assert response.json()["code"] == "FEATURE_NOT_READY"
 

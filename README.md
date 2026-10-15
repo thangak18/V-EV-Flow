@@ -1,5 +1,11 @@
 # V-EV Flow
 
+Bản demo tích hợp hiện có model/calibrator, simulator ba chiến lược và hai UI;
+phần P1 bổ sung what-if, gợi ý lệch giờ có điều kiện và native TreeSHAP. Chạy
+`python -m app.backend.api.demo` với release tin cậy theo
+[runbook P1](docs/runbooks/p1-demo.md). Dữ liệu luôn ghi **simulated**; các ghi
+chú Phase 0 phía dưới là lịch sử foundation, không phải mô tả đầy đủ bản demo.
+
 Dự báo và điều phối nhu cầu sạc xe điện trên hành lang cao tốc. Dự án hackathon của nhóm 4 người, hướng đến một lớp ứng dụng thông minh có thể tích hợp vào VETC Trạm sạc / Vmap sau giai đoạn demo.
 
 **Trạng thái: Phase 0 foundation đã có backend/frontend mock vertical slice, contracts, OpenAPI sinh tự động và CI gates.** Các model, simulator, dữ liệu đối tác và màn hình bản demo đầy đủ vẫn là phạm vi các nhánh owner sau handoff; số ví dụ không phải kết quả đo.

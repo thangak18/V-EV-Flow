@@ -17,6 +17,7 @@ from app.backend.contracts.recommendation import StatusWindow
 from app.backend.contracts.stations import Station, StationStatus
 from app.backend.modules.prediction.artifacts import ModelManifest
 from app.backend.modules.prediction.dataset import validate_status_frame
+from app.backend.modules.prediction.explain import explain_prediction
 from app.backend.modules.prediction.features import LAG_MINUTES
 from app.backend.modules.prediction.labels import LABEL_COLUMNS
 from app.backend.modules.prediction.training import TrainedPipeline
@@ -31,6 +32,7 @@ class ModelPredictor:
     status_repository: StatusRepository
     station_repository: StationRepository
     status_data_type: DataType = DataType.MOCK
+    explain: bool = False
 
     def predict(self, request: PredictRequest) -> PredictionResult:
         if not isinstance(request, PredictRequest):
@@ -76,12 +78,25 @@ class ModelPredictor:
             p_available=probability,
             reasons=[
                 f"At observation: {current.ports_free} of {station.n_ports} ports free.",
-                f"Calibrated {horizon}-minute ETA prediction (rule-based context, not SHAP).",
+                (
+                    (
+                        f"Calibrated {horizon}-minute ETA prediction; "
+                        "TreeSHAP explains the raw margin before calibration."
+                    )
+                    if self.explain
+                    else (
+                        f"Calibrated {horizon}-minute ETA prediction "
+                        "(rule-based context, not SHAP)."
+                    )
+                ),
                 f"Training data: {trained_type.value}; "
                 f"status source: {self.status_data_type.value}; "
                 f"model source: {self.manifest.source}.",
             ],
-            explanation_method="rule",
+            explanation_method="tree_shap_raw_margin" if self.explain else "rule",
+            explanation=explain_prediction(self.pipeline, features, probability)
+            if self.explain
+            else None,
             model_version=self.manifest.model_version,
             data_type=result_type,
             contract_version=self.manifest.contract_version,

@@ -502,3 +502,38 @@ test("ready rejects incompatible response fields", async () => {
     code: "INVALID_API_RESPONSE",
   });
 });
+
+test("whatif rejects missing change and valid but mismatched experiment responses", async () => {
+  const { whatIfFixture } = await import("../test/p1Fixtures");
+  const body = {
+    scenario: "tet" as const,
+    seed: 42,
+    vehicle_count: 100,
+    strategy: "ai_allocation" as const,
+    contract_version: "0.1.0",
+    change: { kind: "add_ports" as const, station_id: "S001", ports: 2 },
+  };
+  const { change: omitted, ...missing } = whatIfFixture;
+  void omitted;
+  for (const payload of [
+    missing,
+    {
+      ...whatIfFixture,
+      before: { ...whatIfFixture.before, seed: 43 },
+      after: { ...whatIfFixture.after, seed: 43 },
+    },
+  ]) {
+    const client = new ApiClient(
+      "/api",
+      mockFetch(200, payload) as typeof fetch,
+    );
+    await expect(client.whatif(body)).rejects.toMatchObject({
+      code: "INVALID_API_RESPONSE",
+    });
+  }
+  const client = new ApiClient(
+    "/api",
+    mockFetch(200, whatIfFixture) as typeof fetch,
+  );
+  expect((await client.whatif(body)).change.kind).toBe("add_ports");
+});

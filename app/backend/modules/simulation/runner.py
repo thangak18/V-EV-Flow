@@ -43,7 +43,7 @@ from app.backend.modules.simulation.metrics import (
     VehicleOutcome,
     calculate_metrics,
 )
-from app.backend.modules.simulation.trips import VehicleTrip, build_trips
+from app.backend.modules.simulation.trips import VehicleTrip, build_trips, shift_to_offpeak
 
 AvailabilityFn = Callable[[str, datetime, datetime], float]
 FixtureLoader = Callable[[SimulationRequest], FixtureBundle]
@@ -67,6 +67,8 @@ class DefaultSimulationRunner:
         charge_to_pct: float = 80.0,
         charging_efficiency: float = 0.9,
         max_prediction_horizon_minutes: int | None = None,
+        departure_shift_fraction: float = 0.0,
+        departure_shift_hour: int = 21,
     ) -> None:
         self._load = fixture_loader
         self._stations = tuple(stations)
@@ -82,6 +84,15 @@ class DefaultSimulationRunner:
         ):
             raise ValueError("prediction horizon must be a positive five-minute multiple")
         self._max_horizon = max_prediction_horizon_minutes
+        if (
+            isinstance(departure_shift_fraction, bool)
+            or not math.isfinite(departure_shift_fraction)
+            or not 0 <= departure_shift_fraction <= 1
+            or departure_shift_hour not in (20, 21)
+        ):
+            raise ValueError("invalid off-peak shift configuration")
+        self._shift_fraction = departure_shift_fraction
+        self._shift_hour = departure_shift_hour
         self._engine: SimulationEngine | None = None
 
     def free_ports(self, station_id: str) -> int:
@@ -112,6 +123,7 @@ class DefaultSimulationRunner:
             raise ValueError("fixture bundle does not match the request scenario and seed")
         config = self._configs[request.scenario]
         trips = build_trips(bundle, config, request.vehicle_count)
+        trips, _ = shift_to_offpeak(trips, config, self._shift_fraction, self._shift_hour)
         self._engine = SimulationEngine(
             self._stations,
             bundle.scenario,

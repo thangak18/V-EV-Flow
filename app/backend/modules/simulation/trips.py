@@ -68,3 +68,35 @@ def build_trips(
             )
         )
     return tuple(sorted(trips, key=lambda trip: (trip.depart_at, trip.vehicle_id)))
+
+
+def shift_to_offpeak(
+    trips: tuple[VehicleTrip, ...], config: ScenarioConfig, fraction: float, target_hour: int
+) -> tuple[tuple[VehicleTrip, ...], int]:
+    """Move a deterministic foreground subset into a named final-day hour; keep all IDs."""
+    from dataclasses import replace
+    from decimal import Decimal
+    from math import floor, isfinite
+
+    if (
+        isinstance(fraction, bool)
+        or not isfinite(fraction)
+        or not 0 <= fraction <= 1
+        or target_hour not in (20, 21)
+    ):
+        raise ValueError("off-peak shift requires fraction 0..1 and target hour 20 or 21")
+    count = floor(Decimal(str(fraction)) * len(trips))
+    if count == 0:
+        return trips, 0
+    target = config.end.replace(hour=target_hour, minute=0, second=0, microsecond=0)
+    if target < config.start or target + timedelta(minutes=55) >= config.end:
+        raise ValueError("off-peak target hour is outside the simulation window")
+    rng = np.random.default_rng([config.seed, 104729])
+    selected = set(int(index) for index in rng.choice(len(trips), size=count, replace=False))
+    shifted = tuple(
+        replace(trip, depart_at=target + timedelta(minutes=5 * int(rng.integers(0, 12))))
+        if index in selected
+        else trip
+        for index, trip in enumerate(trips)
+    )
+    return tuple(sorted(shifted, key=lambda trip: (trip.depart_at, trip.vehicle_id))), count

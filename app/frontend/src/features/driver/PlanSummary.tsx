@@ -1,5 +1,7 @@
 import type { RecommendationResult } from "../../services/api";
 
+import { ModelExplanation } from "./ModelExplanation";
+
 import { displayDistance, displayReason } from "./presentation";
 
 type Props = {
@@ -113,6 +115,43 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
                 Xem trạm trên bản đồ
               </button>
             </div>
+          ) : null}
+
+          {primary?.explanation ? (
+            <ModelExplanation explanation={primary.explanation} />
+          ) : null}
+          {result.time_shift_evaluated && !result.time_shift_estimate ? (
+            <p className="status-message" data-testid="time-shift-none">
+              Chưa có giờ khởi hành muộn nào cải thiện ít nhất 5 điểm % trong
+              phạm vi dự báo của model.
+            </p>
+          ) : null}
+          {result.time_shift_estimate ? (
+            <aside
+              className="time-shift-card"
+              data-testid="time-shift-suggestion"
+            >
+              <h3>Gợi ý khởi hành lệch giờ</h3>
+              <p>
+                Khởi hành muộn {result.time_shift_estimate.minutes} phút, lúc{" "}
+                {formatEtaTime(result.time_shift_estimate.depart_time)}: khả
+                năng có cổng tại trạm chính ước tính{" "}
+                {formatPct(result.time_shift_estimate.p_available)}, tăng{" "}
+                {(result.time_shift_estimate.improvement * 100).toFixed(1)} điểm
+                %.
+              </p>
+              <p>
+                Đây là gợi ý tham khảo, chưa đổi kế hoạch hoặc ghi thêm phân bổ.
+              </p>
+              <details>
+                <summary>Giả định của gợi ý</summary>
+                <ul>
+                  {result.time_shift_estimate.assumptions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </details>
+            </aside>
           ) : null}
 
           {backup ? (

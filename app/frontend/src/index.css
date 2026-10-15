@@ -1182,3 +1182,70 @@ dd {
   font-size: 0.85rem;
   overflow-wrap: anywhere;
 }
+
+.shap-features {
+  list-style: none;
+  padding: 0;
+}
+.shap-features li {
+  margin: 0.8rem 0;
+}
+.shap-features li > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+.shap-track {
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.shap-track span {
+  display: block;
+  height: 100%;
+}
+.shap-positive {
+  background: var(--accent);
+}
+.shap-negative {
+  background: var(--danger);
+}
+.shap-explanation p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.time-shift-card {
+  padding: 1rem;
+  background: var(--accent-soft);
+  border-radius: var(--radius);
+  margin: 1rem 0;
+}
+.time-shift-card h3 {
+  margin-top: 0;
+}
+.whatif-panel {
+  margin-top: 1rem;
+  padding: 1.1rem;
+  min-width: 0;
+}
+.whatif-panel h2 {
+  margin-top: 0;
+}
+.whatif-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 0.75rem;
+  align-items: end;
+}
+.whatif-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.whatif-controls select {
+  width: 100%;
+  min-width: 0;
+}

@@ -37,6 +37,8 @@ def main() -> None:
             data_backend="file",
             predictor_backend="model",
             simulation_backend="stateful",
+            prediction_explanations=True,
+            time_shift_suggestions=True,
             route_backend=args.route_backend,
             data_dir=data_dir,
             model_dir=release / "model",

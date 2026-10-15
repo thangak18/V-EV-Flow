@@ -237,3 +237,89 @@ def test_inference_failure_is_typed_instead_of_fake_success() -> None:
 def test_invalid_runtime_combinations_fail_settings(kwargs: dict) -> None:
     with pytest.raises(ValueError):
         Settings(**kwargs)
+
+
+def test_opt_in_native_shap_is_additive_and_calibrated_probability_is_unchanged(
+    runtime_files,
+) -> None:
+    root, manifest, _ = runtime_files
+    app = create_app(settings_for(root, prediction_explanations=True))
+    with TestClient(app) as client:
+        result = client.post("/api/predict", json=prediction()).json()
+        assert result["model_version"] == manifest.model_version
+        assert result["explanation_method"] == "tree_shap_raw_margin"
+        explanation = result["explanation"]
+        assert explanation["calibrated_probability"] == result["p_available"]
+        assert explanation["bias"] + sum(
+            item["contribution"] for item in explanation["features"]
+        ) == pytest.approx(explanation["raw_score"])
+        assert (
+            next(
+                item["value"]
+                for item in explanation["features"]
+                if item["feature"] == "horizon_minutes"
+            )
+            == 30
+        )
+        assert all(item["feature"] != "target_available" for item in explanation["features"])
+
+
+@pytest.mark.parametrize("kind", ["add_ports", "shift_departures"])
+@pytest.mark.parametrize("scenario", ["normal", "holiday_30_4", "tet"])
+def test_whatif_preserves_fixture_population_and_is_reproducible(
+    runtime_files, kind: str, scenario: str
+) -> None:
+    root, _, _ = runtime_files
+    app = create_app(settings_for(root, simulation_backend="stateful"))
+    before_capacity = app.state.container.stations.get_station("S001").n_ports
+    change = (
+        {"kind": "add_ports", "station_id": "S001", "ports": 2}
+        if kind == "add_ports"
+        else {"kind": "shift_departures", "fraction": 0.2, "target_hour": 21}
+    )
+    request = {
+        "scenario": scenario,
+        "seed": 42,
+        "vehicle_count": 12,
+        "strategy": "ai_allocation",
+        "change": change,
+    }
+    with TestClient(app) as client:
+        response = client.post("/api/whatif", json=request)
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result["data_type"] == "simulated"
+        assert result["before"]["fixture_hash"] == result["after"]["fixture_hash"]
+        assert result["before_config_hash"] != result["after_config_hash"]
+        assert (
+            result["before"]["metrics"]["vehicle_count"]
+            == result["after"]["metrics"]["vehicle_count"]
+            == 12
+        )
+        assert result["shifted_vehicle_count"] == (2 if kind == "shift_departures" else 0)
+        assert client.post("/api/whatif", json=request).json() == result
+        assert app.state.container.stations.get_station("S001").n_ports == before_capacity
+        if kind == "add_ports":
+            assert any("model" in assumption for assumption in result["assumptions"])
+
+
+def test_whatif_rejects_unknown_station_without_mutating_driver(runtime_files) -> None:
+    root, _, _ = runtime_files
+    app = create_app(settings_for(root, simulation_backend="stateful"))
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/whatif",
+            json={
+                "scenario": "normal",
+                "seed": 42,
+                "vehicle_count": 12,
+                "strategy": "nearest",
+                "change": {"kind": "add_ports", "station_id": "UNKNOWN", "ports": 2},
+            },
+        )
+        assert response.status_code == 404
+        observed = pd.Timestamp(prediction()["observed_at"]).to_pydatetime()
+        assert (
+            asyncio.run(app.state.container.virtual_load_store.snapshot(observed, Scenario.NORMAL))
+            == {}
+        )

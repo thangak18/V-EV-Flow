@@ -1,0 +1,26 @@
+{
+  "station_id": "S012",
+  "eta": "2026-10-13T16:40:00+07:00",
+  "p_available": 0.85,
+  "reasons": [
+    "Ví dụ schema minh họa; không phải kết quả model vận hành."
+  ],
+  "explanation_method": "tree_shap_raw_margin",
+  "model_version": "example-shap-v1",
+  "data_type": "simulated",
+  "explanation": {
+    "method": "tree_shap",
+    "space": "raw_margin_log_odds",
+    "bias": 0.1,
+    "raw_score": 0.5,
+    "raw_probability": 0.6224593312018546,
+    "calibrated_probability": 0.85,
+    "features": [
+      {
+        "feature": "ports_free",
+        "value": 3,
+        "contribution": 0.4
+      }
+    ]
+  }
+}

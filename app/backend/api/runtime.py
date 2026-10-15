@@ -4,27 +4,38 @@ Simulation inference sees background-only snapshots from the *same* bundle,
 never the runner's private state or future observations. Driver state is separate.
 """
 
+import hashlib
 import json
+from dataclasses import asdict
 from datetime import datetime, timedelta
+from decimal import Decimal
 from functools import lru_cache
-from math import ceil
+from math import ceil, floor
 from pathlib import Path
 from threading import Lock
 
 import pandas as pd
 
 from app.backend.contracts.enums import DataType, Scenario, Strategy
-from app.backend.contracts.errors import DataSourceUnavailableError, ModelNotReadyError
+from app.backend.contracts.errors import (
+    DataSourceUnavailableError,
+    ModelNotReadyError,
+    StationNotFoundError,
+)
 from app.backend.contracts.ports import AllocationStrategy, Predictor, StationRepository
 from app.backend.contracts.prediction import PredictionResult, PredictRequest
 from app.backend.contracts.recommendation import AllocationContext, RankedPlan, StatusWindow
 from app.backend.contracts.simulation import (
+    AddPortsChange,
     FixtureBundle,
     ScenarioConfig,
+    ShiftDeparturesChange,
     SimulationRequest,
     SimulationResult,
+    WhatIfRequest,
+    WhatIfResult,
 )
-from app.backend.contracts.stations import StationStatus
+from app.backend.contracts.stations import Station, StationStatus
 from app.backend.modules.prediction.public import load_predictor, read_manifest
 from app.backend.modules.recommendation import (
     CandidateMetadata,
@@ -259,25 +270,143 @@ class StatefulSimulation:
 
         return bundle, config, statuses, availability
 
+    def _run_case(
+        self,
+        request: SimulationRequest,
+        bundle: FixtureBundle,
+        config: ScenarioConfig,
+        statuses: BackgroundStatusRepository,
+        availability: AvailabilityFn,
+        stations: tuple[Station, ...],
+        fraction: float = 0.0,
+        target_hour: int = 21,
+    ) -> SimulationResult:
+        runner = DefaultSimulationRunner(
+            lambda _: bundle,
+            stations,
+            {request.scenario: config},
+            availability=availability if request.strategy == Strategy.AI_ALLOCATION else None,
+            min_soc_pct=self.ranking.min_arrival_soc_pct,
+            max_prediction_horizon_minutes=self.maximum_horizon,
+            departure_shift_fraction=fraction,
+            departure_shift_hour=target_hour,
+        )
+        ai = SimulationAllocation(
+            statuses, self.ranking, self.model_version, self.duration, self.load
+        )
+        result = runner.run(request, strategy_for(runner, request.strategy, ai_strategy=ai))
+        if request.strategy != Strategy.AI_ALLOCATION:
+            result = result.model_copy(update={"model_version": "simulated-baseline-v1"})
+        return result
+
     def run(self, request: SimulationRequest, strategy: AllocationStrategy) -> SimulationResult:
-        del strategy  # Per-request enum selects a fresh real strategy, never the fake allocation.
+        del strategy
         with self.lock:
             bundle, config, statuses, availability = self.prepare(
                 request.scenario, request.seed, request.vehicle_count
             )
-            runner = DefaultSimulationRunner(
-                lambda _: bundle,
-                self.stations.list_stations(),
-                {request.scenario: config},
-                availability=availability if request.strategy == Strategy.AI_ALLOCATION else None,
-                min_soc_pct=self.ranking.min_arrival_soc_pct,
-                max_prediction_horizon_minutes=self.maximum_horizon,
+            return self._run_case(
+                request, bundle, config, statuses, availability, self.stations.list_stations()
             )
-            ai = SimulationAllocation(
-                statuses, self.ranking, self.model_version, self.duration, self.load
+
+    def run_whatif(self, request: WhatIfRequest) -> WhatIfResult:
+        if isinstance(request.change, AddPortsChange):
+            self.stations.get_station(request.change.station_id)
+        simulation = SimulationRequest.model_validate(request.model_dump(exclude={"change"}))
+        with self.lock:
+            bundle, config, statuses, availability = self.prepare(
+                request.scenario, request.seed, request.vehicle_count
             )
-            selected = strategy_for(runner, request.strategy, ai_strategy=ai)
-            result = runner.run(request, selected)
-            if request.strategy != Strategy.AI_ALLOCATION:
-                result = result.model_copy(update={"model_version": "simulated-baseline-v1"})
-            return result
+            stations = self.stations.list_stations()
+            if isinstance(request.change, ShiftDeparturesChange):
+                target = config.end.replace(
+                    hour=request.change.target_hour, minute=0, second=0, microsecond=0
+                )
+                if target < config.start or target + timedelta(minutes=55) >= config.end:
+                    raise DataSourceUnavailableError(
+                        "off-peak hour is outside the configured replay window"
+                    )
+            before = self._run_case(simulation, bundle, config, statuses, availability, stations)
+            modified = stations
+            after_statuses = statuses
+            fraction, hour, count = 0.0, 21, 0
+            assumptions = [
+                (
+                    "Cùng xe, seed, sự kiện đến/sạc/lỗi nền và mẫu số; "
+                    "mỗi lượt có engine và tải phân bổ riêng."
+                ),
+                (
+                    "Dữ liệu simulated; đường đi trong simulator là giả định, "
+                    "không phải Goong hoặc vận hành thật."
+                ),
+            ]
+            change = request.change
+            if isinstance(change, AddPortsChange):
+                modified = tuple(
+                    station.model_copy(update={"n_ports": station.n_ports + change.ports})
+                    if station.station_id == change.station_id
+                    else station
+                    for station in stations
+                )
+                repository = SimulationStations(modified)
+                frame = generate_status_history(bundle, modified, config)
+                after_statuses = BackgroundStatusRepository(frame, repository, request.scenario)
+                assumptions.append(
+                    "Giữ nguyên model và dự báo từ lịch sử/công suất cổng gốc; "
+                    "chỉ engine và capacity xếp hạng nhận thêm cổng. "
+                    "Chưa retrain dự báo cho capacity mới."
+                )
+            elif isinstance(change, ShiftDeparturesChange):
+                fraction, hour = change.fraction, change.target_hour
+                count = floor(Decimal(str(fraction)) * request.vehicle_count)
+                assumptions.append(
+                    "Chỉ dịch một nhóm xe foreground sang khung giờ đã chọn; "
+                    "background không đổi và không bảo đảm kết quả tốt hơn."
+                )
+            after = self._run_case(
+                simulation, bundle, config, after_statuses, availability, modified, fraction, hour
+            )
+
+            def fingerprint(station_data: tuple[Station, ...], changes: object) -> str:
+                payload = {
+                    "stations": [s.model_dump(mode="json") for s in station_data],
+                    "config": config.model_dump(mode="json"),
+                    "change": changes,
+                    "model": self.model_checksum,
+                    "ranking": asdict(self.ranking),
+                    "maximum_horizon": self.maximum_horizon,
+                    "duration": self.duration,
+                    "load": self.load,
+                }
+                return hashlib.sha256(
+                    json.dumps(
+                        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+                    ).encode()
+                ).hexdigest()
+
+            return WhatIfResult(
+                before=before,
+                after=after,
+                change=change,
+                before_config_hash=fingerprint(stations, None),
+                after_config_hash=fingerprint(modified, change.model_dump(mode="json")),
+                shifted_vehicle_count=count,
+                assumptions=tuple(assumptions),
+            )
+
+
+class SimulationStations:
+    """Counterfactual metadata only; never passed to the frozen trained predictor."""
+
+    def __init__(self, stations: tuple[Station, ...]) -> None:
+        self.stations = stations
+        self.index = {station.station_id: station for station in stations}
+
+    def list_stations(self) -> tuple[Station, ...]:
+        return self.stations
+
+    def get_station(self, station_id: str) -> Station:
+        try:
+            return self.index[station_id]
+        except KeyError as exc:
+            raise StationNotFoundError("unknown counterfactual station") from exc

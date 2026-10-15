@@ -34,3 +34,45 @@ def test_departures_spread_over_twenty_hours_and_leave_four_hours_to_arrive() ->
     assert max(departures) <= last_allowed
     assert max(departures) - min(departures) >= timedelta(hours=18)
     assert len({d.hour for d in departures}) >= 15
+
+
+def test_shifted_population_is_exact_reproducible_and_only_changes_departures() -> None:
+    from datetime import datetime, timedelta
+
+    from app.backend.contracts.common import Coordinate
+    from app.backend.contracts.enums import Scenario
+    from app.backend.contracts.recommendation import Vehicle
+    from app.backend.contracts.simulation import ScenarioConfig
+    from app.backend.modules.simulation.trips import VehicleTrip, shift_to_offpeak
+
+    start = datetime.fromisoformat("2026-10-13T00:00:00+07:00")
+    config = ScenarioConfig(
+        scenario=Scenario.NORMAL,
+        seed=42,
+        start=start,
+        end=start + timedelta(hours=23, minutes=55),
+        step_minutes=5,
+        demand_multiplier=1,
+        compliance_rate=1,
+    )
+    vehicle = Vehicle(
+        soc_pct=30, battery_kwh=60, consumption_kwh_per_km=0.18, connector_type="CCS2"
+    )
+    origin = Coordinate(lat=10.78, lng=106.7)
+    trips = tuple(
+        VehicleTrip(str(i), vehicle, origin, origin, start + timedelta(minutes=i * 5), True)
+        for i in range(100)
+    )
+    shifted, count = shift_to_offpeak(trips, config, 0.2, 21)
+    assert count == 20
+    assert shift_to_offpeak(trips, config, 0.58, 21)[1] == 58
+    original = {trip.vehicle_id: trip for trip in trips}
+    assert sum(trip.depart_at != original[trip.vehicle_id].depart_at for trip in shifted) == 20
+    assert {trip.vehicle_id for trip in shifted} == set(original)
+    assert all(trip.vehicle == original[trip.vehicle_id].vehicle for trip in shifted)
+    assert shift_to_offpeak(trips, config, 0.2, 21) == (shifted, count)
+    assert all(
+        trip.depart_at.hour == 21
+        for trip in shifted
+        if trip.depart_at != original[trip.vehicle_id].depart_at
+    )

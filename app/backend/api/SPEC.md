@@ -81,3 +81,8 @@ Supported mock/fake composition returns mock station/prediction/recommendation d
 The original C9 deferred integration required Bảo's public DefaultSimulationRunner and request-specific strategy selection, verified immutable fixtures/config, Thắng's public Predictor with trusted artifacts/scenario horizons/history/provenance, and Kiên's pure AllocationStrategy with actual route/capacity/load metadata. The current runtime integration above supplies those bindings and keeps runner/Driver state separate. Tú's frontend consumes committed types, maps domain errors, preserves retry IDs, labels source/pressure/independence assumptions and handles null plans. One process/worker remains mandatory. Charge-to, time-shift, distributed storage and what-if remain deferred.
 
 Executable setup, generation, all endpoints, error/retry/reset sequences and troubleshooting: `docs/runbooks/backend-demo.md`. Tested revision, gate results, HTTP observations, provenance and remaining release blockers: `docs/runbooks/backend-verification-evidence.md`.
+
+
+## P1 contract extension
+
+POST /whatif now requires WhatIfRequest and returns WhatIfResult in file/model/stateful mode, or typed 503 when unavailable. SHAP/shift flags default false for existing compositions; api.demo enables them. Optional prediction/plan explanations and shift estimates are omitted when absent. OpenAPI/types and examples are generated/validated together; update strict consumers before enabling P1. See docs/runbooks/p1-demo.md.

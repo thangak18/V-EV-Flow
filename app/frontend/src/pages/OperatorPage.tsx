@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
 import { DataTypeBadge } from "../components/common/DataTypeBadge";
@@ -12,6 +12,7 @@ import { pressureColor } from "../features/operator/pressureColors";
 import { PressureLegend } from "../features/operator/PressureLegend";
 import { ScenarioSelector } from "../features/operator/ScenarioSelector";
 import { SimulationControls } from "../features/operator/SimulationControls";
+import { WhatIfPanel } from "../features/operator/WhatIfPanel";
 import { StrategyComparison } from "../features/operator/StrategyComparison";
 import { usePressure } from "../hooks/usePressure";
 import { useSimulationComparison } from "../hooks/useSimulationComparison";
@@ -23,6 +24,20 @@ export function OperatorPage() {
   const [time, setTime] = useState("2026-10-13T16:00:00+07:00");
   const [seed, setSeed] = useState(42);
   const [vehicleCount, setVehicleCount] = useState(100);
+  const [draft, setDraft] = useState<{
+    seed: number | null;
+    count: number | null;
+  }>({ seed: 42, count: 100 });
+  const onDraftChange = useCallback(
+    (nextSeed: number | null, nextCount: number | null) => {
+      setDraft((previous) =>
+        previous.seed === nextSeed && previous.count === nextCount
+          ? previous
+          : { seed: nextSeed, count: nextCount },
+      );
+    },
+    [],
+  );
   const [stations, setStations] = useState<Station[]>([]);
   const [directoryFailed, setDirectoryFailed] = useState(false);
   const pressure = usePressure();
@@ -112,6 +127,7 @@ export function OperatorPage() {
             void simulation.run(scenario, nextSeed, nextVehicles)
           }
           pending={simulation.pending}
+          onDraftChange={onDraftChange}
         />
       </div>
 
@@ -162,6 +178,12 @@ export function OperatorPage() {
           <StrategyComparison rows={simulation.rows} meta={simulation.config} />
         </section>
       </div>
+      <WhatIfPanel
+        scenario={scenario}
+        seed={draft.seed ?? -1}
+        vehicleCount={draft.count ?? 0}
+        stations={stations}
+      />
     </main>
   );
 }

@@ -179,3 +179,73 @@ describe("OperatorPage", () => {
     );
   });
 });
+
+test("what-if uses the current valid seed/count drafts and blocks invalid drafts", async () => {
+  const { whatIfFixture } = await import("../test/p1Fixtures");
+  const whatif = vi
+    .fn()
+    .mockImplementation(
+      async (body: import("../services/api").WhatIfRequest) => ({
+        ...whatIfFixture,
+        change: body.change,
+        before: {
+          ...whatIfFixture.before,
+          scenario: body.scenario,
+          seed: body.seed,
+          strategy: body.strategy,
+          metrics: {
+            ...whatIfFixture.before.metrics,
+            vehicle_count: body.vehicle_count,
+            failed_count: Math.floor(body.vehicle_count * 0.1),
+          },
+        },
+        after: {
+          ...whatIfFixture.after,
+          scenario: body.scenario,
+          seed: body.seed,
+          strategy: body.strategy,
+          metrics: {
+            ...whatIfFixture.after.metrics,
+            vehicle_count: body.vehicle_count,
+            failed_count: Math.floor(body.vehicle_count * 0.05),
+          },
+        },
+      }),
+    );
+  render(
+    <ApiProvider client={createMockApiClient({ whatif })}>
+      <MemoryRouter>
+        <OperatorPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  const button = screen.getByRole("button", { name: "So sánh trước / sau" });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+    target: { value: "91" },
+  });
+  fireEvent.change(screen.getByLabelText("Số xe"), { target: { value: "50" } });
+  fireEvent.click(button);
+  await waitFor(() =>
+    expect(whatif).toHaveBeenCalledWith(
+      expect.objectContaining({ seed: 91, vehicle_count: 50 }),
+    ),
+  );
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+    target: { value: "" },
+  });
+  expect(button).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+    target: { value: "1.5" },
+  });
+  expect(button).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+    target: { value: "-1" },
+  });
+  expect(button).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Seed (mầm ngẫu nhiên)"), {
+    target: { value: "0" },
+  });
+  expect(button).toBeEnabled();
+});

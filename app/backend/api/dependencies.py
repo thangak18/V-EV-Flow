@@ -18,6 +18,7 @@ from app.backend.contracts.ports import (
     SimulationRunner,
     StationRepository,
     StatusRepository,
+    WhatIfRunner,
 )
 from app.backend.contracts.recommendation import (
     RecommendationRequest,
@@ -58,6 +59,7 @@ class AppContainer:
     routes: RouteProvider
     allocation: AllocationStrategy
     simulation: SimulationRunner
+    whatif_simulation: WhatIfRunner | None
     requests: InMemoryAllocationStore[Any]
     recommendation: "RecommendationFacade"
     status_repositories_by_scenario: Mapping[Scenario, StatusRepository]
@@ -102,6 +104,7 @@ def build_container(
             data_type=_recommendation_data_type(settings),
             max_prediction_horizon_minutes=horizons,
             virtual_load_provider=reader,
+            time_shift_minutes=(15, 30) if settings.time_shift_suggestions else (),
         )
 
     try:
@@ -124,6 +127,7 @@ def build_container(
         routes=routes,
         allocation=FakeAllocationStrategy(),
         simulation=simulation,
+        whatif_simulation=simulation if isinstance(simulation, StatefulSimulation) else None,
         requests=InMemoryAllocationStore(),
         recommendation=None,  # type: ignore[arg-type]
         status_repositories_by_scenario=statuses,
@@ -183,6 +187,7 @@ def _build_predictors(
                 statuses[scenario],
                 stations,
                 status_data_type=DataType.SIMULATED,
+                explain=settings.prediction_explanations,
             )
         )
         for scenario in Scenario

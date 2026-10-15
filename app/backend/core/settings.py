@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     data_backend: BackendKind = "mock"
     predictor_backend: PredictorKind = "fake"
     route_backend: RouteKind = "fake"
+    prediction_explanations: bool = False
+    time_shift_suggestions: bool = False
     simulation_backend: Literal["fake", "stateful"] = "fake"
     simulation_scenarios_path: Path = Path(
         "app/backend/modules/station_data/fixtures/scenarios.yaml"

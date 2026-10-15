@@ -1,9 +1,11 @@
 from datetime import datetime
+from math import isclose
 
 from pydantic import Field, field_validator, model_validator
 
 from .common import StrictModel
 from .enums import DataType, Scenario
+from .explanations import ModelExplanation
 
 
 def _aware(value: datetime) -> datetime:
@@ -38,5 +40,18 @@ class PredictionResult(StrictModel):
     model_version: str = Field(min_length=1)
     data_type: DataType
     contract_version: str = "0.1.0"
+    explanation: ModelExplanation | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     _eta_aware = field_validator("eta")(classmethod(lambda cls, v: _aware(v)))
+
+    @model_validator(mode="after")
+    def explanation_matches_probability(self) -> "PredictionResult":
+        if self.explanation is not None and self.explanation_method != "tree_shap_raw_margin":
+            raise ValueError("structured TreeSHAP requires the matching explanation method")
+        if self.explanation is not None and not isclose(
+            self.explanation.calibrated_probability, self.p_available, rel_tol=1e-8, abs_tol=1e-8
+        ):
+            raise ValueError("explanation probability must match the forecast")
+        return self
