@@ -10,7 +10,6 @@ from fastapi.testclient import TestClient
 from app.backend.api.main import create_app
 from app.backend.core.settings import Settings
 
-
 FAKE_GOONG_CREDENTIAL = "provider-fixture-value"  # pragma: allowlist secret
 
 
