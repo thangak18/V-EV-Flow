@@ -10,6 +10,8 @@
   horizon từ manifest và trạng thái Places. Driver/Operator lấy thời gian này.
   File replay vẫn ghi simulated. `REPLAY_OBSERVED_AT` là tùy chọn +07 căn 5 phút.
   Không dùng giờ máy để giả lập trạng thái hiện tại trên lịch sử cũ.
+  Live mode giữ observed_at từ snapshot, còn depart_time là thời điểm bấm tìm
+  theo đồng hồ trình duyệt (+07). Thiết bị cần đồng hồ đúng; retry giữ payload gốc.
 - File/model adapter cho phép thiếu lag 15/30/60 phút, dùng medians đã fit trên train.
   Snapshot hiện tại vẫn bắt buộc. Không nội suy hay lấy tương lai.
 - Model V2 train lại với horizons 15/30/60/90/120/180, embargo 180 phút.
