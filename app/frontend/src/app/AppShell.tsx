@@ -1,4 +1,8 @@
+import { useEffect, useState } from "react";
+
 import { NavLink, Outlet } from "react-router-dom";
+
+import { useApiClient } from "./useApiClient";
 
 function BrandMark() {
   return (
@@ -23,6 +27,49 @@ function BrandMark() {
 }
 
 export function AppShell() {
+  const client = useApiClient();
+  const [runtime, setRuntime] = useState<Awaited<
+    ReturnType<typeof client.ready>
+  > | null>(null);
+  const [runtimeError, setRuntimeError] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState(false);
+  const [resetVersion, setResetVersion] = useState(0);
+  const [resetComplete, setResetComplete] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    client
+      .ready(controller.signal)
+      .then((status) => {
+        if (!controller.signal.aborted) {
+          setRuntime(status);
+          setRuntimeError(false);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRuntimeError(true);
+      });
+    return () => controller.abort();
+  }, [client]);
+
+  async function resetDemo() {
+    if (resetting) return;
+    setResetting(true);
+    setResetError(false);
+    setResetComplete(false);
+    try {
+      const response = await client.reset({ contract_version: "0.1.0" });
+      if (!response.reset) throw new Error("Reset was not confirmed");
+      setResetVersion((version) => version + 1);
+      setResetComplete(true);
+    } catch {
+      setResetError(true);
+    } finally {
+      setResetting(false);
+    }
+  }
+
   return (
     <div className="app-frame">
       <header className="app-topbar">
@@ -50,7 +97,36 @@ export function AppShell() {
         </nav>
         <span className="data-badge data-badge--demo">Bản demo</span>
       </header>
-      <Outlet />
+      <div className="demo-controls">
+        <p className="runtime-status" role="status">
+          {runtimeError
+            ? "Chưa xác minh được kết nối backend."
+            : !runtime
+              ? "Đang kiểm tra backend…"
+              : !runtime.ready
+                ? "Backend chưa sẵn sàng."
+                : `${runtime.route_backend === "goong" ? "Chỉ đường tài xế: Goong" : "Chỉ đường tài xế mô phỏng — khoảng cách và ETA là giả định"} · ${runtime.predictor_backend === "model" ? "Mô hình đã huấn luyện" : "Dự đoán minh họa"}`}
+        </p>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={resetting}
+          onClick={() => void resetDemo()}
+        >
+          {resetting ? "Đang đặt lại…" : "Đặt lại demo"}
+        </button>
+      </div>
+      {resetComplete ? (
+        <p className="status-message" role="status">
+          Đã đặt lại tải phân bổ. Có thể chạy demo từ đầu.
+        </p>
+      ) : null}
+      {resetError ? (
+        <p className="field-error" role="alert">
+          Chưa đặt lại được demo. Kết quả đang xem vẫn được giữ; hãy thử lại.
+        </p>
+      ) : null}
+      <Outlet key={resetVersion} />
     </div>
   );
 }

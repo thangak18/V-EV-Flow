@@ -1166,3 +1166,19 @@ dd {
     scroll-behavior: auto !important;
   }
 }
+
+.demo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+.runtime-status {
+  flex: 1 1 16rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}

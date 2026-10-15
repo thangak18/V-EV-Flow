@@ -6,6 +6,12 @@ export function createMockApiClient(
   overrides: Partial<ApiClient> = {},
 ): ApiClient {
   return {
+    ready: vi.fn().mockResolvedValue({
+      ready: true,
+      data_backend: "mock",
+      predictor_backend: "fake",
+      route_backend: "fake",
+    }),
     listStations: vi.fn().mockResolvedValue({
       stations: [
         {

@@ -7,6 +7,7 @@ import {
   PressureResponseSchema,
   RecommendationResultSchema,
   ResetResponseSchema,
+  RuntimeStatusSchema,
   SimulationResultSchema,
   StationListResponseSchema,
 } from "./schemas";
@@ -35,6 +36,12 @@ export class ApiClient {
     private readonly fetcher: typeof fetch = (...args) => fetch(...args),
   ) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
+  }
+
+  ready(signal?: AbortSignal) {
+    return this.request("/ready", { signal }).then((body) =>
+      parseApiResponse(RuntimeStatusSchema, body, "ready"),
+    );
   }
 
   listStations(signal?: AbortSignal): Promise<JsonResponse<"listStations">> {
