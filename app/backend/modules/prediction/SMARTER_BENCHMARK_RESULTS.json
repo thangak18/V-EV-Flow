@@ -1,13 +1,13 @@
 {
   "schema_version": "smarter-benchmark-v1",
   "source_url": "https://gitlab.com/smarter-mobility-data-challenge/tutorials",
-  "upstream_commit": "a431cae1c15887b1fd6ecc43157c48012faced42",
-  "upstream_train_blob": "8e9cd8ba72bd842325383d567086d60a777734e0",
+  "upstream_commit": "git:a431cae1c15887b1fd6ecc43157c48012faced42",
+  "upstream_train_blob": "git-blob:8e9cd8ba72bd842325383d567086d60a777734e0",
   "license_reference": "ODbL, as documented by the dataset authors",
   "data_type": "real",
   "source": "Smarter Mobility / Belib Paris historical aggregates",
   "task": "P(recorded Available > 0 at exact source-clock ETA); station-level only",
-  "input_sha256": "0c19fda8d2cb7c83b8df2ddbbc82298f6f0234f69fd387b045cfbb537e071f2a",
+  "input_sha256": "sha256:0c19fda8d2cb7c83b8df2ddbbc82298f6f0234f69fd387b045cfbb537e071f2a",
   "input_bytes": 171754453,
   "audit": {
     "source_rows": 1851083,
@@ -550,7 +550,7 @@
         "station_code"
       ],
       "artifact": "model-15m.joblib",
-      "artifact_sha256": "440c3327dbad92b86c625e8837ae0065f90f990a34a2c09411f44e048636a9a9",
+      "artifact_sha256": "sha256:440c3327dbad92b86c625e8837ae0065f90f990a34a2c09411f44e048636a9a9",
       "artifact_roundtrip": "passed, 32 held-out predictions"
     },
     "30": {
@@ -936,7 +936,7 @@
         "station_code"
       ],
       "artifact": "model-30m.joblib",
-      "artifact_sha256": "3d2af8f85faf6b82e4ae75910ce012adde14da6a2c51fe702584627611bffb02",
+      "artifact_sha256": "sha256:3d2af8f85faf6b82e4ae75910ce012adde14da6a2c51fe702584627611bffb02",
       "artifact_roundtrip": "passed, 32 held-out predictions"
     },
     "60": {
@@ -1322,7 +1322,7 @@
         "station_code"
       ],
       "artifact": "model-60m.joblib",
-      "artifact_sha256": "e62b369e9fd883440d371957bb67e4a761f000c8221dc17b4d44b7f99b5f69c2",
+      "artifact_sha256": "sha256:e62b369e9fd883440d371957bb67e4a761f000c8221dc17b4d44b7f99b5f69c2",
       "artifact_roundtrip": "passed, 32 held-out predictions"
     }
   }

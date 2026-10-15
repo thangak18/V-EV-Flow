@@ -56,6 +56,7 @@ def run(
     if (output / "manifest.json").exists():
         raise ValueError("output already contains a release; choose a new directory")
     input_sha = digest(csv_path)
+    # pragma: allowlist nextline secret -- verified public hash
     expected_sha = "0c19fda8d2cb7c83b8df2ddbbc82298f6f0234f69fd387b045cfbb537e071f2a"
     if data_type not in ("real", "mock") or (data_type == "real" and input_sha != expected_sha):
         raise ValueError("published source checksum mismatch; no verified real-data provenance")
@@ -64,7 +65,9 @@ def run(
     report = {
         "schema_version": "smarter-benchmark-v1",
         "source_url": "https://gitlab.com/smarter-mobility-data-challenge/tutorials",
+        # pragma: allowlist nextline secret -- verified public hash
         "upstream_commit": "a431cae1c15887b1fd6ecc43157c48012faced42",
+        # pragma: allowlist nextline secret -- verified public hash
         "upstream_train_blob": "8e9cd8ba72bd842325383d567086d60a777734e0",
         "license_reference": "ODbL, as documented by the dataset authors",
         "data_type": data_type,

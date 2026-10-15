@@ -63,6 +63,8 @@ Brier, Log Loss và ECE càng thấp càng tốt; AUC càng cao càng tốt. Cal
 
 **Nhận xét:** model calibrated tốt hơn hai baseline ở cả ba horizon. Tuy nhiên Brier/Log Loss test hơi kém raw ở cả ba horizon và ECE kém raw ở 30/60 phút. Hiệu chỉnh trên calibration không bảo đảm cải thiện giai đoạn sau. Giữ nguyên lựa chọn đã chốt trên calibration; không đổi model theo test để làm đẹp kết quả.
 
+Trong JSON bàn giao, hash được ghi kèm tiền tố thuật toán `sha256:`, `git:` hoặc `git-blob:`; manifest ignored giữ hex thuần để kiểm tra bytes. Các literal checksum nguồn công khai đã xác minh được annotate tại đúng dòng Python cho secret scanner, không nới baseline/tooling chung.
+
 Từng bin reliability (count, xác suất trung bình, tỷ lệ outcome), calibration scores, khoảng split, thiếu dữ liệu theo trạm, feature order, versions và checksum artifact nằm trong [SMARTER_BENCHMARK_RESULTS.json](SMARTER_BENCHMARK_RESULTS.json). Hai lần train deterministic cho kết quả metric giống nhau; round-trip joblib khớp 32 prediction test mỗi horizon (atol 1e-12).
 
 ## Chạy lại và xem tập dữ liệu
