@@ -11,6 +11,9 @@ from app.backend.api.main import create_app
 from app.backend.core.settings import Settings
 
 
+FAKE_GOONG_CREDENTIAL = "provider-fixture-value"  # pragma: allowlist secret
+
+
 def test_runtime_and_disabled_place_proxy() -> None:
     with TestClient(create_app(Settings())) as client:
         context = client.get("/api/runtime").json()
@@ -26,7 +29,7 @@ def test_places_resolve_coordinates_cache_and_redact_errors() -> None:
 
     def provider(request: httpx.Request) -> httpx.Response:
         calls.append(request.url.path)
-        assert request.url.params["api_key"] == "test-credential"  # pragma: allowlist secret
+        assert request.url.params["api_key"] == FAKE_GOONG_CREDENTIAL  # pragma: allowlist secret
         if request.url.path.endswith("autocomplete"):
             return httpx.Response(
                 200,
@@ -49,7 +52,7 @@ def test_places_resolve_coordinates_cache_and_redact_errors() -> None:
 
     external = httpx.AsyncClient(transport=httpx.MockTransport(provider))
     app = create_app(
-        Settings(places_backend="goong", goong_rest_api_key="test-credential"),
+        Settings(places_backend="goong", goong_rest_api_key=FAKE_GOONG_CREDENTIAL),
         route_client=external,
     )
     with TestClient(app) as client:
@@ -59,7 +62,7 @@ def test_places_resolve_coordinates_cache_and_redact_errors() -> None:
         for _ in range(2):
             detail = client.get("/api/places/detail", params={"place_id": "place/one"})
             assert detail.json()["lat"] == 10.8
-            assert "test-credential" not in detail.text
+            assert FAKE_GOONG_CREDENTIAL not in detail.text
         assert calls == ["/v2/place/autocomplete", "/v2/place/detail"]
     assert not external.is_closed
 
@@ -71,7 +74,9 @@ def test_invalid_provider_data_is_503_not_fake_coordinates() -> None:
         )
     )
     app = create_app(
-        Settings(places_backend="goong", goong_rest_api_key="test"),  # pragma: allowlist secret
+        Settings(
+            places_backend="goong", goong_rest_api_key=FAKE_GOONG_CREDENTIAL
+        ),  # pragma: allowlist secret
         route_client=external,
     )
     with TestClient(app) as client:
