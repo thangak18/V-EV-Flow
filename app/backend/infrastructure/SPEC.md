@@ -72,3 +72,17 @@ RouteCache defaults to `.cache/goong-routes`, TTL 3600 seconds. Keys hash origin
 One VirtualLoadStore per app implements immutable JSON receipts and scenario/station/+07 five-minute expected demand. IDs conflict globally, only primary intervals are reserved, and snapshots are defensive immutable mappings. Default assumption is load 1 and duration 60 minutes (max 24 hours), not a physical port booking. TTL is 1800 processing-clock seconds; reads/writes prune expired receipts and remove their own contributions, independently of charging-duration assumptions. Per-receipt decimal accounting prevents subtractive drift. Reset waits for the shared decision lock then clears all receipts/buckets under the state lock; decision→state is the only nested lock order. Cancellation before commit writes nothing. State is lost on restart and unsupported across multiple workers. The legacy InMemoryAllocationStore remains only for facade compatibility and is also cleared by API reset; HTTP recommendation uses the real coordinator/store.
 
 No Redis, persistent/distributed state, real charger booking or model/simulator API integration is introduced by C9. See `docs/runbooks/backend-verification-evidence.md` for verified combinations, tests and limitations.
+
+## Runtime V2 adapters
+
+Opt-in SQLiteVirtualLoadStore persists receipt/bucket accounting and serializes
+whole decisions across workers on one host using BEGIN IMMEDIATE, async busy
+retries and rollback on cancellation. It is not a distributed or physical booking
+system. GoongPlaces proxies V2 search/detail with bounded detail cache, validated
+coordinates and redacted failures. Directions composition allows one transient
+retry and a longer read timeout. Real data mode requires partner source/token and
+matching station metadata, with canonical authenticated snapshots in a separate
+SQLite history. Metadata/source identity is immutable within that history. Live
+observations must be fresh. Model provenance is still combined with status
+provenance. File/model permits missing *past* lags but never a missing current
+snapshot. The older no-real-adapter and one-worker notes above describe V1.

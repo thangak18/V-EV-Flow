@@ -193,6 +193,7 @@ class StatefulSimulation:
         maximum_horizon: int,
         duration: float,
         load: float,
+        capacity_models_dir: Path | None = None,
     ) -> None:
         self.stations = stations
         self.model_dir = model_dir
@@ -200,6 +201,7 @@ class StatefulSimulation:
         self.maximum_horizon = maximum_horizon
         self.duration = duration
         self.load = load
+        self.capacity_models_dir = capacity_models_dir
         manifest = json.loads((generated_dir / "manifest.json").read_text())
         if manifest.get("data_type") != "simulated":
             raise ValueError("stateful simulation requires a simulated producer manifest")
@@ -280,6 +282,7 @@ class StatefulSimulation:
         stations: tuple[Station, ...],
         fraction: float = 0.0,
         target_hour: int = 21,
+        model_version: str | None = None,
     ) -> SimulationResult:
         runner = DefaultSimulationRunner(
             lambda _: bundle,
@@ -292,7 +295,7 @@ class StatefulSimulation:
             departure_shift_hour=target_hour,
         )
         ai = SimulationAllocation(
-            statuses, self.ranking, self.model_version, self.duration, self.load
+            statuses, self.ranking, model_version or self.model_version, self.duration, self.load
         )
         result = runner.run(request, strategy_for(runner, request.strategy, ai_strategy=ai))
         if request.strategy != Strategy.AI_ALLOCATION:
@@ -308,6 +311,65 @@ class StatefulSimulation:
             return self._run_case(
                 request, bundle, config, statuses, availability, self.stations.list_stations()
             )
+
+    def _capacity_predictor(
+        self,
+        change: AddPortsChange,
+        stations: "SimulationStations",
+        statuses: BackgroundStatusRepository,
+        scenario: Scenario,
+    ):
+        if self.capacity_models_dir is None:
+            return None
+        root = self.capacity_models_dir.resolve()
+        variant_dir = (root / f"{change.station_id}-plus{change.ports}").resolve()
+        if not variant_dir.is_relative_to(root):
+            raise ModelNotReadyError("invalid capacity artifact path")
+        if not (variant_dir / "variant.json").is_file():
+            return None
+        try:
+            evidence = json.loads((variant_dir / "variant.json").read_text())
+            metadata = (variant_dir / "stations.json").read_bytes()
+            history = (variant_dir / "station_status.parquet").read_bytes()
+            if (
+                evidence.get("base_model_sha256") != self.model_checksum
+                or evidence.get("station_id") != change.station_id
+                or evidence.get("ports") != change.ports
+                or evidence.get("data_type") != "simulated"
+                or hashlib.sha256(metadata).hexdigest() != evidence.get("stations_sha256")
+                or hashlib.sha256(history).hexdigest() != evidence.get("history_sha256")
+                or json.loads(metadata)
+                != [station.model_dump(mode="json") for station in stations.list_stations()]
+            ):
+                raise ValueError("capacity artifact metadata mismatch")
+            manifest = read_manifest(variant_dir / "model")
+            if (
+                manifest.model_version != evidence.get("model_version")
+                or manifest.data_type != "simulated"
+                or manifest.split_metadata["max_horizon_minutes"] != self.maximum_horizon
+            ):
+                raise ValueError("capacity artifact capabilities mismatch")
+            predictor = load_predictor(
+                variant_dir / "model", statuses, stations, status_data_type=DataType.SIMULATED
+            )
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise ModelNotReadyError("capacity artifact is invalid or incompatible") from exc
+
+        def availability(station_id: str, observed_at: datetime, eta: datetime) -> float:
+            bucket = observed_at + timedelta(
+                minutes=max(5, ceil((eta - observed_at).total_seconds() / 300) * 5)
+            )
+            return predictor.predict(
+                PredictRequest(
+                    station_id=station_id,
+                    observed_at=observed_at,
+                    eta=bucket,
+                    connector_type=stations.get_station(station_id).connector_types[0],
+                    scenario=scenario,
+                )
+            ).p_available
+
+        return availability, evidence
 
     def run_whatif(self, request: WhatIfRequest) -> WhatIfResult:
         if isinstance(request.change, AddPortsChange):
@@ -329,6 +391,8 @@ class StatefulSimulation:
             before = self._run_case(simulation, bundle, config, statuses, availability, stations)
             modified = stations
             after_statuses = statuses
+            after_availability = availability
+            capacity_evidence = None
             fraction, hour, count = 0.0, 21, 0
             assumptions = [
                 (
@@ -356,6 +420,23 @@ class StatefulSimulation:
                     "chỉ engine và capacity xếp hạng nhận thêm cổng. "
                     "Chưa retrain dự báo cho capacity mới."
                 )
+                variant = (
+                    self._capacity_predictor(change, repository, after_statuses, request.scenario)
+                    if request.strategy == Strategy.AI_ALLOCATION
+                    else None
+                )
+                if variant is not None:
+                    after_availability, capacity_evidence = variant
+                    assumptions.pop()
+                    assumptions.extend(
+                        (
+                            "Capacity và Predictor đều thay đổi: "
+                            "model riêng train bằng lịch sử với capacity mới.",
+                            "Hai lượt khác model version, "
+                            "không coi đây là tác động riêng của số cổng.",
+                            "Giữ trace lỗi nền gốc; cổng thêm chưa có trace lỗi độc lập.",
+                        )
+                    )
             elif isinstance(change, ShiftDeparturesChange):
                 fraction, hour = change.fraction, change.target_hour
                 count = floor(Decimal(str(fraction)) * request.vehicle_count)
@@ -364,7 +445,15 @@ class StatefulSimulation:
                     "background không đổi và không bảo đảm kết quả tốt hơn."
                 )
             after = self._run_case(
-                simulation, bundle, config, after_statuses, availability, modified, fraction, hour
+                simulation,
+                bundle,
+                config,
+                after_statuses,
+                after_availability,
+                modified,
+                fraction,
+                hour,
+                model_version=capacity_evidence["model_version"] if capacity_evidence else None,
             )
 
             def fingerprint(station_data: tuple[Station, ...], changes: object) -> str:
@@ -389,8 +478,28 @@ class StatefulSimulation:
                 after=after,
                 change=change,
                 before_config_hash=fingerprint(stations, None),
-                after_config_hash=fingerprint(modified, change.model_dump(mode="json")),
+                after_config_hash=fingerprint(
+                    modified,
+                    {
+                        **change.model_dump(mode="json"),
+                        **(
+                            {
+                                "capacity_model_version": capacity_evidence["model_version"],
+                                "capacity_history_hash": capacity_evidence["history_sha256"],
+                            }
+                            if capacity_evidence
+                            else {}
+                        ),
+                    },
+                ),
                 shifted_vehicle_count=count,
+                prediction_mode="capacity_retrained" if capacity_evidence else None,
+                capacity_model_version=capacity_evidence["model_version"]
+                if capacity_evidence
+                else None,
+                capacity_history_hash=capacity_evidence["history_sha256"]
+                if capacity_evidence
+                else None,
                 assumptions=tuple(assumptions),
             )
 

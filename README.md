@@ -93,3 +93,11 @@ npm --prefix app/frontend run dev -- --host 127.0.0.1 --port 5173
 Backend health check là `http://127.0.0.1:8000/api/health`; frontend mở `http://127.0.0.1:5173/`. Các gate canonical được định nghĩa trong Makefile; ghi kết quả kiểm tra và bàn giao trong PR.
 
 Proposal và kế hoạch mới do nhóm có sẵn được giữ nguyên ở root. Kế hoạch 7 ngày ban đầu được lưu tại [docs/reference](docs/reference/README.md). Khi có khác biệt, dùng bộ tài liệu triển khai hiện tại ở README này; lịch BTC và dữ liệu đối tác vẫn cần nhóm xác nhận.
+
+## Runtime V2
+
+Tìm địa chỉ qua Goong Places, runtime clock theo dataset/feed, SQLite allocation
+qua restart/nhiều worker cùng host và canonical partner ingestion có xác thực.
+Model release mới hỗ trợ 180 phút, có variant capacity riêng và benchmark 5 seed.
+Xem [cách chạy và giới hạn còn phụ thuộc đối tác](docs/runbooks/runtime-completion.md)
+và [kết quả simulated V2](docs/runbooks/runtime-v2-evidence.md).

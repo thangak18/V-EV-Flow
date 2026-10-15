@@ -28,10 +28,13 @@ def test_mock_dependencies_are_scenario_scoped_and_share_c6_store() -> None:
 
 
 def test_real_and_model_backends_fail_explicitly() -> None:
+    import pytest
+
     from app.backend.api.dependencies import StartupConfigurationError
 
+    with pytest.raises(ValueError, match="real data requires"):
+        Settings(data_backend="real")
     for settings in (
-        Settings(data_backend="real"),
         Settings(data_backend="file", predictor_backend="model", model_dir=Path(".")),
     ):
         try:

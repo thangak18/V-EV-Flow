@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.backend.api.dependencies import AppContainer, get_container
 from app.backend.api.errors import FeatureNotReadyError
-from app.backend.api.validation import validate_prediction_result, validate_recommendation_request
+from app.backend.api.validation import (
+    validate_live_observation,
+    validate_prediction_result,
+    validate_recommendation_request,
+)
 from app.backend.contracts.enums import Scenario
 from app.backend.contracts.errors import ErrorResponse
 from app.backend.contracts.prediction import PredictRequest
@@ -35,6 +39,7 @@ router = APIRouter()
 async def recommend(
     request: RecommendationRequest, container: AppContainer = Depends(get_container)
 ) -> RecommendationResult:
+    validate_live_observation(container, request.observed_at)
     validate_recommendation_request(request)
     return await container.allocation_coordinator.recommend(request)
 
@@ -45,6 +50,7 @@ def pressure(
     time: datetime = Query(...),
     container: AppContainer = Depends(get_container),
 ) -> PressureResponse:
+    validate_live_observation(container, time)
     horizon_minutes = container.prediction_horizons[scenario]
     if horizon_minutes < 30:
         raise ValueError("configured prediction horizon does not support pressure proxy")

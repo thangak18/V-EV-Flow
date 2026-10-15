@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.backend.api.dependencies import AppContainer, get_container
-from app.backend.api.validation import validate_predict_request, validate_prediction_result
+from app.backend.api.validation import (
+    validate_live_observation,
+    validate_predict_request,
+    validate_prediction_result,
+)
 from app.backend.contracts.errors import ErrorResponse, StationNotFoundError
 from app.backend.contracts.prediction import PredictionResult, PredictRequest
 
@@ -21,6 +25,7 @@ def predict(
         station = container.stations.get_station(request.station_id)
     except KeyError as exc:
         raise StationNotFoundError(f"Unknown station: {request.station_id}") from exc
+    validate_live_observation(container, request.observed_at)
     validate_predict_request(request, container.prediction_horizons[request.scenario])
     if request.connector_type not in station.connector_types:
         raise HTTPException(422, "connector_type is not supported by the station")

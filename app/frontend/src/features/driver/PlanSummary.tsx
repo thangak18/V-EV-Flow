@@ -20,13 +20,18 @@ const HCMC_TZ = "Asia/Ho_Chi_Minh";
 
 /** Format ETA in Vietnam time so the (+07:00) label matches the clock. */
 export function formatEtaTime(value: string): string {
-  return new Date(value).toLocaleString("vi-VN", {
+  const date = new Date(value);
+  const clock = date.toLocaleTimeString("vi-VN", {
     timeZone: HCMC_TZ,
     hour: "2-digit",
     minute: "2-digit",
+  });
+  const day = date.toLocaleDateString("vi-VN", {
+    timeZone: HCMC_TZ,
     day: "2-digit",
     month: "2-digit",
   });
+  return `${clock} · ${day}`;
 }
 
 export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {

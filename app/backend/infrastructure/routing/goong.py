@@ -34,10 +34,14 @@ class GoongRouteProvider:
         *,
         endpoint: str = GOONG_DIRECTIONS_V2_ENDPOINT,
         clock: Callable[[], datetime],
-        timeout: httpx.Timeout = httpx.Timeout(10.0, connect=2.0, read=5.0, write=5.0),
+        timeout: httpx.Timeout = httpx.Timeout(20.0, connect=3.0, read=15.0, write=5.0),
+        retries: int = 0,
     ) -> None:
         if not api_key.strip():
             raise ValueError("api_key must not be blank")
+        if retries not in (0, 1):
+            raise ValueError("Goong retries must be 0 or 1")
+        self._retries = retries
         self._api_key = api_key
         self._client = client
         self._cache = cache
@@ -89,21 +93,43 @@ class GoongRouteProvider:
     async def _fetch_routes(self, request: RouteRequest) -> tuple[RouteResult, ...]:
         origin = _coordinate_text(request.origin)
         destination = _coordinate_text(request.destination)
-        try:
-            response = await self._client.get(
-                self._endpoint,
-                params={
-                    "origin": origin,
-                    "destination": destination,
-                    "vehicle": "car",
-                    "api_key": self._api_key,
-                },
-                timeout=self._timeout,
-            )
-            response.raise_for_status()
-            return _parse_routes(response.json())
-        except (httpx.HTTPError, OverflowError, TypeError, ValueError):
-            raise RouteUnavailableError(_UNAVAILABLE_MESSAGE) from None
+        for attempt in range(self._retries + 1):
+            try:
+                response = await self._client.get(
+                    self._endpoint,
+                    params={
+                        "origin": origin,
+                        "destination": destination,
+                        "vehicle": "car",
+                        "api_key": self._api_key,
+                    },
+                    timeout=self._timeout,
+                )
+                if response.status_code in (429, 500, 502, 503, 504) and attempt < self._retries:
+                    await asyncio.sleep(0.25)
+                    continue
+                response.raise_for_status()
+                return _parse_routes(response.json())
+            except (httpx.TimeoutException, httpx.NetworkError):
+                if attempt < self._retries:
+                    await asyncio.sleep(0.25)
+                    continue
+                raise RouteUnavailableError(
+                    _UNAVAILABLE_MESSAGE, {"failure": "timeout_or_network"}
+                ) from None
+            except httpx.HTTPStatusError as exc:
+                raise RouteUnavailableError(
+                    _UNAVAILABLE_MESSAGE,
+                    {
+                        "failure": "upstream_http",
+                        "status": exc.response.status_code,
+                    },
+                ) from None
+            except (httpx.HTTPError, OverflowError, TypeError, ValueError):
+                raise RouteUnavailableError(
+                    _UNAVAILABLE_MESSAGE, {"failure": "invalid_provider_response"}
+                ) from None
+        raise RouteUnavailableError(_UNAVAILABLE_MESSAGE)
 
 
 def _coordinate_text(coordinate: Coordinate) -> str:

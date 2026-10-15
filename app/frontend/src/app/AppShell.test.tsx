@@ -73,6 +73,11 @@ test("successful reset clears the plan and restores idle without another recomme
       .mockResolvedValue({ reset: true, contract_version: "0.1.0" }),
   });
   mount(client);
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+    ).toBeEnabled(),
+  );
   fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
   await screen.findByTestId("plan-hero");
   fireEvent.click(screen.getByRole("button", { name: "Đặt lại demo" }));
@@ -94,6 +99,11 @@ test("failed reset preserves the plan and lets the user retry", async () => {
     .mockResolvedValueOnce({ reset: true, contract_version: "0.1.0" });
   mount(
     createMockApiClient({ recommend: vi.fn().mockResolvedValue(plan), reset }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+    ).toBeEnabled(),
   );
   fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
   await screen.findByTestId("plan-hero");
@@ -117,6 +127,11 @@ test("unconfirmed reset never clears the current plan", async () => {
         .fn()
         .mockResolvedValue({ reset: false, contract_version: "0.1.0" }),
     }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+    ).toBeEnabled(),
   );
   fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
   await screen.findByTestId("plan-hero");

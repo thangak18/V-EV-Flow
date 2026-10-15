@@ -95,6 +95,25 @@ components:
           type: array
       title: HTTPValidationError
       type: object
+    IngestResult:
+      additionalProperties: false
+      properties:
+        accepted:
+          title: Accepted
+          type: integer
+        data_type:
+          const: real
+          default: real
+          title: Data Type
+          type: string
+        source:
+          title: Source
+          type: string
+      required:
+      - accepted
+      - source
+      title: IngestResult
+      type: object
     ModelExplanation:
       additionalProperties: false
       properties:
@@ -137,6 +156,113 @@ components:
       - calibrated_probability
       - features
       title: ModelExplanation
+      type: object
+    PartnerSnapshot:
+      additionalProperties: false
+      properties:
+        n_ports:
+          minimum: 1.0
+          title: N Ports
+          type: integer
+        ports_broken:
+          minimum: 0.0
+          title: Ports Broken
+          type: integer
+        ports_busy:
+          minimum: 0.0
+          title: Ports Busy
+          type: integer
+        ports_free:
+          minimum: 0.0
+          title: Ports Free
+          type: integer
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+        ts:
+          format: date-time
+          title: Ts
+          type: string
+      required:
+      - station_id
+      - ts
+      - ports_free
+      - ports_busy
+      - ports_broken
+      - n_ports
+      - scenario
+      title: PartnerSnapshot
+      type: object
+    PlaceLocation:
+      additionalProperties: false
+      properties:
+        label:
+          maxLength: 1024
+          minLength: 1
+          title: Label
+          type: string
+        lat:
+          maximum: 90.0
+          minimum: -90.0
+          title: Lat
+          type: number
+        lng:
+          maximum: 180.0
+          minimum: -180.0
+          title: Lng
+          type: number
+        place_id:
+          maxLength: 1024
+          minLength: 1
+          title: Place Id
+          type: string
+        provider:
+          default: goong
+          title: Provider
+          type: string
+      required:
+      - lat
+      - lng
+      - place_id
+      - label
+      title: PlaceLocation
+      type: object
+    PlaceSuggestion:
+      additionalProperties: false
+      properties:
+        description:
+          maxLength: 1024
+          minLength: 1
+          title: Description
+          type: string
+        place_id:
+          maxLength: 1024
+          minLength: 1
+          title: Place Id
+          type: string
+      required:
+      - place_id
+      - description
+      title: PlaceSuggestion
+      type: object
+    PlaceSuggestions:
+      additionalProperties: false
+      properties:
+        predictions:
+          items:
+            $ref: '#/components/schemas/PlaceSuggestion'
+          title: Predictions
+          type: array
+        provider:
+          default: goong
+          title: Provider
+          type: string
+      required:
+      - predictions
+      title: PlaceSuggestions
       type: object
     Plan:
       additionalProperties: false
@@ -437,6 +563,70 @@ components:
       - reset
       title: ResetResponse
       type: object
+    RuntimeContext:
+      additionalProperties: false
+      properties:
+        allocation_backend:
+          enum:
+          - memory
+          - sqlite
+          title: Allocation Backend
+          type: string
+        available:
+          title: Available
+          type: boolean
+        clock_mode:
+          enum:
+          - mock
+          - replay
+          - live
+          title: Clock Mode
+          type: string
+        data_type:
+          $ref: '#/components/schemas/DataType'
+        history_end:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: History End
+        history_start:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: History Start
+        max_horizon_minutes:
+          title: Max Horizon Minutes
+          type: integer
+        message:
+          title: Message
+          type: string
+        observed_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Observed At
+        places_available:
+          title: Places Available
+          type: boolean
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+      required:
+      - clock_mode
+      - scenario
+      - data_type
+      - observed_at
+      - history_start
+      - history_end
+      - max_horizon_minutes
+      - places_available
+      - available
+      - message
+      - allocation_backend
+      title: RuntimeContext
+      type: object
     Scenario:
       enum:
       - normal
@@ -556,6 +746,20 @@ components:
       - metrics
       - fixture_hash
       title: SimulationResult
+      type: object
+    SnapshotBatch:
+      additionalProperties: false
+      properties:
+        snapshots:
+          items:
+            $ref: '#/components/schemas/PartnerSnapshot'
+          maxItems: 1000
+          minItems: 1
+          title: Snapshots
+          type: array
+      required:
+      - snapshots
+      title: SnapshotBatch
       type: object
     Station:
       additionalProperties: false
@@ -809,6 +1013,17 @@ components:
           pattern: ^[0-9a-f]{64}$
           title: Before Config Hash
           type: string
+        capacity_history_hash:
+          anyOf:
+          - pattern: ^[0-9a-f]{64}$
+            type: string
+          - type: 'null'
+          title: Capacity History Hash
+        capacity_model_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Capacity Model Version
         change:
           discriminator:
             mapping:
@@ -829,6 +1044,12 @@ components:
           default: simulated
           title: Data Type
           type: string
+        prediction_mode:
+          anyOf:
+          - const: capacity_retrained
+            type: string
+          - type: 'null'
+          title: Prediction Mode
         shifted_vehicle_count:
           minimum: 0.0
           title: Shifted Vehicle Count
@@ -862,6 +1083,121 @@ paths:
                 type: object
           description: Successful Response
       summary: Health
+  /api/partner/snapshots:
+    post:
+      operationId: ingestSnapshots
+      parameters:
+      - in: header
+        name: authorization
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Authorization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnapshotBatch'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestResult'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Ingest Snapshots
+  /api/places/detail:
+    get:
+      operationId: resolvePlace
+      parameters:
+      - in: query
+        name: place_id
+        required: true
+        schema:
+          maxLength: 1024
+          minLength: 1
+          title: Place Id
+          type: string
+      - in: query
+        name: session
+        required: false
+        schema:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaceLocation'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      summary: Resolve Place
+  /api/places/search:
+    get:
+      operationId: searchPlaces
+      parameters:
+      - in: query
+        name: q
+        required: true
+        schema:
+          maxLength: 200
+          minLength: 2
+          pattern: .*\S.*
+          title: Q
+          type: string
+      - in: query
+        name: session
+        required: false
+        schema:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaceSuggestions'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      summary: Search Places
   /api/predict:
     post:
       operationId: predictAvailability
@@ -998,6 +1334,30 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
       summary: Reset
+  /api/runtime:
+    get:
+      operationId: runtimeContext
+      parameters:
+      - in: query
+        name: scenario
+        required: false
+        schema:
+          $ref: '#/components/schemas/Scenario'
+          default: normal
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeContext'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Runtime Context
   /api/simulate:
     post:
       operationId: simulate

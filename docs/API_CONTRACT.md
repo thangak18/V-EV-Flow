@@ -174,3 +174,26 @@ Request `{}`; response `{ "reset": true }`. Xóa dict phân bổ và request cac
 ## Validation/lỗi
 
 422 cho đầu vào sai (SOC, pin, timestamp, scenario, tọa độ); 404 cho station_id không có; 409 cho request_id trùng nhưng payload khác; 503 khi model/source chưa sẵn sàng; upstream route lỗi trả thông báo/fallback có nguồn. Các lỗi nghiệp vụ có `code`, `message`; FastAPI validation 422 có thể dùng `detail` mặc định, frontend xử lý cả hai. Không đủ pin/không có trạm là kết quả kế hoạch rỗng có reasons, không treo UI.
+
+## Runtime V2 extensions
+
+- `GET /runtime?scenario=` discovers clock mode (mock/replay/live), observed_at,
+  history bounds, max_horizon_minutes, data_type, available/message, Places and
+  allocation backend. Clients must not infer live occupancy from machine time.
+- `GET /places/search?q=&session=` returns up to five Goong V2 place suggestions.
+  `GET /places/detail?place_id=&session=` resolves one place to label/lat/lng.
+  Key remains server-side. Invalid input returns 422; provider/unavailable mode
+  returns typed 503, never made-up coordinates. New errors are not hidden by a fake provider.
+- `POST /partner/snapshots` accepts SnapshotBatch only when the real partner feed
+  is explicitly configured. Bearer auth required (401), conflicts 409, malformed
+  or incompatible snapshots 422, disabled mode 503. No raw vendor status mapping
+  is guessed. IngestResult describes accepted canonical rows, not verified model accuracy.
+- Optional WhatIfResult `prediction_mode=capacity_retrained`, capacity_model_version
+  and capacity_history_hash identify a separately trained after model. Nested
+  model versions may differ only with this explicit evidence for add_ports.
+  Scenario/seed/strategy/fixture/population remain paired. Existing frozen mode
+  omits these fields and still requires identical model versions. Update strict
+  clients before enabling capacity variants. Model+capacity changes are not a
+  single-variable causal estimate.
+
+See runtime-completion.md for adapter, auth, storage, time and deployment constraints.

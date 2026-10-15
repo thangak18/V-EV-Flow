@@ -6,6 +6,19 @@ export function createMockApiClient(
   overrides: Partial<ApiClient> = {},
 ): ApiClient {
   return {
+    runtime: vi.fn().mockImplementation(async (scenario) => ({
+      clock_mode: "mock",
+      scenario,
+      data_type: "mock",
+      observed_at: "2026-10-13T16:00:00+07:00",
+      history_start: null,
+      history_end: null,
+      max_horizon_minutes: 60,
+      places_available: false,
+      available: true,
+      message: "Dữ liệu minh họa.",
+      allocation_backend: "memory",
+    })),
     ready: vi.fn().mockResolvedValue({
       ready: true,
       data_backend: "mock",

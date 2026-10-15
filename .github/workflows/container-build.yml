@@ -1,0 +1,27 @@
+name: Container package
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  container-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start isolated mock package
+        run: docker compose -p vev-ci -f deploy/compose.yaml up --build -d --wait
+      - name: Check web proxy and durable allocation selection
+        run: |
+          curl --fail http://127.0.0.1:8080/driver >/dev/null
+          curl --fail http://127.0.0.1:8080/api/runtime | python3 -c 'import json,sys; r=json.load(sys.stdin); assert r["available"] and r["allocation_backend"] == "sqlite"'
+      - name: Container logs and cleanup
+        if: always()
+        run: |
+          docker compose -p vev-ci -f deploy/compose.yaml logs --tail 60
+          docker compose -p vev-ci -f deploy/compose.yaml down -v

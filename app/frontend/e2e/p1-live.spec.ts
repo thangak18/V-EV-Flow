@@ -4,6 +4,8 @@ test.skip(
   process.env.P1_LIVE !== "1",
   "Opt-in: trusted local release and file/model/stateful runtime required",
 );
+const expectedModel =
+  process.env.LIVE_MODEL_VERSION ?? "lightgbm-c721ddae6c9223ad";
 test.use({ video: process.env.RECORD_DEMO === "1" ? "on" : "off" });
 
 test("live Driver uses actual TreeSHAP and reports time-shift evaluation honestly", async ({
@@ -25,7 +27,7 @@ test("live Driver uses actual TreeSHAP and reports time-shift evaluation honestl
   expect(response.status()).toBe(200);
   const result = await response.json();
   expect(result.data_type).toBe("simulated");
-  expect(result.model_version).toBe("lightgbm-c721ddae6c9223ad");
+  expect(result.model_version).toBe(expectedModel);
   const explanation = result.primary.explanation;
   expect(explanation.method).toBe("tree_shap");
   expect(explanation.space).toBe("raw_margin_log_odds");
@@ -103,7 +105,11 @@ test("live what-if: actual 100-vehicle added capacity and twenty shifted departu
     expect(result.before_config_hash).not.toBe(result.after_config_hash);
     expect(result.before.metrics.vehicle_count).toBe(100);
     expect(result.after.metrics.vehicle_count).toBe(100);
-    expect(result.after.model_version).toBe("lightgbm-c721ddae6c9223ad");
+    expect(result.after.model_version).toBe(
+      kind === "add_ports" && process.env.LIVE_CAPACITY_MODEL_VERSION
+        ? process.env.LIVE_CAPACITY_MODEL_VERSION
+        : expectedModel,
+    );
     await expect(page.getByTestId("whatif-result")).toContainText(
       "100 xe · seed 42",
     );
@@ -114,7 +120,9 @@ test("live what-if: actual 100-vehicle added capacity and twenty shifted departu
       );
     } else
       await expect(page.getByTestId("whatif-result")).toContainText(
-        "Dự báo ML giữ theo capacity gốc",
+        result.prediction_mode === "capacity_retrained"
+          ? "model riêng đã train cho capacity mới"
+          : "Dự báo ML giữ theo capacity gốc",
       );
     await expect(
       page

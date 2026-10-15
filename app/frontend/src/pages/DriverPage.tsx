@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
 import { AsyncState } from "../components/common/AsyncState";
@@ -13,15 +13,62 @@ import {
   DEFAULT_ORIGIN,
   DEFAULT_DESTINATION,
   tripLocations,
+  type TripLocation,
 } from "../features/driver/corridorPresets";
 import { DriverForm } from "../features/driver/DriverForm";
 import { PlanEmptyState, PlanSummary } from "../features/driver/PlanSummary";
 import { useRecommendation } from "../hooks/useRecommendation";
-import type { DataType, Station } from "../services/api";
+import type {
+  DataType,
+  Station,
+  Scenario,
+  RuntimeContext,
+} from "../services/api";
 
 export function DriverPage() {
   const client = useApiClient();
   const { status, result, error, submit, retry, clear } = useRecommendation();
+  const [scenario, setScenario] = useState<Scenario>("normal");
+  const [runtime, setRuntime] = useState<RuntimeContext>();
+  const [runtimeLoading, setRuntimeLoading] = useState(true);
+  const lastTime = useRef<string | null>(null);
+  const [runtimeError, setRuntimeError] = useState("");
+  const [resolvedOrigin, setResolvedOrigin] = useState<TripLocation>();
+  const [resolvedDestination, setResolvedDestination] =
+    useState<TripLocation>();
+  useEffect(() => {
+    const controller = new AbortController();
+    const refresh = () =>
+      client
+        .runtime(scenario, controller.signal)
+        .then((value) => {
+          if (controller.signal.aborted) return;
+          if (value.scenario !== scenario)
+            throw new Error("runtime scenario mismatch");
+          if (lastTime.current && lastTime.current !== value.observed_at)
+            clear();
+          lastTime.current = value.observed_at;
+          setRuntimeLoading(false);
+          setRuntime(value as RuntimeContext);
+          setRuntimeError("");
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setRuntimeLoading(false);
+            setRuntimeError(
+              "Không lấy được thời gian/dữ liệu từ backend. Hãy tải lại trang.",
+            );
+          }
+        });
+    void refresh();
+    const timer = setInterval(() => {
+      void refresh();
+    }, 60000);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, [client, scenario, clear]);
   const [stations, setStations] = useState<Station[]>([]);
   const [directoryFailed, setDirectoryFailed] = useState(false);
   const [directoryDataType, setDirectoryDataType] = useState<DataType | null>(
@@ -58,12 +105,14 @@ export function DriverPage() {
   }, [stations]);
 
   const mapModel = useMemo<MapModel>(() => {
-    const selectedOrigin = locations.find(
-      (location) => location.label === origin,
-    );
-    const selectedDestination = locations.find(
-      (location) => location.label === destination,
-    );
+    const selectedOrigin =
+      (resolvedOrigin?.label === origin ? resolvedOrigin : undefined) ??
+      locations.find((location) => location.label === origin);
+    const selectedDestination =
+      (resolvedDestination?.label === destination
+        ? resolvedDestination
+        : undefined) ??
+      locations.find((location) => location.label === destination);
     const index = new Map(
       stations.map((station) => [station.station_id, station]),
     );
@@ -105,14 +154,27 @@ export function DriverPage() {
     if (result?.backup) placeStation(result.backup.station_id, "backup");
 
     return { points, unlocated, fitBounds: true };
-  }, [origin, destination, locations, result, stations]);
+  }, [
+    origin,
+    destination,
+    locations,
+    result,
+    stations,
+    resolvedOrigin,
+    resolvedDestination,
+  ]);
 
   function handleLocationChange(
     field: "origin" | "destination",
     value: string,
   ) {
-    if (field === "origin") setOrigin(value);
-    else setDestination(value);
+    if (field === "origin") {
+      setOrigin(value);
+      setResolvedOrigin(undefined);
+    } else {
+      setDestination(value);
+      setResolvedDestination(undefined);
+    }
     clear();
   }
 
@@ -132,6 +194,27 @@ export function DriverPage() {
         origin={origin}
         destination={destination}
         onLocationChange={handleLocationChange}
+        runtime={runtime}
+        runtimeError={runtimeError}
+        runtimeLoading={runtimeLoading}
+        resolvedOrigin={resolvedOrigin}
+        resolvedDestination={resolvedDestination}
+        onResolveLocation={(field, location) => {
+          if (field === "origin") {
+            setResolvedOrigin(location);
+            setOrigin(location.label);
+          } else {
+            setResolvedDestination(location);
+            setDestination(location.label);
+          }
+          clear();
+        }}
+        onScenarioChange={(next) => {
+          setScenario(next);
+          setRuntime(undefined);
+          setRuntimeLoading(true);
+          clear();
+        }}
         onSubmit={submit}
       />
 

@@ -75,15 +75,31 @@ class ParquetStatusRepository:
         path: Path,
         station_repository: StationRepository,
         scenario: Scenario,
+        *,
+        allow_missing_lags: bool = False,
     ) -> None:
         self._path = Path(path)
         self._stations = station_repository
         self._scenario = Scenario(scenario)
+        self._allow_missing_lags = allow_missing_lags
         try:
             self._dataset = ds.dataset(self._path, format="parquet")
         except (OSError, ValueError, TypeError) as exc:
             raise DataSourceUnavailableError(f"unable to open status data: {self._path}") from exc
         self._validate_schema_types()
+
+    def bounds(self) -> tuple[datetime | None, datetime | None]:
+        frame = self._dataset.to_table(
+            filter=(ds.field("scenario") == self._scenario.value),
+            columns=["station_id", "ts"],
+        ).to_pandas()
+        ids = {station.station_id for station in self._stations.list_stations()}
+        frame = frame[frame.station_id.isin(ids)]
+        counts = frame.groupby("ts").station_id.nunique()
+        complete = counts[counts == len(ids)].index
+        if complete.empty:
+            return None, None
+        return complete.min().to_pydatetime(), complete.max().to_pydatetime()
 
     def window(
         self,
@@ -122,7 +138,7 @@ class ParquetStatusRepository:
                 raise DataSourceUnavailableError("status data contains an invalid timestamp")
             records[timestamp] = row
         missing = [timestamp for timestamp in expected if timestamp not in records]
-        if missing:
+        if missing and (not self._allow_missing_lags or observed_at not in records):
             raise DataSourceUnavailableError(
                 f"missing status snapshots for {station_id}: "
                 + ", ".join(timestamp.isoformat() for timestamp in missing)
@@ -138,6 +154,7 @@ class ParquetStatusRepository:
                 scenario=self._scenario,
             )
             for timestamp in expected
+            if timestamp in records
         )
         return StatusWindow(
             station_id=station_id,

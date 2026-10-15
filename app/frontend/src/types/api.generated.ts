@@ -21,6 +21,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/partner/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest Snapshots */
+        post: operations["ingestSnapshots"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/places/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resolve Place */
+        get: operations["resolvePlace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/places/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Places */
+        get: operations["searchPlaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/predict": {
         parameters: {
             query?: never;
@@ -100,6 +151,23 @@ export interface paths {
         put?: never;
         /** Reset */
         post: operations["resetDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runtime Context */
+        get: operations["runtimeContext"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -211,6 +279,19 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IngestResult */
+        IngestResult: {
+            /** Accepted */
+            accepted: number;
+            /**
+             * Data Type
+             * @default real
+             * @constant
+             */
+            data_type: "real";
+            /** Source */
+            source: string;
+        };
         /** ModelExplanation */
         ModelExplanation: {
             /** Bias */
@@ -235,6 +316,58 @@ export interface components {
              * @constant
              */
             space: "raw_margin_log_odds";
+        };
+        /** PartnerSnapshot */
+        PartnerSnapshot: {
+            /** N Ports */
+            n_ports: number;
+            /** Ports Broken */
+            ports_broken: number;
+            /** Ports Busy */
+            ports_busy: number;
+            /** Ports Free */
+            ports_free: number;
+            scenario: components["schemas"]["Scenario"];
+            /** Station Id */
+            station_id: string;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+        };
+        /** PlaceLocation */
+        PlaceLocation: {
+            /** Label */
+            label: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Place Id */
+            place_id: string;
+            /**
+             * Provider
+             * @default goong
+             */
+            provider: string;
+        };
+        /** PlaceSuggestion */
+        PlaceSuggestion: {
+            /** Description */
+            description: string;
+            /** Place Id */
+            place_id: string;
+        };
+        /** PlaceSuggestions */
+        PlaceSuggestions: {
+            /** Predictions */
+            predictions: components["schemas"]["PlaceSuggestion"][];
+            /**
+             * Provider
+             * @default goong
+             */
+            provider: string;
         };
         /** Plan */
         Plan: {
@@ -389,6 +522,35 @@ export interface components {
             /** Reset */
             reset: boolean;
         };
+        /** RuntimeContext */
+        RuntimeContext: {
+            /**
+             * Allocation Backend
+             * @enum {string}
+             */
+            allocation_backend: "memory" | "sqlite";
+            /** Available */
+            available: boolean;
+            /**
+             * Clock Mode
+             * @enum {string}
+             */
+            clock_mode: "mock" | "replay" | "live";
+            data_type: components["schemas"]["DataType"];
+            /** History End */
+            history_end: string | null;
+            /** History Start */
+            history_start: string | null;
+            /** Max Horizon Minutes */
+            max_horizon_minutes: number;
+            /** Message */
+            message: string;
+            /** Observed At */
+            observed_at: string | null;
+            /** Places Available */
+            places_available: boolean;
+            scenario: components["schemas"]["Scenario"];
+        };
         /**
          * Scenario
          * @enum {string}
@@ -455,6 +617,11 @@ export interface components {
             /** Seed */
             seed: number;
             strategy: components["schemas"]["Strategy"];
+        };
+        /** SnapshotBatch */
+        SnapshotBatch: {
+            /** Snapshots */
+            snapshots: components["schemas"]["PartnerSnapshot"][];
         };
         /** Station */
         Station: {
@@ -567,6 +734,10 @@ export interface components {
             before: components["schemas"]["SimulationResult"];
             /** Before Config Hash */
             before_config_hash: string;
+            /** Capacity History Hash */
+            capacity_history_hash?: string | null;
+            /** Capacity Model Version */
+            capacity_model_version?: string | null;
             /** Change */
             change: components["schemas"]["AddPortsChange"] | components["schemas"]["ShiftDeparturesChange"];
             /**
@@ -581,6 +752,8 @@ export interface components {
              * @constant
              */
             data_type: "simulated";
+            /** Prediction Mode */
+            prediction_mode?: "capacity_retrained" | null;
             /** Shifted Vehicle Count */
             shifted_vehicle_count: number;
         };
@@ -611,6 +784,123 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    ingestSnapshots: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SnapshotBatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolvePlace: {
+        parameters: {
+            query: {
+                place_id: string;
+                session?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceLocation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    searchPlaces: {
+        parameters: {
+            query: {
+                q: string;
+                session?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaceSuggestions"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -791,6 +1081,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResetResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    runtimeContext: {
+        parameters: {
+            query?: {
+                scenario?: components["schemas"]["Scenario"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeContext"];
                 };
             };
             /** @description Validation Error */

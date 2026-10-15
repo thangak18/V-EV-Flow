@@ -178,6 +178,9 @@ export const SimulationResultSchema = z.strictObject({
 
 export const WhatIfResultSchema = z
   .strictObject({
+    prediction_mode: z.literal("capacity_retrained").optional(),
+    capacity_model_version: NonEmptyString.optional(),
+    capacity_history_hash: FixtureHashSchema.optional(),
     before: SimulationResultSchema,
     after: SimulationResultSchema,
     change: z.discriminatedUnion("kind", [
@@ -200,12 +203,27 @@ export const WhatIfResultSchema = z
     contract_version: z.literal("0.1.0"),
   })
   .superRefine((result, context) => {
+    if (result.prediction_mode === "capacity_retrained") {
+      if (
+        result.change.kind !== "add_ports" ||
+        result.capacity_model_version !== result.after.model_version ||
+        !result.capacity_history_hash
+      )
+        context.addIssue({
+          code: "custom",
+          message: "capacity model evidence mismatch",
+        });
+    } else if (
+      result.before.model_version !== result.after.model_version ||
+      result.capacity_model_version ||
+      result.capacity_history_hash
+    )
+      context.addIssue({ code: "custom", message: "what-if model mismatch" });
     for (const key of [
       "scenario",
       "seed",
       "strategy",
       "fixture_hash",
-      "model_version",
       "contract_version",
     ] as const) {
       if (result.before[key] !== result.after[key])
@@ -244,3 +262,30 @@ export function parseApiResponse<S extends z.ZodType>(
   }
   return parsed.data;
 }
+
+export const PlaceSuggestionsSchema = z.strictObject({
+  predictions: z.array(
+    z.strictObject({ place_id: NonEmptyString, description: NonEmptyString }),
+  ),
+  provider: z.literal("goong"),
+});
+export const PlaceLocationSchema = z.strictObject({
+  place_id: NonEmptyString,
+  label: NonEmptyString,
+  provider: z.literal("goong"),
+  lat: z.number().finite().min(-90).max(90),
+  lng: z.number().finite().min(-180).max(180),
+});
+export const RuntimeContextSchema = z.strictObject({
+  clock_mode: z.enum(["mock", "replay", "live"]),
+  scenario: ScenarioSchema,
+  data_type: DataTypeSchema,
+  observed_at: AwareIsoDateTime.nullable(),
+  history_start: AwareIsoDateTime.nullable(),
+  history_end: AwareIsoDateTime.nullable(),
+  max_horizon_minutes: z.number().int().positive(),
+  places_available: z.boolean(),
+  available: z.boolean(),
+  message: z.string(),
+  allocation_backend: z.enum(["memory", "sqlite"]),
+});
