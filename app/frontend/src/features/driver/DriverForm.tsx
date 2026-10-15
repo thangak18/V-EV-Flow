@@ -177,6 +177,7 @@ export function DriverForm({
             value={field === "origin" ? origin : destination}
             locations={locations}
             enabled={runtime?.places_available ?? false}
+            disabled={runtimeLoading || !!runtimeError}
             resolved={field === "origin" ? resolvedOrigin : resolvedDestination}
             invalid={routeInvalid}
             onChange={(value) => onLocationChange?.(field, value)}
