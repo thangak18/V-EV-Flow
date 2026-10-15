@@ -1,5 +1,7 @@
 # Backend demo runbook
 
+This runbook records the original C9 fake-model smoke. For the integrated calibrated model and stateful runner use [runtime-integration.md](runtime-integration.md); fake-only/model-unavailable statements below are historical.
+
 Run every command from the repository root. This guide describes the C7/C8
 composition on `feat/recommend-api`, not a live charger service. See
 [verification evidence](backend-verification-evidence.md) for tested revision,

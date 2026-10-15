@@ -30,6 +30,11 @@ test("driver renders real calibrated API result and model provenance", async ({
     `${Math.round(result.primary.p_available * 100)}%`,
   );
   await expect(page.getByText("Dữ liệu mô phỏng").first()).toBeVisible();
+  await page.screenshot({
+    path: "test-results/runtime-driver.png",
+    fullPage: true,
+    animations: "disabled",
+  });
   await page.getByText("Chi tiết kỹ thuật", { exact: true }).click();
   await expect(
     page.getByText(`Phiên bản mô hình: ${result.model_version}`, {
@@ -37,10 +42,6 @@ test("driver renders real calibrated API result and model provenance", async ({
     }),
   ).toBeVisible();
   await expect(page.getByLabel("Station text list")).toBeVisible();
-  await page.screenshot({
-    path: "test-results/runtime-driver.png",
-    fullPage: true,
-  });
 });
 
 test("operator displays real 100-vehicle runs for all three scenarios", async ({
@@ -110,6 +111,7 @@ test("operator displays real 100-vehicle runs for all three scenarios", async ({
     await page.screenshot({
       path: `test-results/runtime-operator-${scenario}.png`,
       fullPage: true,
+      animations: "disabled",
     });
   }
   expect(new Set(pressures).size).toBeGreaterThan(1);

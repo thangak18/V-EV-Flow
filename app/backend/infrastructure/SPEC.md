@@ -46,12 +46,12 @@ Mock adapters label mock data. File-backed station/status inputs are simulated u
 | `DATA_BACKEND=file` | FileStationRepository at `DATA_DIR/generated/stations.json`; one ParquetStatusRepository per Scenario at `DATA_DIR/generated/station_status.parquet` |
 | `DATA_BACKEND=real` | StartupConfigurationError; no approved partner adapter |
 | `PREDICTOR_BACKEND=fake` | One FakePredictor per Scenario; deterministic 0.75, fake-v1, mock; no Parquet/ML access |
-| `PREDICTOR_BACKEND=model` | Gated; missing MODEL_DIR fails Settings, existing directory still fails composition |
+| `PREDICTOR_BACKEND=model` | Requires file data + compatible trusted model directory; no implicit fake fallback |
 | `ROUTE_BACKEND=fake` | Offline FakeRouteProvider: straight-line distance and assumed 40 km/h; source mock |
 | `ROUTE_BACKEND=goong` | GoongRouteProvider + RouteCache + async HTTP client; authorized REST key/network required on cache miss |
-| Simulation | FakeSimulationRunner + FakeAllocationStrategy, regardless of data mode; real public runner binding is deferred |
+| Simulation | Fake by default; stateful selection binds a fresh public runner and real per-request strategy with simulated model data |
 
-The supported offline combinations are mock/fake/fake and file/fake/fake with valid files. Goong routing can replace fake routing with its prerequisites; it does not activate a model or make simulator output measured. No unavailable selection silently falls back. Settings is the only environment reader; consumers receive ports and scenario maps from API composition.
+The supported offline data/predictor/route combinations are mock/fake/fake, file/fake/fake and file/model/fake with valid files. `SIMULATION_BACKEND=stateful` additionally requires file/model and a matching producer manifest/scenario YAML. Goong routing can replace fake routing with its prerequisites; it does not activate a model or make simulator output measured. No unavailable selection silently falls back. Settings is the only environment reader; consumers receive ports and scenario maps from API composition.
 
 ### File bridge, validation and provenance
 

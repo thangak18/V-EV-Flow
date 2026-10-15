@@ -29,13 +29,11 @@ const planResult = {
 describe("DriverPage", () => {
   test("labels the directory source before submit and the prediction source afterwards", async () => {
     const client = createMockApiClient({
-      listStations: vi
-        .fn()
-        .mockResolvedValue({
-          stations: [],
-          data_type: "simulated",
-          source_notes: [],
-        }),
+      listStations: vi.fn().mockResolvedValue({
+        stations: [],
+        data_type: "simulated",
+        source_notes: [],
+      }),
       recommend: vi
         .fn()
         .mockResolvedValue({ ...planResult, data_type: "mixed" }),
