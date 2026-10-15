@@ -123,7 +123,8 @@ def test_partner_auth_idempotency_conflict_freshness_and_provenance(tmp_path: Pa
                 == 1
             )
         context = client.get("/api/runtime").json()
-        assert context["available"] is True and context["clock_mode"] == "live"
+        assert context["available"] is False and context["clock_mode"] == "live"
+        assert context["history_end"] is not None  # feed accepted, fake model cannot serve live
         assert context["data_type"] == "real"
         assert client.get("/api/runtime?scenario=tet").json()["available"] is False
         changed = {**row, "ports_free": row["ports_free"] - 1, "ports_busy": 1}

@@ -41,6 +41,9 @@ def runtime_context(
             if available
             else "Chưa có snapshot đối tác đủ mới và đầy đủ cho các trạm."
         )
+        if settings.predictor_backend != "model":
+            available = False
+            message = "Cổng nhận dữ liệu đã bật, cần cấu hình model trước khi dự báo live."
     elif settings.data_backend == "file":
         repository = container.status_repositories_by_scenario[scenario]
         if isinstance(repository, ParquetStatusRepository):
