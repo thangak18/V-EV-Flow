@@ -78,6 +78,14 @@ def test_whatif_is_explicitly_not_ready() -> None:
     assert response.json()["code"] == "FEATURE_NOT_READY"
 
 
+def test_whatif_preserves_legacy_bodyless_503_and_rejects_malformed_body() -> None:
+    with TestClient(create_app()) as client:
+        response = client.post("/api/whatif")
+        assert response.status_code == 503
+        assert response.json()["code"] == "FEATURE_NOT_READY"
+        assert client.post("/api/whatif", json={}).status_code == 422
+
+
 def test_invalid_prediction_is_422() -> None:
     response = TestClient(create_app()).post(
         "/api/predict",

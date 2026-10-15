@@ -303,6 +303,15 @@ def test_whatif_preserves_fixture_population_and_is_reproducible(
             assert any("model" in assumption for assumption in result["assumptions"])
 
 
+def test_bodyless_whatif_keeps_legacy_503_even_with_stateful_runner(runtime_files) -> None:
+    root, _, _ = runtime_files
+    with TestClient(create_app(settings_for(root, simulation_backend="stateful"))) as client:
+        response = client.post("/api/whatif")
+        assert response.status_code == 503
+        assert response.json()["code"] == "FEATURE_NOT_READY"
+        assert client.post("/api/whatif", json={}).status_code == 422
+
+
 def test_whatif_rejects_unknown_station_without_mutating_driver(runtime_files) -> None:
     root, _, _ = runtime_files
     app = create_app(settings_for(root, simulation_backend="stateful"))

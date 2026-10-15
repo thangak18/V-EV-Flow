@@ -85,4 +85,4 @@ Executable setup, generation, all endpoints, error/retry/reset sequences and tro
 
 ## P1 contract extension
 
-POST /whatif now requires WhatIfRequest and returns WhatIfResult in file/model/stateful mode, or typed 503 when unavailable. SHAP/shift flags default false for existing compositions; api.demo enables them. Optional prediction/plan explanations and shift estimates are omitted when absent. OpenAPI/types and examples are generated/validated together; update strict consumers before enabling P1. See docs/runbooks/p1-demo.md.
+POST /whatif accepts a typed WhatIfRequest and returns WhatIfResult in file/model/stateful mode, or typed 503 when unavailable. Legacy bodyless/null requests preserve 503 without running an experiment; malformed supplied bodies return 422. SHAP/shift flags default false for existing compositions; api.demo enables them. Optional prediction/plan explanations and shift estimates are omitted when absent. OpenAPI/types and examples are generated/validated together; update strict consumers before enabling P1. See docs/runbooks/p1-demo.md.

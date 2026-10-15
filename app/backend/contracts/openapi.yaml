@@ -1039,8 +1039,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WhatIfRequest'
-        required: true
+              anyOf:
+              - $ref: '#/components/schemas/WhatIfRequest'
+              - type: 'null'
+              title: Request
       responses:
         '200':
           content:

@@ -94,8 +94,10 @@ def simulate(
     responses={404: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
 )
 def whatif(
-    request: WhatIfRequest, container: AppContainer = Depends(get_container)
+    request: WhatIfRequest | None = None, container: AppContainer = Depends(get_container)
 ) -> WhatIfResult:
+    if request is None:
+        raise FeatureNotReadyError("what-if requires an explicit experiment request")
     if container.whatif_simulation is None:
         raise FeatureNotReadyError("what-if requires file/model/stateful mode")
     if request.seed < 0:

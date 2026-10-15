@@ -73,8 +73,9 @@ trong case này. Đây không phải kết quả vận hành thật hay cam kế
 ## Migration và kiểm thử
 
 Đây là PR contract P1 riêng: POST /whatif trước chỉ trả 503 và chưa có body;
-nay body bắt buộc, discriminator kind rõ ràng, valid request ở mock vẫn trả 503,
-body sai/thiếu trả 422, station không có trả 404. Consumer cũ strict-parse cần
+nay thí nghiệm nhận body typed với discriminator kind rõ ràng. Client cũ không
+gửi body (hoặc null) vẫn nhận 503, không tự chạy mặc định; body có nội dung sai
+schema trả 422, valid request ở mock trả 503, station không có trả 404. Consumer cũ strict-parse cần
 cập nhật cùng backend khi bật optional explanation/shift fields. Binary giữ
 contract 0.1.0; không đổi manifest/model/calibrator để bật tính năng runtime.
 

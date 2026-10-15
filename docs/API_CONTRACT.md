@@ -138,7 +138,7 @@ scenario/seed/strategy/model_version/event fixture/mẫu số và khác fingerpr
 cấu hình. UI tính delta từ số trả về, không hard-code cải thiện.
 
 Chế độ file/model/stateful mới chạy được; valid request ở fake mode trả 503
-FEATURE_NOT_READY. Thiếu/sai body trả 422; station không có trả 404. What-if là
+FEATURE_NOT_READY. Không gửi body (hoặc null) giữ 503 của client cũ, không chạy thí nghiệm mặc định; body có nội dung sai schema trả 422; station không có trả 404. What-if là
 read-only, không commit Driver allocations, không sửa dataset/artifact. Thêm cổng
 chỉ đổi capacity của simulator và ranking; model giữ dữ liệu/capacity gốc, chưa
 retrain dự báo cho capacity mới. Quyền truy cập Goong không đổi nhãn simulated.
