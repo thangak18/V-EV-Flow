@@ -17,7 +17,7 @@ RouteKind = Literal["fake", "goong"]
 class Settings(BaseSettings):
     """Application settings loaded from environment variables and defaults."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
     data_backend: BackendKind = "mock"
     partner_source: str | None = None

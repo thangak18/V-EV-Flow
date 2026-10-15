@@ -26,7 +26,7 @@ def test_places_resolve_coordinates_cache_and_redact_errors() -> None:
 
     def provider(request: httpx.Request) -> httpx.Response:
         calls.append(request.url.path)
-        assert request.url.params["api_key"] == "test-credential"
+        assert request.url.params["api_key"] == "test-credential"  # pragma: allowlist secret
         if request.url.path.endswith("autocomplete"):
             return httpx.Response(
                 200,
@@ -71,7 +71,7 @@ def test_invalid_provider_data_is_503_not_fake_coordinates() -> None:
         )
     )
     app = create_app(
-        Settings(places_backend="goong", goong_rest_api_key="test"),
+        Settings(places_backend="goong", goong_rest_api_key="test"),  # pragma: allowlist secret
         route_client=external,
     )
     with TestClient(app) as client:
