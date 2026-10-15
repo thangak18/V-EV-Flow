@@ -566,3 +566,59 @@ def test_route_providers_conform_to_frozen_port(tmp_path: Path) -> None:
         import asyncio
 
         asyncio.run(client.aclose())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("temporary_status", [429, 503])
+async def test_configured_single_retry_recovers_without_caching_failure(
+    tmp_path, temporary_status
+) -> None:
+    from app.backend.infrastructure.routing.goong import GoongRouteProvider
+
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return (
+            httpx.Response(temporary_status)
+            if calls == 1
+            else httpx.Response(200, json={"routes": [valid_route()]})
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = GoongRouteProvider(
+            TEST_GOONG_KEY,
+            client,
+            RouteCache(tmp_path, timedelta(minutes=5)),
+            clock=lambda: NOW,
+            retries=1,
+        )
+        recovered = await provider.get_routes(valid_request())
+        assert await provider.get_routes(valid_request()) == recovered
+    assert calls == 2
+
+
+@pytest.mark.asyncio
+async def test_configured_retry_never_retries_permission_failure(tmp_path) -> None:
+    from app.backend.infrastructure.routing.goong import GoongRouteProvider
+
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(403)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = GoongRouteProvider(
+            TEST_GOONG_KEY,
+            client,
+            RouteCache(tmp_path, timedelta(minutes=5)),
+            clock=lambda: NOW,
+            retries=1,
+        )
+        with pytest.raises(RouteUnavailableError) as error:
+            await provider.get_routes(valid_request())
+    assert calls == 1
+    assert error.value.details == {"failure": "upstream_http", "status": 403}
