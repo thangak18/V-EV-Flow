@@ -10,7 +10,7 @@ from app.backend.core.settings import Settings
 
 
 def test_launcher_keeps_runtime_snapshots_in_workspace_and_cleans_its_session(
-    tmp_path, monkeypatch
+    tmp_path: Path, monkeypatch
 ):
     release = tmp_path / "release"
     for name in [
