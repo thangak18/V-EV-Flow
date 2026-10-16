@@ -26,3 +26,15 @@ test("Advanced cannot collapse while Battery is invalid", async ({ page }) => {
   await expect(details).toHaveAttribute("open", "");
   await expect(page.getByLabel(/Dung lượng pin/)).toBeVisible();
 });
+
+test("vehicle settings contain only vehicle inputs and the data clock is readonly", async ({page})=>{
+  const context=await (await page.request.get('/api/runtime?scenario=normal')).json();
+  await page.goto('/driver');
+  const details=page.locator('details.driver-advanced');
+  await details.locator('summary').click();
+  await expect(details.locator('input')).toHaveCount(2);
+  await expect(page.getByLabel(/Dung lượng pin/)).toBeVisible();
+  await expect(page.getByLabel(/Tiêu hao/)).toBeVisible();
+  await expect(page.getByLabel(/Giờ quan sát/)).toHaveCount(0);
+  await expect(page.locator('.data-snapshot-note time')).toHaveAttribute('datetime',context.observed_at);
+});

@@ -1,7 +1,24 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
+import type { RuntimeContext } from "../../services/api";
 import { DriverForm } from "./DriverForm";
+
+function replayContext(observed_at: string | null): RuntimeContext {
+  return {
+    clock_mode: "replay",
+    scenario: "normal",
+    data_type: "simulated",
+    observed_at,
+    history_start: null,
+    history_end: null,
+    max_horizon_minutes: 180,
+    places_available: false,
+    available: true,
+    message: "Historical fixture",
+    allocation_backend: "memory",
+  };
+}
 
 function renderForm(overrides: { pending?: boolean } = {}) {
   const onSubmit = vi.fn();
@@ -182,16 +199,63 @@ describe("DriverForm", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  test("rejects demo time without timezone", () => {
-    const { onSubmit } = renderForm();
-    fireEvent.change(screen.getByLabelText(/Giờ quan sát/i), {
-      target: { value: "abc" },
+  test.each([null, "abc", "2026-10-13T16:00:00Z"])(
+    "rejects invalid backend observation %s without asking the driver to edit it",
+    (value) => {
+      const onSubmit = vi.fn();
+      const onRetryRuntime = vi.fn();
+      render(
+        <DriverForm
+          pending={false}
+          runtime={replayContext(value)}
+          onSubmit={onSubmit}
+          onRetryRuntime={onRetryRuntime}
+        />,
+      );
+      expect(screen.queryByLabelText(/Giờ quan sát/i)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+      ).toBeDisabled();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /Chưa lấy được mốc dữ liệu trạm hợp lệ/,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Thử kết nối lại" }));
+      expect(onRetryRuntime).toHaveBeenCalledTimes(1);
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(
+        screen.getByText("Thông số xe").closest("details"),
+      ).not.toHaveAttribute("open");
+    },
+  );
+
+  test("shows a readonly data timestamp and submits the latest backend clock", () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(
+      <DriverForm
+        pending={false}
+        runtime={replayContext("2026-10-13T16:00:00+07:00")}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(screen.queryByLabelText(/Giờ quan sát/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Dữ liệu lúc/)).toHaveTextContent("16:00");
+    expect(screen.getByText(/Dữ liệu lúc/)).toHaveTextContent("13/10/2026");
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kế hoạch sạc" }));
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({
+      observed_at: "2026-10-13T16:00:00+07:00",
+      depart_time: "2026-10-13T16:00:00+07:00",
     });
-    expect(
-      screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }),
-    ).toBeDisabled();
-    expect(screen.getByRole("alert")).toHaveTextContent(/\+07:00, căn 5 phút/i);
-    expect(onSubmit).not.toHaveBeenCalled();
+    rerender(
+      <DriverForm
+        pending={false}
+        runtime={replayContext("2026-10-13T16:05:00+07:00")}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kế hoạch sạc" }));
+    expect(onSubmit.mock.calls[1]![0].observed_at).toBe(
+      "2026-10-13T16:05:00+07:00",
+    );
   });
 
   test("rejects battery and consumption of zero", () => {

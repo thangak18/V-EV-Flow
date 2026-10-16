@@ -72,8 +72,7 @@ export function DriverForm({
   const [consumption, setConsumption] = useState("0.18");
   const [connector, setConnector] = useState("CCS2");
   const [scenario, setScenario] = useState<Scenario>("normal");
-  const [demoTimeDraft, setDemoTime] = useState<string | null>(null);
-  const demoTime = demoTimeDraft ?? runtime?.observed_at ?? DEFAULT_DEMO_TIME;
+  const observedAt = runtime ? (runtime.observed_at ?? "") : DEFAULT_DEMO_TIME;
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [lastPayload, setLastPayload] = useState<Omit<
     RecommendationRequest,
@@ -102,13 +101,13 @@ export function DriverForm({
     !selectedDestination ||
     (selectedOrigin.lat === selectedDestination.lat &&
       selectedOrigin.lng === selectedDestination.lng);
-  const timeInvalid = !isPlus07FiveMinuteBucket(demoTime);
+  const timeInvalid = !isPlus07FiveMinuteBucket(observedAt);
   const socInvalid = parsedSoc === null || parsedSoc < 0 || parsedSoc > 100;
   const batteryInvalid = parsedBattery === null || parsedBattery <= 0;
   const consumptionInvalid =
     parsedConsumption === null || parsedConsumption <= 0;
   const connectorInvalid = connector.trim().length === 0;
-  const advancedInvalid = timeInvalid || batteryInvalid || consumptionInvalid;
+  const advancedInvalid = batteryInvalid || consumptionInvalid;
   const detailsOpen = advancedInvalid || advancedOpen;
 
   function touchAdvanced() {
@@ -137,6 +136,9 @@ export function DriverForm({
     event.preventDefault();
     if (
       pending ||
+      runtimeLoading ||
+      !!runtimeError ||
+      runtime?.available === false ||
       invalid ||
       !selectedOrigin ||
       !selectedDestination ||
@@ -153,7 +155,7 @@ export function DriverForm({
         lat: selectedDestination.lat,
         lng: selectedDestination.lng,
       },
-      observed_at: demoTime,
+      observed_at: observedAt,
       // Live observation may lag the click by a few minutes. Keep that source
       // timestamp for features, but depart now instead of replaying a past trip.
       depart_time:
@@ -161,7 +163,7 @@ export function DriverForm({
           ? new Date(Date.now() + 7 * 60 * 60 * 1000)
               .toISOString()
               .replace("Z", "+07:00")
-          : demoTime,
+          : observedAt,
       scenario,
       vehicle: {
         soc_pct: parsedSoc,
@@ -222,7 +224,6 @@ export function DriverForm({
             value={scenario}
             onChange={(event) => {
               setScenario(event.target.value as Scenario);
-              setDemoTime(null);
               onScenarioChange?.(event.target.value as Scenario);
             }}
           >
@@ -321,21 +322,6 @@ export function DriverForm({
                 aria-invalid={consumptionInvalid}
               />
             </label>
-            <label>
-              Giờ quan sát (+07:00)
-              <input
-                className="input-datetime"
-                type="text"
-                value={demoTime}
-                onChange={(event) => {
-                  touchAdvanced();
-                  setDemoTime(event.target.value);
-                }}
-                aria-invalid={timeInvalid}
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
           </div>
         </details>
       </div>
@@ -351,14 +337,33 @@ export function DriverForm({
         {runtime
           ? ` ${runtime.clock_mode === "replay" ? "Đang xem dữ liệu mô phỏng, không phải trạng thái trực tiếp." : runtime.clock_mode === "live" ? "Trạng thái từ nguồn trạm." : "Dữ liệu minh họa."} Dự báo tối đa ${runtime.max_horizon_minutes} phút.`
           : ""}
+        {runtime?.observed_at && !timeInvalid ? (
+          <span className="data-snapshot-note">
+            Dữ liệu lúc{" "}
+            <time dateTime={observedAt}>
+              {new Date(observedAt).toLocaleString("vi-VN", {
+                timeZone: "Asia/Ho_Chi_Minh",
+                hour: "2-digit",
+                minute: "2-digit",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </time>{" "}
+            (giờ Việt Nam) · Tự động lấy từ hệ thống.
+          </span>
+        ) : null}
       </p>
       {runtimeLoading ? (
         <p className="connection-state" role="status">
           Đang kết nối dữ liệu trạm…
         </p>
-      ) : runtimeError ? (
+      ) : runtimeError || (runtime && timeInvalid) ? (
         <div className="connection-state connection-state--error" role="alert">
-          <span>{runtimeError}</span>
+          <span>
+            {runtimeError ||
+              "Chưa lấy được mốc dữ liệu trạm hợp lệ. Vui lòng thử kết nối lại."}
+          </span>
           {onRetryRuntime ? (
             <button
               type="button"
@@ -370,13 +375,11 @@ export function DriverForm({
           ) : null}
         </div>
       ) : null}
-      {invalid ? (
+      {invalid && !timeInvalid ? (
         <p className="field-error driver-toolbar__error" role="alert">
           {routeInvalid
             ? "Chọn hai địa điểm khác nhau trong danh sách gợi ý."
-            : timeInvalid
-              ? "Giờ quan sát phải là +07:00, căn 5 phút (ví dụ 2026-10-13T16:00:00+07:00)."
-              : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
+            : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
         </p>
       ) : null}
     </form>

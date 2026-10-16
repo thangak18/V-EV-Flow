@@ -120,3 +120,13 @@ stale focus details. Closing the card retains the current camera. Missing statio
 coordinates disable location actions rather than guessing a position. The
 schematic adapter highlights and zooms the chosen diagram point, retaining its
 non-navigation label. These actions do not call recommend or add allocations.
+
+## Driver data clock
+
+The vehicle-settings disclosure contains battery capacity and consumption only.
+The Driver cannot edit observed_at: it comes from the runtime context and is
+shown read-only as “Dữ liệu lúc …” in Vietnam time in the source note. A missing
+or invalid supplied timestamp blocks submission and offers connection retry;
+it never opens vehicle settings or asks the driver to repair an ISO timestamp.
+Backend-clock updates immediately affect subsequent request timestamps. Live
+mode retains click-time departure; replay mode retains the dataset timeline.

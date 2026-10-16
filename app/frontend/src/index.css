@@ -2245,3 +2245,13 @@ dd {
 .map-focus-card {
   overflow-wrap: anywhere;
 }
+.data-snapshot-note {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--muted);
+  font-size: 0.73rem;
+}
+.data-snapshot-note time {
+  font-weight: 650;
+  color: var(--ink);
+}
