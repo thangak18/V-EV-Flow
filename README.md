@@ -31,6 +31,7 @@ Dự báo và điều phối nhu cầu sạc xe điện trên hành lang cao t�
 | [API](docs/API_CONTRACT.md) | Bảy endpoint dự kiến, request/response và quy tắc lỗi |
 | [ML và phân bổ](docs/ML_AND_ALLOCATION.md) | Nhãn, feature, hiệu chỉnh, ranking và đánh giá |
 | [Hai giao diện](docs/UI_SPEC.md) | Driver/Operator, bố cục và thứ tự dựng |
+| [Hướng dẫn sử dụng Driver và Operator](docs/USER_GUIDE.md) | Giải thích từng ô, nút, chỉ số; thao tác và xử lý lỗi |
 | [Demo và checklist](docs/DEMO.md) | Demo 20% pin, 100 xe, dự phòng và việc hỏi mentor |
 | [Làm việc chung](CONTRIBUTING.md) | Nhánh, PR, integration và quy tắc repo |
 | [Phase 0 handoff](docs/runbooks/phase-0-handoff.md) | Đọc theo thứ tự, gates, OpenAPI và tạo nhánh owner |
