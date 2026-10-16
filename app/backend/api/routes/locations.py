@@ -8,6 +8,7 @@ from app.backend.api.dependencies import AppContainer, get_container
 from app.backend.api.errors import FeatureNotReadyError
 from app.backend.contracts.errors import ErrorResponse
 from app.backend.contracts.locations import PlaceLocation, PlaceSuggestions
+from app.backend.contracts.recommendation import RouteRequest, RouteResult
 
 router = APIRouter()
 
@@ -42,3 +43,17 @@ async def resolve_place(
     if container.places is None:
         raise FeatureNotReadyError("Goong place search is not configured")
     return await container.places.detail(place_id, str(session) if session else None)
+
+
+@router.post(
+    "/routes",
+    response_model=tuple[RouteResult, ...],
+    operation_id="mapRoutes",
+    responses={503: {"model": ErrorResponse}},
+)
+async def map_routes(
+    request: RouteRequest,
+    container: AppContainer = Depends(get_container),
+) -> tuple[RouteResult, ...]:
+    """Read-only road geometry; never records recommendations or allocations."""
+    return await container.routes.get_routes(request)

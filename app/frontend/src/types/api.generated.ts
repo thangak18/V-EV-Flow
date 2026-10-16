@@ -157,6 +157,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Map Routes
+         * @description Read-only road geometry; never records recommendations or allocations.
+         */
+        post: operations["mapRoutes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runtime": {
         parameters: {
             query?: never;
@@ -521,6 +541,28 @@ export interface components {
             contract_version: string;
             /** Reset */
             reset: boolean;
+        };
+        /** RouteRequest */
+        RouteRequest: {
+            /**
+             * Depart Time
+             * Format: date-time
+             */
+            depart_time: string;
+            destination: components["schemas"]["Coordinate"];
+            origin: components["schemas"]["Coordinate"];
+            vehicle?: components["schemas"]["Vehicle"] | null;
+        };
+        /** RouteResult */
+        RouteResult: {
+            /** Distance Km */
+            distance_km: number;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Geometry */
+            geometry?: components["schemas"]["Coordinate"][] | null;
+            /** Source */
+            source: string;
         };
         /** RuntimeContext */
         RuntimeContext: {
@@ -1090,6 +1132,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mapRoutes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

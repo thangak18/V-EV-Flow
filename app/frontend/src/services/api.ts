@@ -3,6 +3,7 @@ import type { components, operations } from "../types/api.generated";
 import { ApiError, isAbortError } from "./errors";
 import {
   parseApiResponse,
+  MapRoutesSchema,
   PlaceSuggestionsSchema,
   PlaceLocationSchema,
   RuntimeContextSchema,
@@ -40,6 +41,12 @@ export class ApiClient {
     private readonly fetcher: typeof fetch = (...args) => fetch(...args),
   ) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
+  }
+
+  getRoutes(body: components["schemas"]["RouteRequest"], signal?: AbortSignal) {
+    return this.request("/routes", { method: "POST", body, signal }).then(
+      (response) => parseApiResponse(MapRoutesSchema, response, "mapRoutes"),
+    );
   }
 
   runtime(scenario: Scenario, signal?: AbortSignal) {

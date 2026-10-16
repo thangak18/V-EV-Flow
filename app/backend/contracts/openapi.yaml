@@ -563,6 +563,55 @@ components:
       - reset
       title: ResetResponse
       type: object
+    RouteRequest:
+      additionalProperties: false
+      properties:
+        depart_time:
+          format: date-time
+          title: Depart Time
+          type: string
+        destination:
+          $ref: '#/components/schemas/Coordinate'
+        origin:
+          $ref: '#/components/schemas/Coordinate'
+        vehicle:
+          anyOf:
+          - $ref: '#/components/schemas/Vehicle'
+          - type: 'null'
+      required:
+      - origin
+      - destination
+      - depart_time
+      title: RouteRequest
+      type: object
+    RouteResult:
+      additionalProperties: false
+      properties:
+        distance_km:
+          minimum: 0.0
+          title: Distance Km
+          type: number
+        duration_minutes:
+          minimum: 0.0
+          title: Duration Minutes
+          type: number
+        geometry:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/Coordinate'
+            type: array
+          - type: 'null'
+          title: Geometry
+        source:
+          minLength: 1
+          title: Source
+          type: string
+      required:
+      - distance_km
+      - duration_minutes
+      - source
+      title: RouteResult
+      type: object
     RuntimeContext:
       additionalProperties: false
       properties:
@@ -1334,6 +1383,39 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
       summary: Reset
+  /api/routes:
+    post:
+      description: Read-only road geometry; never records recommendations or allocations.
+      operationId: mapRoutes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/RouteResult'
+                title: Response Maproutes
+                type: array
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+      summary: Map Routes
   /api/runtime:
     get:
       operationId: runtimeContext

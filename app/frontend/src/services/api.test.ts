@@ -537,3 +537,43 @@ test("whatif rejects missing change and valid but mismatched experiment response
   );
   expect((await client.whatif(body)).change.kind).toBe("add_ports");
 });
+
+test("map routes validate provider geometry and forward cancellation", async () => {
+  const body = {
+    origin: validRecommend.origin,
+    destination: validRecommend.destination,
+    depart_time: validRecommend.depart_time,
+  };
+  const controller = new AbortController();
+  const fetcher = mockFetch(200, [
+    {
+      distance_km: 20,
+      duration_minutes: 30,
+      source: "goong-directions-v2",
+      geometry: [body.origin, body.destination],
+    },
+  ]);
+  const api = new ApiClient("/api", fetcher as typeof fetch);
+  expect((await api.getRoutes(body, controller.signal))[0]?.geometry).toEqual([
+    body.origin,
+    body.destination,
+  ]);
+  expect(fetcher).toHaveBeenCalledWith(
+    "/api/routes",
+    expect.objectContaining({ method: "POST", signal: controller.signal }),
+  );
+  const malformed = new ApiClient(
+    "/api",
+    mockFetch(200, [
+      {
+        distance_km: 20,
+        duration_minutes: 30,
+        source: "goong-directions-v2",
+        geometry: [{ lat: 999, lng: 0 }],
+      },
+    ]) as typeof fetch,
+  );
+  await expect(malformed.getRoutes(body)).rejects.toMatchObject({
+    code: "INVALID_API_RESPONSE",
+  });
+});

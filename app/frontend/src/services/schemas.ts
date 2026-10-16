@@ -289,3 +289,20 @@ export const RuntimeContextSchema = z.strictObject({
   message: z.string(),
   allocation_backend: z.enum(["memory", "sqlite"]),
 });
+
+export const MapRoutesSchema = z.array(
+  z.strictObject({
+    distance_km: z.number().finite().nonnegative(),
+    duration_minutes: z.number().finite().nonnegative(),
+    geometry: z
+      .array(
+        z.strictObject({
+          lat: z.number().finite().min(-90).max(90),
+          lng: z.number().finite().min(-180).max(180),
+        }),
+      )
+      .nullable()
+      .optional(),
+    source: NonEmptyString,
+  }),
+);

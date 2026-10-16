@@ -197,3 +197,12 @@ Request `{}`; response `{ "reset": true }`. Xóa dict phân bổ và request cac
   single-variable causal estimate.
 
 See runtime-completion.md for adapter, auth, storage, time and deployment constraints.
+
+### Read-only map geometry
+
+`POST /api/routes` accepts RouteRequest (origin, destination, depart_time and
+optional vehicle) and returns RouteResult[]. Geometry is the provider-supplied
+coordinate sequence, or null when unavailable. Empty alternatives mean no road
+route; provider outages return sanitized ROUTE_UNAVAILABLE/503. This operation
+does not create recommendations or virtual allocations. It reuses existing DTOs;
+OpenAPI and client types are regenerated from the registered endpoint.

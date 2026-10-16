@@ -44,6 +44,7 @@ export function createMockApiClient(
       data_type: "mock",
       source_notes: [],
     }),
+    getRoutes: vi.fn().mockResolvedValue([]),
     recommend: vi.fn(),
     predict: vi.fn(),
     getPressure: vi.fn(),

@@ -97,3 +97,12 @@ simulated history. Capacity variants are loaded only for matched add_ports AI
 experiments and include different model version/history evidence. Missing variants
 retain the declared frozen experiment. See runtime-completion.md and evidence for
 new 180-minute model, multi-seed benchmark, persistent state and packaging.
+
+## Read-only map geometry
+
+`POST /api/routes` (`mapRoutes`) accepts the existing RouteRequest and returns
+RouteResult alternatives from the configured RouteProvider/cache, including
+provider geometry where available. This endpoint never ranks stations, records
+virtual load or reserves capacity. An empty list means no route; a null geometry
+must not be replaced by a straight line presented as a road. Goong credentials
+remain server-side. Provider failure uses the existing sanitized 503 mapping.
