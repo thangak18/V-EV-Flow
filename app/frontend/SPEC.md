@@ -190,3 +190,7 @@ shifted count and unchanged population. Bars show the two vehicle groups only,
 not a fabricated hourly histogram. Its unchanged station map is optional and
 mounted only when coverage is expanded; it has no misleading before/after map
 switch. Network outcome metrics remain in the comparison above.
+
+Forecast loading locks only the selected scenario/time. Changing either while
+an older request is pending allows applying the new valid selection; starting
+that request aborts the old one. Late responses cannot overwrite the new KPIs.

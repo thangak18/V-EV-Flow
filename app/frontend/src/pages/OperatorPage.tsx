@@ -238,7 +238,7 @@ export function OperatorPage() {
           }}
           onTimeChange={setTime}
           onApply={() => void pressure.load(scenario, time)}
-          pending={pressure.status === "loading" || !runtimeReady}
+          pending={loadingForecast || !runtimeReady}
         />
         <AreaFilter
           embedded

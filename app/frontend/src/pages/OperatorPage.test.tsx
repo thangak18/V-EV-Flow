@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -432,3 +433,54 @@ test("operator uses the backend clock and converts optional history selection to
     areaResponse.time,
   );
 });
+
+test.each(["scenario", "time"])(
+  "a pending forecast does not lock a new %s selection",
+  async (selection) => {
+    let finishOld!: (value: typeof areaResponse) => void;
+    const getPressure = vi
+      .fn()
+      .mockImplementation(async (query) => ({ ...areaResponse, ...query }))
+      .mockImplementationOnce(
+        () =>
+          new Promise<typeof areaResponse>((resolve) => {
+            finishOld = resolve;
+          }),
+      );
+    renderAreaForecast(getPressure);
+    const apply = await screen.findByRole("button", {
+      name: "Áp dụng kịch bản",
+    });
+    await waitFor(() => expect(apply).toBeEnabled());
+    fireEvent.click(apply);
+    expect(apply).toBeDisabled();
+    if (selection === "scenario") {
+      fireEvent.change(screen.getByLabelText("Kịch bản"), {
+        target: { value: "tet" },
+      });
+    } else {
+      fireEvent.change(screen.getByLabelText("Xem dữ liệu tại"), {
+        target: { value: "2026-10-13T18:00" },
+      });
+    }
+    await waitFor(() => expect(apply).toBeEnabled());
+    fireEvent.click(apply);
+    await waitFor(() => expect(getPressure).toHaveBeenCalledTimes(2));
+    expect(getPressure.mock.calls[0]?.[1].aborted).toBe(true);
+    const kpis = within(screen.getByLabelText("Tổng quan khu vực"));
+    expect(await kpis.findByText("20%")).toBeInTheDocument();
+    await act(async () => {
+      finishOld({
+        ...areaResponse,
+        stations: [
+          {
+            ...areaResponse.stations[0]!,
+            p_available: 0.99,
+            pressure_score: 0.01,
+          },
+        ],
+      });
+    });
+    expect(kpis.getByText("20%")).toBeInTheDocument();
+  },
+);
