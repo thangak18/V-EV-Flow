@@ -2470,3 +2470,54 @@ dd {
   margin-top: -12px;
   transform: translate(-80%, -100%);
 }
+
+.shift-schedule-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.shift-schedule-comparison article {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+}
+.shift-schedule-comparison article:last-child {
+  background: var(--accent-soft);
+}
+.shift-schedule-comparison h4 {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.shift-schedule-comparison article > strong {
+  display: block;
+  font-size: 1.2rem;
+  color: var(--ink);
+}
+.shift-schedule-comparison p {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.shift-schedule-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.shift-schedule-bar__original {
+  background: #94a3b8;
+}
+.shift-schedule-bar__shifted {
+  background: var(--accent);
+}
+.shift-coverage {
+  margin-top: 1rem;
+}
+.shift-coverage summary {
+  cursor: pointer;
+  padding: 0.6rem 0;
+  font-size: 0.85rem;
+  color: var(--accent);
+}

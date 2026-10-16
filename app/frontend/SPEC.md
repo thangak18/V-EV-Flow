@@ -175,7 +175,7 @@ Goong geometry is drawn as a road; missing/mock geometry is reported explicitly.
 Labels identify A/origin, 1/primary, 2/backup and B/destination. Editing a trip
 cancels obsolete geometry requests; focusing markers never recommends again.
 
-What-if includes a before/after map switch. Added-port experiments highlight the
+Added-port what-if includes a before/after map switch. Experiments highlight the
 actual station and show its directory capacity plus the declared added ports.
 Shift experiments describe the actual shifted population for the full network.
 Success/wait metrics remain network-wide; the API does not supply per-station
@@ -184,3 +184,9 @@ inputs hides incompatible previous results, including late responses.
 
 SDK references: https://document.goong.io/tutorial-Map.html and
 https://document.goong.io/tutorial-Example.html (style, GeoJSON layers, camera).
+
+Shift-departure what-if uses before/after schedule cards with actual returned
+shifted count and unchanged population. Bars show the two vehicle groups only,
+not a fabricated hourly histogram. Its unchanged station map is optional and
+mounted only when coverage is expanded; it has no misleading before/after map
+switch. Network outcome metrics remain in the comparison above.

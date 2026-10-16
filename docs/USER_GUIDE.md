@@ -276,7 +276,7 @@ Cách dùng:
 
 What-if dùng số xe và mã lần chạy hiện đang nhập. Không bắt buộc chạy ba chiến lược trước khi chạy what-if. Với chuyển 20% xe, cần ít nhất 5 xe để thực sự dịch được một xe. Hai lượt trước/sau giữ cùng nhóm xe và điều kiện nền để đối chiếu.
 
-### 3.9. Bản đồ trước/sau của what-if
+### 3.9. Xem thay đổi theo từng loại phương án
 
 | Thành phần | Ý nghĩa và thao tác |
 | --- | --- |
@@ -289,7 +289,15 @@ What-if dùng số xe và mã lần chạy hiện đang nhập. Không bắt bu�
 
 **Màu trong bản đồ what-if khác ý nghĩa với bản đồ áp lực phía trên.** Màu tím đánh dấu nơi thay đổi cấu hình; không phải mức nguy cơ. API hiện chưa có kết quả phục vụ/chờ riêng từng trạm để tô màu cải thiện theo trạm.
 
-Với chuyển giờ, vị trí trạm trước/sau có thể giống nhau vì thay đổi nằm ở giờ xuất phát của xe. Đọc số xe được dịch và chỉ số mạng lưới, không chờ xuất hiện một trạm mới.
+Với **chuyển giờ**, giao diện không dùng hai trạng thái bản đồ giống nhau để biểu diễn thay đổi. Mục **Xe được chuyển sang giờ nào?** hiển thị hai thẻ lịch xuất phát:
+
+- **Trước thay đổi:** toàn bộ xe khởi hành theo lịch gốc.
+- **Sau thay đổi:** số xe giữ lịch gốc và số xe thực sự chuyển sang khung 21:00–21:55. Với 100 xe và phép thử dịch 20 xe, thẻ hiển thị 80 xe giữ lịch và 20 xe chuyển giờ.
+- Thanh màu chỉ thể hiện hai nhóm xe, không phải lưu lượng tại từng giờ hoặc từng trạm.
+- **Xem 14 trạm trong phạm vi áp dụng:** mở bản đồ vị trí khi cần. Vị trí và số cổng không đổi; không có nút chuyển hai bản đồ trước/sau cho loại thay đổi này.
+- Đọc mức cải thiện hoặc suy giảm trong các chỉ số trước/sau phía trên. Chuyển giờ có thể cải thiện, không thay đổi hoặc làm kết quả kém hơn.
+
+Bảng ký hiệu và hai nút bản đồ **Trước thay đổi / Sau thay đổi** ở phần này áp dụng cho phương án **bổ sung cổng**.
 
 ### 3.10. Các mục chi tiết what-if
 

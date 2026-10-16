@@ -85,6 +85,19 @@ test("shift preset sends exactly the declared fraction and displays actual shift
   expect(whatif).toHaveBeenCalledWith(
     expect.objectContaining({ change: result.change }),
   );
+  const schedule = screen.getByRole("region", {
+    name: "So sánh lịch xuất phát",
+  });
+  expect(schedule).toHaveTextContent("80 xe giữ lịch gốc");
+  expect(schedule).toHaveTextContent("20 xe chuyển sang 21h");
+  expect(
+    screen.queryByRole("button", { name: "Trước thay đổi" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Station text list")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText("Xem 1 trạm trong phạm vi áp dụng"));
+  expect(await screen.findByLabelText("Station text list")).toHaveTextContent(
+    "Trạm thử · 4 cổng",
+  );
 });
 
 test("invalid experiment parameters block submission", () => {

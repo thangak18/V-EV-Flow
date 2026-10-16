@@ -12,6 +12,7 @@ export function WhatIfMap({
   stations: Station[];
 }) {
   const [phase, setPhase] = useState<"before" | "after">("after");
+  const [coverageOpen, setCoverageOpen] = useState(false);
   const change = result.change;
   const metrics = result[phase].metrics;
   const target =
@@ -42,6 +43,80 @@ export function WhatIfMap({
       };
     }),
   };
+  if (change.kind === "shift_departures") {
+    const total = result.before.metrics.vehicle_count;
+    const shifted = result.shifted_vehicle_count;
+    const retained = total - shifted;
+    return (
+      <section className="whatif-map" aria-label="So sánh lịch xuất phát">
+        <div className="whatif-map__head">
+          <div>
+            <h3>Xe được chuyển sang giờ nào?</h3>
+            <p>
+              Vị trí và số cổng của các trạm không đổi. Phương án này chỉ đổi
+              giờ xuất phát của {shifted} xe.
+            </p>
+          </div>
+        </div>
+        <div className="shift-schedule-comparison">
+          <article aria-label="Lịch xuất phát trước thay đổi">
+            <h4>Trước thay đổi</h4>
+            <strong>{total} xe</strong>
+            <p>Khởi hành theo lịch gốc của lượt mô phỏng.</p>
+            <div className="shift-schedule-bar" aria-hidden="true">
+              <span
+                className="shift-schedule-bar__original"
+                style={{ width: "100%" }}
+              />
+            </div>
+          </article>
+          <article aria-label="Lịch xuất phát sau thay đổi">
+            <h4>Sau thay đổi</h4>
+            <strong>
+              {shifted} xe chuyển sang {change.target_hour}h
+            </strong>
+            <p>
+              <b>{retained} xe</b> giữ lịch gốc · <b>{shifted} xe</b> khởi hành
+              lúc {change.target_hour}:00–{change.target_hour}:55.
+            </p>
+            <div className="shift-schedule-bar" aria-hidden="true">
+              <span
+                className="shift-schedule-bar__original"
+                style={{ width: `${total ? (retained / total) * 100 : 0}%` }}
+              />
+              <span
+                className="shift-schedule-bar__shifted"
+                style={{ width: `${total ? (shifted / total) * 100 : 0}%` }}
+              />
+            </div>
+          </article>
+        </div>
+        <p className="metric-note">
+          Tổng số xe giữ nguyên: {total}. Thanh màu thể hiện nhóm giữ lịch gốc
+          và nhóm chuyển sang {change.target_hour}h, không phải lượng xe tại
+          từng trạm. Tác động tới tỷ lệ có cổng và thời gian chờ nằm ở các chỉ
+          số trước/sau phía trên.
+        </p>
+        <details
+          className="shift-coverage"
+          open={coverageOpen}
+          onToggle={(event) => setCoverageOpen(event.currentTarget.open)}
+        >
+          <summary>Xem {stations.length} trạm trong phạm vi áp dụng</summary>
+          <p className="metric-note">
+            Bản đồ vị trí trạm được giữ nguyên trong cả hai lượt. Không có dữ
+            liệu kết quả riêng từng trạm để tô màu cải thiện.
+          </p>
+          {coverageOpen ? (
+            <MapView
+              model={model}
+              preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
+            />
+          ) : null}
+        </details>
+      </section>
+    );
+  }
   return (
     <section className="whatif-map" aria-label="Bản đồ so sánh phương án">
       <div className="whatif-map__head">
@@ -50,9 +125,7 @@ export function WhatIfMap({
           <p>
             {target
               ? `${target.name}: ${target.n_ports} → ${target.n_ports + (change.kind === "add_ports" ? change.ports : 0)} cổng.`
-              : change.kind === "shift_departures"
-                ? `${result.shifted_vehicle_count} xe đổi giờ xuất phát sang ${change.target_hour}:00–${change.target_hour}:55 trên toàn mạng lưới.`
-                : "Không có tọa độ của trạm được thay đổi."}
+              : "Không có tọa độ của trạm được thay đổi."}
           </p>
         </div>
         <div
