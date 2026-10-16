@@ -40,6 +40,6 @@ test("unknown place cannot apply until coordinates are selected; clear restores 
     center: { label: "Trạm A", lat: 10, lng: 106 },
     radiusKm: 50,
   });
-  fireEvent.click(screen.getByRole("button", { name: "Toàn bộ mạng lưới" }));
+  fireEvent.click(screen.getByRole("button", { name: "Xem tất cả trạm" }));
   expect(onApply).toHaveBeenLastCalledWith(null);
 });

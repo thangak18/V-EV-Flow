@@ -314,7 +314,7 @@ test("area filter loads forecasts and repeated radius changes reuse the network 
   const filter = screen.getByRole("button", { name: "Lọc khu vực" });
   await waitFor(() =>
     expect(
-      screen.getByRole("button", { name: "Toàn bộ mạng lưới" }),
+      screen.getByRole("button", { name: "Xem tất cả trạm" }),
     ).toBeEnabled(),
   );
   fireEvent.change(screen.getByLabelText("Khu vực theo dõi"), {
@@ -351,7 +351,7 @@ test("rapid filtering shows loading, does not duplicate requests, and supports r
     )
     .mockResolvedValue(areaResponse);
   renderAreaForecast(getPressure);
-  const all = screen.getByRole("button", { name: "Toàn bộ mạng lưới" });
+  const all = screen.getByRole("button", { name: "Xem tất cả trạm" });
   await waitFor(() => expect(all).toBeEnabled());
   fireEvent.click(all);
   fireEvent.click(all);
@@ -369,7 +369,7 @@ test("rapid filtering shows loading, does not duplicate requests, and supports r
 test("changing scenario hides the previous forecast until the new scenario is loaded", async () => {
   const getPressure = vi.fn().mockResolvedValue(areaResponse);
   renderAreaForecast(getPressure);
-  const all = screen.getByRole("button", { name: "Toàn bộ mạng lưới" });
+  const all = screen.getByRole("button", { name: "Xem tất cả trạm" });
   await waitFor(() => expect(all).toBeEnabled());
   fireEvent.click(all);
   const kpis = within(screen.getByLabelText("Tổng quan khu vực"));
@@ -393,7 +393,7 @@ test("an empty forecast is shown as no data rather than zero risk", async () => 
     .fn()
     .mockResolvedValue({ ...areaResponse, stations: [] });
   renderAreaForecast(getPressure);
-  const all = screen.getByRole("button", { name: "Toàn bộ mạng lưới" });
+  const all = screen.getByRole("button", { name: "Xem tất cả trạm" });
   await waitFor(() => expect(all).toBeEnabled());
   fireEvent.click(all);
   const kpis = within(screen.getByLabelText("Tổng quan khu vực"));

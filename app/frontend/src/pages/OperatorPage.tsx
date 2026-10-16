@@ -193,7 +193,7 @@ export function OperatorPage() {
       ? "Kết nối thất bại. Bấm Thử lại bên dưới."
       : forecast
         ? "Không có dự báo cho các trạm trong phạm vi này."
-        : "Chọn khu vực rồi bấm Lọc khu vực, hoặc Toàn bộ mạng lưới.";
+        : "Chọn khu vực rồi bấm Lọc khu vực, hoặc Xem tất cả trạm.";
   return (
     <main className="operator-page">
       <header className="operator-header">

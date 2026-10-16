@@ -96,7 +96,7 @@ export function AreaFilter({
             onApply(null);
           }}
         >
-          Toàn bộ mạng lưới
+          Xem tất cả trạm
         </button>
       </div>
       <p className="metric-note" role="status">
