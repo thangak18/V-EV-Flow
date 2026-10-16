@@ -130,3 +130,14 @@ or invalid supplied timestamp blocks submission and offers connection retry;
 it never opens vehicle settings or asks the driver to repair an ISO timestamp.
 Backend-clock updates immediately affect subsequent request timestamps. Live
 mode retains click-time departure; replay mode retains the dataset timeline.
+
+## Area forecast loading
+
+Applying a valid area/radius or choosing the complete network also loads the
+pressure forecast for the selected scenario/time. Repeated filtering reuses the
+same complete-network response, including while it is loading; no simulation or
+allocation is triggered. A scenario/time change hides incompatible forecasts.
+KPI cards distinguish not-yet-loaded, loading, failed and no-data states rather
+than displaying unexplained dashes or treating missing forecasts as zero risk.
+Failed requests support explicit retry. The radius requires a resolved centre;
+a nearby hint explains this prerequisite.

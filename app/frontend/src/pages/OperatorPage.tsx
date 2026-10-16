@@ -19,6 +19,7 @@ import {
 } from "../features/operator/areas";
 import { WhatIfPanel } from "../features/operator/WhatIfPanel";
 import { StrategyComparison } from "../features/operator/StrategyComparison";
+import { isPlus07FiveMinuteBucket } from "../services/errors";
 import { usePressure } from "../hooks/usePressure";
 import { useSimulationComparison } from "../hooks/useSimulationComparison";
 import type { Scenario, Station } from "../services/api";
@@ -74,6 +75,25 @@ export function OperatorPage() {
   const [directoryFailed, setDirectoryFailed] = useState(false);
   const pressure = usePressure();
   const simulation = useSimulationComparison();
+  const forecastKey = `${scenario}|${time}`;
+  const forecastReady = runtimeReady && isPlus07FiveMinuteBucket(time);
+  const currentRequest = pressure.requestKey === forecastKey;
+  const loadingForecast = currentRequest && pressure.status === "loading";
+  const failedForecast = currentRequest && pressure.status === "error";
+  const forecast =
+    pressure.resultKey === forecastKey &&
+    !failedForecast &&
+    !loadingForecast &&
+    runtimeReady
+      ? pressure.result
+      : null;
+  const applyArea = (next: MonitoredArea | null) => {
+    setArea(next);
+    if (!forecastReady) return;
+    // Pressure covers the whole network: radius changes reuse this same forecast.
+    if (currentRequest && (loadingForecast || forecast)) return;
+    void pressure.load(scenario, time);
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -97,7 +117,7 @@ export function OperatorPage() {
   }, [stations]);
 
   const mapModel = useMemo<MapModel>(() => {
-    const pressureStations = pressure.result?.stations ?? [];
+    const pressureStations = forecast?.stations ?? [];
     const points: MapPoint[] = [];
     const unlocated: UnlocatedMapPoint[] = [];
 
@@ -134,10 +154,10 @@ export function OperatorPage() {
         role: "origin",
       });
     return { points, unlocated, fitBounds: true };
-  }, [pressure.result, stationIndex, area]);
+  }, [forecast, stationIndex, area]);
 
   const pressureDataType =
-    pressure.result?.stations[0]?.data_type ?? ("mock" as const);
+    forecast?.stations[0]?.data_type ?? ("mock" as const);
 
   const visibleStations = stations.filter((station) =>
     inMonitoredArea(station, area),
@@ -145,7 +165,7 @@ export function OperatorPage() {
   const visibleIds = new Set(
     visibleStations.map((station) => station.station_id),
   );
-  const knownPressure = (pressure.result?.stations ?? []).filter((station) =>
+  const knownPressure = (forecast?.stations ?? []).filter((station) =>
     visibleIds.has(station.station_id),
   );
   const highRisk = knownPressure.filter(
@@ -155,6 +175,20 @@ export function OperatorPage() {
     ? knownPressure.reduce((total, station) => total + station.p_available, 0) /
       knownPressure.length
     : null;
+  const forecastPlaceholder = loadingForecast
+    ? "Đang tải…"
+    : failedForecast
+      ? "Không tải được"
+      : forecast
+        ? "Chưa có dữ liệu"
+        : "Chưa tải dự báo";
+  const forecastHint = loadingForecast
+    ? "Đang tính dự báo cho khu vực đã chọn."
+    : failedForecast
+      ? "Kết nối thất bại. Bấm Thử lại bên dưới."
+      : forecast
+        ? "Không có dự báo cho các trạm trong phạm vi này."
+        : "Chọn khu vực rồi bấm Lọc khu vực, hoặc Toàn bộ mạng lưới.";
   return (
     <main className="operator-page">
       <header className="operator-header">
@@ -166,7 +200,7 @@ export function OperatorPage() {
             phương án cải thiện trước khi áp dụng.
           </p>
         </div>
-        {pressure.result ? <DataTypeBadge dataType={pressureDataType} /> : null}
+        {forecast ? <DataTypeBadge dataType={pressureDataType} /> : null}
       </header>
 
       {runtimeNotice ? (
@@ -177,7 +211,8 @@ export function OperatorPage() {
       <AreaFilter
         stations={stations}
         placesAvailable={placesAvailable}
-        onApply={setArea}
+        onApply={applyArea}
+        ready={forecastReady}
       />
       <div className="network-kpis" aria-label="Tổng quan khu vực">
         <article>
@@ -194,20 +229,28 @@ export function OperatorPage() {
         </article>
         <article>
           <span>Trạm có nguy cơ thiếu chỗ</span>
-          <strong>{pressure.result ? highRisk : "—"}</strong>
-          <p>Nguy cơ từ 66% tại giờ dự báo</p>
+          <strong className={knownPressure.length ? undefined : "kpi-status"}>
+            {forecast && knownPressure.length ? highRisk : forecastPlaceholder}
+          </strong>
+          <p>
+            {knownPressure.length
+              ? "Nguy cơ từ 66% tại giờ dự báo"
+              : forecastHint}
+          </p>
         </article>
         <article>
           <span>Khả năng còn chỗ trung bình</span>
-          <strong>
+          <strong
+            className={availableAverage === null ? "kpi-status" : undefined}
+          >
             {availableAverage === null
-              ? "—"
+              ? forecastPlaceholder
               : `${Math.round(availableAverage * 100)}%`}
           </strong>
           <p>
             {knownPressure.length
               ? `Từ ${knownPressure.length} trạm có dự báo`
-              : "Áp dụng kịch bản để xem dự báo"}
+              : forecastHint}
           </p>
         </article>
       </div>
@@ -271,14 +314,12 @@ export function OperatorPage() {
               thị số xe đang chờ.
             </p>
           </div>
-          {pressure.status === "loading" ? (
+          {loadingForecast ? (
             <p className="status-message" role="status">
-              {pressure.stale
-                ? "Đang làm mới lớp áp lực… vẫn hiện kết quả trước."
-                : "Đang tải lớp áp lực…"}
+              Đang tải dự báo cho khu vực đã chọn…
             </p>
           ) : null}
-          {pressure.status === "error" ? (
+          {failedForecast ? (
             <div className="status-message error" role="alert">
               <p>{pressure.error ?? "Không tải được lớp áp lực."}</p>
               <button
@@ -297,9 +338,9 @@ export function OperatorPage() {
             <PressureLegend />
           </div>
           <p className="map-card-footer" role="status">
-            {pressure.result
+            {forecast
               ? `Đang hiển thị ${knownPressure.length} trạm có dự báo. Màu thể hiện nguy cơ không còn cổng khi xe đến.`
-              : "Bấm Áp dụng kịch bản để xem lớp áp lực."}
+              : forecastHint}
           </p>
         </section>
 

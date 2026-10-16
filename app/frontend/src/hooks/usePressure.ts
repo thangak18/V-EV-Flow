@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
 import {
@@ -16,6 +16,8 @@ export function usePressure() {
   const [result, setResult] = useState<PressureResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
+  const [requestKey, setRequestKey] = useState<string | null>(null);
+  const [resultKey, setResultKey] = useState<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
 
   const load = useCallback(
@@ -28,6 +30,7 @@ export function usePressure() {
         return "loading";
       });
       setError(null);
+      setRequestKey(`${scenario}|${time}`);
 
       try {
         const response = await client.getPressure(
@@ -36,6 +39,7 @@ export function usePressure() {
         );
         if (controller.signal.aborted) return;
         setResult(response);
+        setResultKey(`${scenario}|${time}`);
         setStale(false);
         setStatus(response.stations.length === 0 ? "empty" : "success");
       } catch (cause) {
@@ -47,5 +51,7 @@ export function usePressure() {
     [client],
   );
 
-  return { status, result, error, stale, load };
+  useEffect(() => () => controllerRef.current?.abort(), []);
+
+  return { status, result, error, stale, load, requestKey, resultKey };
 }

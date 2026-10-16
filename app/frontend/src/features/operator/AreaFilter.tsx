@@ -9,9 +9,11 @@ export function AreaFilter({
   stations,
   placesAvailable,
   onApply,
+  ready = true,
 }: {
   stations: Station[];
   placesAvailable: boolean;
+  ready?: boolean;
   onApply: (area: MonitoredArea | null) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -72,7 +74,7 @@ export function AreaFilter({
         </label>
         <button
           type="button"
-          disabled={!resolved}
+          disabled={!resolved || !ready}
           onClick={() => resolved && onApply({ center: resolved, radiusKm })}
         >
           Lọc khu vực
@@ -80,6 +82,7 @@ export function AreaFilter({
         <button
           type="button"
           className="btn-secondary"
+          disabled={!ready}
           onClick={() => {
             setQuery("");
             setSelected(undefined);
@@ -89,6 +92,13 @@ export function AreaFilter({
           Toàn bộ mạng lưới
         </button>
       </div>
+      <p className="metric-note" role="status">
+        {!ready
+          ? "Đang chờ thời điểm dữ liệu hợp lệ từ hệ thống."
+          : !resolved
+            ? "Chọn một địa điểm làm tâm để lọc theo bán kính, hoặc xem toàn bộ mạng lưới."
+            : "Bấm Lọc khu vực để cập nhật bản đồ và hai chỉ số dự báo bên dưới."}
+      </p>
       {!placesAvailable ? (
         <datalist id="trip-locations">
           {locations.map((item) => (

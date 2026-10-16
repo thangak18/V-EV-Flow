@@ -2255,3 +2255,8 @@ dd {
   font-weight: 650;
   color: var(--ink);
 }
+
+.network-kpis strong.kpi-status {
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  line-height: 1.4;
+}

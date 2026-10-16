@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, test, vi } from "vitest";
 
@@ -273,4 +279,124 @@ test("reselecting the active scenario keeps Apply enabled", async () => {
   });
   expect(apply).toBeEnabled();
   expect(runtime).toHaveBeenCalledTimes(1);
+});
+
+function renderAreaForecast(getPressure: ReturnType<typeof vi.fn>) {
+  const client = createMockApiClient({ getPressure });
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <OperatorPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  return client;
+}
+const areaResponse = {
+  time: "2026-10-13T16:00:00+07:00",
+  scenario: "normal",
+  contract_version: "0.1.0",
+  stations: [
+    {
+      station_id: "S001",
+      p_available: 0.2,
+      pressure_score: 0.8,
+      data_type: "simulated",
+    },
+  ],
+};
+
+test("area filter loads forecasts and repeated radius changes reuse the network result", async () => {
+  const getPressure = vi.fn().mockResolvedValue(areaResponse);
+  const client = renderAreaForecast(getPressure);
+  const filter = screen.getByRole("button", { name: "Lọc khu vực" });
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Toàn bộ mạng lưới" }),
+    ).toBeEnabled(),
+  );
+  fireEvent.change(screen.getByLabelText("Khu vực theo dõi"), {
+    target: { value: "TP.HCM East Gateway" },
+  });
+  await waitFor(() => expect(filter).toBeEnabled());
+  fireEvent.click(filter);
+  const kpis = within(screen.getByLabelText("Tổng quan khu vực"));
+  expect(await kpis.findByText("20%")).toBeInTheDocument();
+  expect(
+    screen.getByText("Trạm có nguy cơ thiếu chỗ").closest("article"),
+  ).toHaveTextContent("1");
+  for (const radius of ["10", "50", "100", "25"]) {
+    fireEvent.change(screen.getByLabelText("Bán kính theo dõi"), {
+      target: { value: radius },
+    });
+    fireEvent.click(filter);
+    expect(kpis.getByText("20%")).toBeInTheDocument();
+  }
+  expect(getPressure).toHaveBeenCalledTimes(1);
+  expect(client.simulate).not.toHaveBeenCalled();
+  expect(client.recommend).not.toHaveBeenCalled();
+});
+
+test("rapid filtering shows loading, does not duplicate requests, and supports retry after failure", async () => {
+  let reject!: (error: Error) => void;
+  const getPressure = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        }),
+    )
+    .mockResolvedValue(areaResponse);
+  renderAreaForecast(getPressure);
+  const all = screen.getByRole("button", { name: "Toàn bộ mạng lưới" });
+  await waitFor(() => expect(all).toBeEnabled());
+  fireEvent.click(all);
+  fireEvent.click(all);
+  const kpis = within(screen.getByLabelText("Tổng quan khu vực"));
+  expect(kpis.getAllByText("Đang tải…")).toHaveLength(2);
+  expect(getPressure).toHaveBeenCalledTimes(1);
+  reject(new Error("offline"));
+  await waitFor(() =>
+    expect(kpis.getAllByText("Không tải được")).toHaveLength(2),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+  expect(await kpis.findByText("20%")).toBeInTheDocument();
+});
+
+test("changing scenario hides the previous forecast until the new scenario is loaded", async () => {
+  const getPressure = vi.fn().mockResolvedValue(areaResponse);
+  renderAreaForecast(getPressure);
+  const all = screen.getByRole("button", { name: "Toàn bộ mạng lưới" });
+  await waitFor(() => expect(all).toBeEnabled());
+  fireEvent.click(all);
+  const kpis = within(screen.getByLabelText("Tổng quan khu vực"));
+  expect(await kpis.findByText("20%")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Kịch bản"), {
+    target: { value: "tet" },
+  });
+  expect(kpis.queryByText("20%")).not.toBeInTheDocument();
+  await waitFor(() => expect(all).toBeEnabled());
+  fireEvent.click(all);
+  await waitFor(() =>
+    expect(getPressure).toHaveBeenLastCalledWith(
+      expect.objectContaining({ scenario: "tet" }),
+      expect.any(AbortSignal),
+    ),
+  );
+});
+
+test("an empty forecast is shown as no data rather than zero risk", async () => {
+  const getPressure = vi
+    .fn()
+    .mockResolvedValue({ ...areaResponse, stations: [] });
+  renderAreaForecast(getPressure);
+  const all = screen.getByRole("button", { name: "Toàn bộ mạng lưới" });
+  await waitFor(() => expect(all).toBeEnabled());
+  fireEvent.click(all);
+  const kpis = within(screen.getByLabelText("Tổng quan khu vực"));
+  await waitFor(() =>
+    expect(kpis.getAllByText("Chưa có dữ liệu")).toHaveLength(2),
+  );
+  expect(kpis.queryByText("0", { selector: "strong" })).not.toBeInTheDocument();
 });

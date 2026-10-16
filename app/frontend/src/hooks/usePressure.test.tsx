@@ -59,3 +59,43 @@ describe("usePressure", () => {
     expect(result.current.error).toBe("pressure down");
   });
 });
+
+test("late responses cannot overwrite a newer scenario request", async () => {
+  type Response = import("../services/api").PressureResponse;
+  let finishFirst!: (response: Response) => void;
+  const latest: Response = {
+    time: "2026-10-13T16:00:00+07:00",
+    scenario: "tet",
+    contract_version: "0.1.0",
+    stations: [],
+  };
+  const getPressure = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finishFirst = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(latest);
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <ApiProvider client={createMockApiClient({ getPressure })}>
+      {children}
+    </ApiProvider>
+  );
+  const { result } = renderHook(() => usePressure(), { wrapper });
+  let oldRequest!: Promise<void>;
+  act(() => {
+    oldRequest = result.current.load("normal", latest.time);
+  });
+  await act(async () => {
+    await result.current.load("tet", latest.time);
+  });
+  await act(async () => {
+    finishFirst({ ...latest, scenario: "normal" });
+    await oldRequest;
+  });
+  expect(result.current.result?.scenario).toBe("tet");
+  expect(result.current.resultKey).toBe(`tet|${latest.time}`);
+  expect(getPressure.mock.calls[0]?.[1].aborted).toBe(true);
+});
