@@ -1,3 +1,4 @@
+import { WhatIfMap } from "./WhatIfMap";
 import { useState } from "react";
 import { useApiClient } from "../../app/useApiClient";
 import {
@@ -37,9 +38,21 @@ export function WhatIfPanel({
   const [station, setStation] = useState("");
   const [strategy, setStrategy] = useState<Strategy>("ai_allocation");
   const [pending, setPending] = useState(false);
-  const [result, setResult] = useState<WhatIfResult | null>(null);
+  const [record, setRecord] = useState<{
+    key: string;
+    result: WhatIfResult;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const stationId = station || stations[0]?.station_id || "";
+  const contextKey = JSON.stringify([
+    scenario,
+    seed,
+    vehicleCount,
+    kind,
+    stationId,
+    strategy,
+  ]);
+  const result = record?.key === contextKey ? record.result : null;
   const canRun =
     Number.isInteger(seed) &&
     seed >= 0 &&
@@ -52,7 +65,7 @@ export function WhatIfPanel({
     if (pending || !canRun) return;
     setPending(true);
     setError(null);
-    setResult(null);
+    setRecord(null);
     try {
       const response = await api.whatif({
         scenario,
@@ -65,7 +78,7 @@ export function WhatIfPanel({
             ? { kind, station_id: stationId, ports: 2 }
             : { kind, fraction: 0.2, target_hour: 21 },
       });
-      setResult(response);
+      setRecord({ key: contextKey, result: response });
     } catch (cause) {
       setError(
         cause instanceof ApiError && cause.code === "FEATURE_NOT_READY"
@@ -286,6 +299,7 @@ export function WhatIfPanel({
               tổng số xe giữ nguyên.
             </p>
           )}
+          <WhatIfMap result={result} stations={stations} />
           <details className="whatif-breakdown">
             <summary>Xem đầy đủ chỉ số so sánh</summary>
             <div className="table-wrap">

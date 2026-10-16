@@ -32,6 +32,7 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
   const adapterRef = useRef<MapAdapter | null>(null);
   const latestModelRef = useRef(model);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [dismissedFocus, setDismissedFocus] = useState<number>();
   const focusedPoint =
@@ -55,6 +56,7 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
 
     let cancelled = false;
     setMounted(false);
+    setMapError(null);
     const adapter = adapterFactory?.() ?? defaultFactory(preferFake);
     adapterRef.current = adapter;
 
@@ -78,7 +80,7 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
       adapterRef.current = null;
       setMounted(false);
     };
-  }, [adapterFactory, preferFake]);
+  }, [adapterFactory, preferFake, attempt]);
 
   useEffect(() => {
     const adapter = adapterRef.current;
@@ -105,6 +107,11 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
           Bản đồ Goong · tiles © Goong
         </p>
       )}
+      {usingGoong && !mounted && !mapError ? (
+        <p className="status-message" role="status">
+          Đang tải bản đồ…
+        </p>
+      ) : null}
       <div className="map-stage">
         <div
           ref={containerRef}
@@ -136,9 +143,37 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
         ) : null}
       </div>
       {mapError ? (
-        <p className="status-message error" role="alert">
-          Bản đồ lỗi: {mapError}. Vẫn xem được danh sách điểm bên dưới.
-        </p>
+        <div className="status-message error" role="alert">
+          <p>
+            Bản đồ lỗi:{" "}
+            {mapError.includes("Timed out")
+              ? "Kết nối bản đồ quá thời gian chờ"
+              : mapError}
+            . Vẫn xem được danh sách điểm bên dưới.
+          </p>
+          <button
+            type="button"
+            onClick={() => setAttempt((value) => value + 1)}
+          >
+            Tải lại bản đồ
+          </button>
+        </div>
+      ) : null}
+      {model.routes?.length ? (
+        <ul className="map-route-legend" aria-label="Các tuyến đường">
+          {model.routes.map((route) => (
+            <li key={route.id}>
+              <span
+                style={{
+                  borderColor: route.color,
+                  borderTopStyle: route.dashed ? "dashed" : "solid",
+                }}
+                aria-hidden
+              />
+              {route.label}
+            </li>
+          ))}
+        </ul>
       ) : null}
       <StationTextList
         points={model.points}

@@ -25,6 +25,7 @@ type MockMap = {
 function installGoongMocks(options?: {
   emitLoad?: boolean;
   delayMs?: number;
+  styleReady?: boolean;
 }): {
   Map: ReturnType<typeof vi.fn>;
   maps: MockMap[];
@@ -34,7 +35,10 @@ function installGoongMocks(options?: {
     const map: MockMap = {
       remove: vi.fn(),
       on: vi.fn((event: string, cb: () => void) => {
-        if (event === "load" && options?.emitLoad !== false) {
+        if (
+          (event === "style.load" && options?.styleReady) ||
+          (event === "load" && options?.emitLoad !== false)
+        ) {
           queueMicrotask(cb);
         }
       }),
@@ -189,4 +193,62 @@ describe("GoongMapAdapter", () => {
     await rejection;
     expect(maps[0]?.remove).toHaveBeenCalled();
   });
+});
+
+test("style readiness renders overlays even when full tile load is delayed", async () => {
+  vi.stubEnv("VITE_GOONG_MAP_KEY", "test-maptiles-key");
+  const { maps } = installGoongMocks({ emitLoad: false, styleReady: true });
+  const adapter = new GoongMapAdapter();
+  await adapter.mount(document.createElement("div"), model);
+  const map = maps[0]!;
+  const addSource = vi.fn(),
+    addLayer = vi.fn(),
+    fitBounds = vi.fn();
+  Object.assign(map, { addSource, addLayer, fitBounds });
+  await adapter.update({
+    ...model,
+    fitBounds: true,
+    points: [
+      ...model.points,
+      { ...model.points[0]!, id: "end", lat: 11, lng: 107 },
+    ],
+    routes: [
+      {
+        id: "road",
+        label: "Road",
+        color: "green",
+        coordinates: [
+          { lat: 10.78, lng: 106.7 },
+          { lat: 10.9, lng: 106.8 },
+          { lat: 11, lng: 107 },
+        ],
+      },
+    ],
+  });
+  expect(addSource).toHaveBeenCalledWith(
+    "charging-route-road",
+    expect.objectContaining({
+      data: expect.objectContaining({
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [106.7, 10.78],
+            [106.8, 10.9],
+            [107, 11],
+          ],
+        },
+      }),
+    }),
+  );
+  expect(addLayer).toHaveBeenCalled();
+  expect(fitBounds).toHaveBeenCalledWith(
+    [
+      [106.7, 10.78],
+      [107, 11],
+    ],
+    expect.any(Object),
+  );
+  adapter.destroy();
+  vi.unstubAllEnvs();
+  delete window.goongjs;
 });

@@ -159,3 +159,28 @@ Optional history selection lives in a collapsed advanced disclosure with a
 native datetime-local picker, five-minute validation and explicit +07:00 request
 conversion. A reset action restores the backend-supplied timestamp. History
 selection does not trigger prediction until the user applies the scenario/filter.
+
+## Road routes, map recovery and counterfactual geography
+
+Goong overlays initialize when the style is ready, without requiring every
+basemap tile/font to finish. Failed SDK tags are removed for retry; a manual
+reload creates a fresh adapter while preserving the textual station list and
+recommendation. ResizeObserver updates the map canvas; fitBounds includes route
+geometry and stops, while explicit station focus retains its close zoom.
+
+Driver requests read-only `/routes` geometry after an explicit recommendation.
+The green route reaches the primary station, blue continues to the destination,
+and dashed amber shows the fallback leg from primary to backup. Only actual
+Goong geometry is drawn as a road; missing/mock geometry is reported explicitly.
+Labels identify A/origin, 1/primary, 2/backup and B/destination. Editing a trip
+cancels obsolete geometry requests; focusing markers never recommends again.
+
+What-if includes a before/after map switch. Added-port experiments highlight the
+actual station and show its directory capacity plus the declared added ports.
+Shift experiments describe the actual shifted population for the full network.
+Success/wait metrics remain network-wide; the API does not supply per-station
+outcome changes, so marker colors never claim those values. Changing experiment
+inputs hides incompatible previous results, including late responses.
+
+SDK references: https://document.goong.io/tutorial-Map.html and
+https://document.goong.io/tutorial-Example.html (style, GeoJSON layers, camera).

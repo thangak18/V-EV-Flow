@@ -17,6 +17,7 @@ import {
 } from "../features/driver/corridorPresets";
 import { DriverForm } from "../features/driver/DriverForm";
 import { PlanEmptyState, PlanSummary } from "../features/driver/PlanSummary";
+import { useDriverRoutes } from "../hooks/useDriverRoutes";
 import { useRecommendation } from "../hooks/useRecommendation";
 import type {
   DataType,
@@ -28,6 +29,7 @@ import type {
 export function DriverPage() {
   const client = useApiClient();
   const { status, result, error, submit, retry, clear } = useRecommendation();
+  const [routeDeparture, setRouteDeparture] = useState("");
   const [mapFocus, setMapFocus] = useState<{
     result: NonNullable<typeof result>;
     id: string;
@@ -200,6 +202,55 @@ export function DriverPage() {
     mapFocus,
   ]);
 
+  const routeOrigin = mapModel.points.find((point) => point.role === "origin");
+  const routeDestination = mapModel.points.find(
+    (point) => point.role === "destination",
+  );
+  const routePrimary = mapModel.points.find(
+    (point) => point.role === "primary",
+  );
+  const routeBackup = mapModel.points.find((point) => point.role === "backup");
+  const coordinate = (point: MapPoint) => ({ lat: point.lat, lng: point.lng });
+  const roadRoutes = useDriverRoutes(
+    result?.primary && routeOrigin && routePrimary && routeDeparture
+      ? [
+          {
+            id: "primary",
+            label: "Điểm đi → trạm chính",
+            color: "#146c52",
+            origin: coordinate(routeOrigin),
+            destination: coordinate(routePrimary),
+            depart_time: routeDeparture,
+          },
+          ...(routeDestination
+            ? [
+                {
+                  id: "onward",
+                  label: "Trạm chính → điểm đến",
+                  color: "#2563eb",
+                  origin: coordinate(routePrimary),
+                  destination: coordinate(routeDestination),
+                  depart_time: result.primary.eta,
+                },
+              ]
+            : []),
+          ...(routeBackup
+            ? [
+                {
+                  id: "backup",
+                  label: "Nếu trạm chính hết chỗ → trạm dự phòng",
+                  color: "#b45309",
+                  dashed: true,
+                  origin: coordinate(routePrimary),
+                  destination: coordinate(routeBackup),
+                  depart_time: result.primary.eta,
+                },
+              ]
+            : []),
+        ]
+      : [],
+  );
+
   function handleLocationChange(
     field: "origin" | "destination",
     value: string,
@@ -284,7 +335,10 @@ export function DriverPage() {
           setRuntimeLoading(true);
           clear();
         }}
-        onSubmit={submit}
+        onSubmit={(request) => {
+          setRouteDeparture(request.depart_time);
+          void submit(request);
+        }}
       />
 
       {directoryFailed ? (
@@ -328,8 +382,23 @@ export function DriverPage() {
         </aside>
 
         <section className="driver-map">
+          <div className="driver-map-heading">
+            <h3>Hành trình &amp; phương án sạc</h3>
+            <p>A: Điểm đi · 1: Trạm chính · 2: Trạm dự phòng · B: Điểm đến</p>
+          </div>
+          {roadRoutes.loading ? (
+            <p className="status-message" role="status">
+              Đang tải tuyến đường thực tế…
+            </p>
+          ) : null}
+          {roadRoutes.missing ? (
+            <p className="status-message" role="status">
+              Chưa tải đủ tuyến đường. Vị trí trạm và kế hoạch sạc vẫn hiển thị;
+              không dùng đường nối thẳng để thay tuyến giao thông.
+            </p>
+          ) : null}
           <MapView
-            model={mapModel}
+            model={{ ...mapModel, routes: roadRoutes.routes }}
             preferFake={!import.meta.env.VITE_GOONG_MAP_KEY}
           />
         </section>

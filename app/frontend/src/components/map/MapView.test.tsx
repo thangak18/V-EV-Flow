@@ -139,3 +139,25 @@ test("station information switches roles, closes, and reopens on a repeated focu
   );
   expect(screen.queryByTestId("station-map-info")).not.toBeInTheDocument();
 });
+
+test("retry recreates a failed map and preserves the station list", async () => {
+  const destroy = vi.fn();
+  let attempts = 0;
+  const factory = () => ({
+    mount: () =>
+      ++attempts === 1
+        ? Promise.reject(new Error("tiles blocked"))
+        : Promise.resolve(),
+    update: vi.fn(),
+    destroy,
+  });
+  render(<MapView model={model} adapterFactory={factory} />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("tiles blocked");
+  fireEvent.click(screen.getByRole("button", { name: "Tải lại bản đồ" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument(),
+  );
+  expect(attempts).toBe(2);
+  expect(destroy).toHaveBeenCalled();
+  expect(screen.getByLabelText("Station text list")).toBeInTheDocument();
+});

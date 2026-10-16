@@ -130,3 +130,30 @@ test("failed what-if exposes retry instead of fabricated metrics", async () => {
   fireEvent.click(screen.getByRole("button", { name: "So sánh trước / sau" }));
   expect(await screen.findByTestId("whatif-result")).toBeInTheDocument();
 });
+
+test("what-if map toggles actual port counts and clears obsolete experiment results", async () => {
+  const client = createMockApiClient({
+    whatif: vi.fn().mockResolvedValue(whatIfFixture),
+  });
+  const view = (seed: number) => (
+    <ApiProvider client={client}>
+      <WhatIfPanel
+        scenario="tet"
+        seed={seed}
+        vehicleCount={100}
+        stations={[station]}
+      />
+    </ApiProvider>
+  );
+  const { rerender } = render(view(42));
+  fireEvent.click(screen.getByRole("button", { name: "So sánh trước / sau" }));
+  const map = await screen.findByLabelText("Bản đồ so sánh phương án");
+  expect(map).toHaveTextContent("Trạm thử · 6 cổng");
+  fireEvent.click(screen.getByRole("button", { name: "Trước thay đổi" }));
+  expect(map).toHaveTextContent("Trạm thử · 4 cổng");
+  expect(map).toHaveTextContent("80.0%");
+  rerender(view(43));
+  expect(
+    screen.queryByLabelText("Bản đồ so sánh phương án"),
+  ).not.toBeInTheDocument();
+});

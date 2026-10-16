@@ -12,6 +12,17 @@ type GoongMap = {
   on: (event: string, cb: () => void) => void;
   flyTo: (opts: { center: [number, number]; zoom?: number }) => void;
   addControl: (control: unknown) => void;
+  fitBounds?: (
+    bounds: [[number, number], [number, number]],
+    options: object,
+  ) => void;
+  resize?: () => void;
+  getSource?: (id: string) => { setData: (data: object) => void } | undefined;
+  addSource?: (id: string, source: object) => void;
+  addLayer?: (layer: object) => void;
+  getLayer?: (id: string) => unknown;
+  removeLayer?: (id: string) => void;
+  removeSource?: (id: string) => void;
 };
 
 type GoongMarker = {
@@ -43,67 +54,55 @@ function toLngLat(point: MapPoint): [number, number] {
   return [point.lng, point.lat];
 }
 
+let sdkLoading: Promise<void> | null = null;
 async function ensureGoong(
   timeoutMs = LOAD_TIMEOUT_MS,
 ): Promise<GoongNamespace> {
   if (window.goongjs) return window.goongjs;
-
   if (!document.querySelector(`link[href="${GOONG_CSS}"]`)) {
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = GOONG_CSS;
     document.head.appendChild(link);
   }
-
-  await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      `script[src="${GOONG_JS}"]`,
-    );
-    if (existing && window.goongjs) {
-      resolve();
-      return;
-    }
-
-    const script = existing ?? document.createElement("script");
-    let settled = false;
-    const timer = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      reject(new Error("Timed out loading Goong JS SDK"));
-    }, timeoutMs);
-
-    const finish = (error?: Error) => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timer);
-      if (error) reject(error);
-      else resolve();
-    };
-
-    script.async = true;
-    script.onload = () => finish();
-    script.onerror = () => finish(new Error("Failed to load Goong JS SDK"));
-    if (!existing) {
-      script.src = GOONG_JS;
-      document.head.appendChild(script);
-    } else if (!window.goongjs) {
-      // Script tag exists but SDK never attached — wait with timeout.
-      const poll = window.setInterval(() => {
-        if (window.goongjs) {
-          window.clearInterval(poll);
-          finish();
-        }
-      }, 50);
-      window.setTimeout(() => {
-        window.clearInterval(poll);
-        finish(new Error("Goong JS SDK script present but unavailable"));
-      }, timeoutMs);
-    }
-  });
-
-  if (!window.goongjs) {
-    throw new Error("Goong JS SDK unavailable after script load");
+  if (!sdkLoading) {
+    sdkLoading = new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>(
+        `script[src="${GOONG_JS}"]`,
+      );
+      const script = existing ?? document.createElement("script");
+      const finish = (error?: Error) => {
+        window.clearTimeout(timer);
+        script.onload = null;
+        script.onerror = null;
+        if (error) {
+          script.remove();
+          reject(error);
+        } else resolve();
+      };
+      const timer = window.setTimeout(
+        () => finish(new Error("Timed out loading Goong JS SDK")),
+        timeoutMs,
+      );
+      script.async = true;
+      script.onload = () =>
+        finish(
+          window.goongjs
+            ? undefined
+            : new Error("Goong JS SDK unavailable after script load"),
+        );
+      script.onerror = () => finish(new Error("Failed to load Goong JS SDK"));
+      if (!existing) {
+        script.src = GOONG_JS;
+        document.head.appendChild(script);
+      }
+    }).finally(() => {
+      sdkLoading = null;
+    });
   }
+  await sdkLoading;
+  if (!window.goongjs)
+    throw new Error("Goong JS SDK unavailable after script load");
   return window.goongjs;
 }
 
@@ -118,12 +117,15 @@ function waitForMapLoad(
       settled = true;
       reject(new Error("Timed out waiting for Goong map load"));
     }, timeoutMs);
-    map.on("load", () => {
+    const ready = () => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timer);
       resolve();
-    });
+    };
+    // style.load permits overlays without waiting for every tile/font request.
+    map.on("style.load", ready);
+    map.on("load", ready);
   });
 }
 
@@ -132,6 +134,8 @@ export class GoongMapAdapter implements MapAdapter {
   private markers: GoongMarker[] = [];
   private generation = 0;
   private destroyed = false;
+  private routeIds: string[] = [];
+  private resizeObserver: ResizeObserver | null = null;
 
   async mount(container: HTMLElement, model: MapModel): Promise<void> {
     const mountGeneration = ++this.generation;
@@ -150,6 +154,7 @@ export class GoongMapAdapter implements MapAdapter {
       ? toLngLat(model.points[0])
       : ([106.7, 10.78] as [number, number]);
 
+    container.dataset.mapAdapter = "goong";
     this.map = new goongjs.Map({
       container,
       style: GOONG_STYLE,
@@ -157,6 +162,10 @@ export class GoongMapAdapter implements MapAdapter {
       zoom: 8,
     });
     this.map.addControl(new goongjs.NavigationControl());
+    if (typeof ResizeObserver !== "undefined") {
+      this.resizeObserver = new ResizeObserver(() => this.map?.resize?.());
+      this.resizeObserver.observe(container);
+    }
 
     try {
       await waitForMapLoad(this.map);
@@ -171,21 +180,93 @@ export class GoongMapAdapter implements MapAdapter {
     }
 
     this.renderMarkers(goongjs, model);
+    this.renderRoutes(model);
   }
 
   async update(model: MapModel): Promise<void> {
     if (!this.map || !window.goongjs || this.destroyed) return;
     this.clearMarkers();
     this.renderMarkers(window.goongjs, model);
+    this.renderRoutes(model);
+    this.positionCamera(model);
+  }
+
+  private positionCamera(model: MapModel): void {
+    if (!this.map) return;
     const focused =
       model.focus &&
       model.points.find(
         (point) =>
           point.id === model.focus!.id && point.role === model.focus!.role,
       );
-    const target = focused || model.points[0];
-    if (target)
-      this.map.flyTo({ center: toLngLat(target), zoom: focused ? 14 : 8 });
+    if (focused) {
+      this.map.flyTo({ center: toLngLat(focused), zoom: 14 });
+      return;
+    }
+    if (model.fitBounds && model.points.length > 1 && this.map.fitBounds) {
+      const coordinates = [
+        ...model.points,
+        ...(model.routes ?? []).flatMap((route) => route.coordinates),
+      ];
+      const lngs = coordinates.map((point) => point.lng),
+        lats = coordinates.map((point) => point.lat);
+      this.map.fitBounds(
+        [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)],
+        ],
+        {
+          padding: 64,
+          maxZoom: 13,
+          duration: window.matchMedia?.("(prefers-reduced-motion: reduce)")
+            .matches
+            ? 0
+            : 600,
+        },
+      );
+    } else if (model.points[0])
+      this.map.flyTo({ center: toLngLat(model.points[0]), zoom: 8 });
+  }
+
+  private renderRoutes(model: MapModel): void {
+    const map = this.map;
+    if (!map?.addSource || !map.addLayer) return;
+    for (const id of this.routeIds) {
+      if (map.getLayer?.(id)) map.removeLayer?.(id);
+      if (map.getSource?.(id)) map.removeSource?.(id);
+    }
+    this.routeIds = [];
+    for (const route of model.routes ?? []) {
+      if (route.coordinates.length < 2) continue;
+      const id = `charging-route-${route.id}`;
+      map.addSource(id, {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: route.coordinates.map((point) => [
+              point.lng,
+              point.lat,
+            ]),
+          },
+        },
+      });
+      map.addLayer({
+        id,
+        type: "line",
+        source: id,
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: {
+          "line-color": route.color,
+          "line-width": route.dashed ? 5 : 6,
+          "line-opacity": 0.9,
+          ...(route.dashed ? { "line-dasharray": [2, 2] } : {}),
+        },
+      });
+      this.routeIds.push(id);
+    }
   }
 
   destroy(): void {
@@ -199,6 +280,9 @@ export class GoongMapAdapter implements MapAdapter {
   }
 
   private teardownMap(): void {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    this.routeIds = [];
     this.clearMarkers();
     this.map?.remove();
     this.map = null;
@@ -218,7 +302,31 @@ export class GoongMapAdapter implements MapAdapter {
         .setLngLat(toLngLat(point))
         .addTo(this.map);
       const element = marker.getElement();
-      element.title = `${point.role}: ${point.label}`;
+      const roles = {
+        origin: "Điểm đi",
+        destination: "Điểm đến",
+        primary: "Trạm chính",
+        backup: "Trạm dự phòng",
+        pressure: "Trạm sạc",
+      };
+      element.dataset.mapRole = point.role;
+      element.title = `${roles[point.role]}: ${point.label}`;
+      element.setAttribute("aria-label", element.title);
+      const badge =
+        point.badge ??
+        {
+          origin: "A",
+          destination: "B",
+          primary: "1",
+          backup: "2",
+          pressure: "",
+        }[point.role];
+      if (badge) {
+        const tag = document.createElement("span");
+        tag.className = "map-marker-label";
+        tag.textContent = `${badge} · ${roles[point.role]}: ${point.label}`;
+        element.appendChild(tag);
+      }
       if (model.focus?.id === point.id && model.focus.role === point.role) {
         element.classList.add("map-marker--focused");
         element.setAttribute("aria-current", "location");

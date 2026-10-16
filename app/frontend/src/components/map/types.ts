@@ -6,6 +6,7 @@ export type MapPoint = {
   role: "origin" | "destination" | "primary" | "backup" | "pressure";
   color?: string;
   description?: string;
+  badge?: string;
 };
 
 /** Station known to the UI but missing directory coordinates — text only. */
@@ -16,6 +17,13 @@ export type UnlocatedMapPoint = {
 };
 
 export type MapModel = {
+  routes?: {
+    id: string;
+    label: string;
+    color: string;
+    dashed?: boolean;
+    coordinates: { lat: number; lng: number }[];
+  }[];
   points: MapPoint[];
   unlocated?: UnlocatedMapPoint[];
   fitBounds?: boolean;
