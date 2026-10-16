@@ -79,3 +79,31 @@ test("Goong place selection resolves coordinates and editing invalidates the old
     page.getByRole("button", { name: "Tìm kế hoạch sạc", exact: true }),
   ).toBeDisabled();
 });
+
+test("bootstrap failure offers a retry and recovers without a reload or automatic recommendation", async ({page}) => {
+  let runtimeCalls=0;
+  let stationCalls=0;
+  let recommendations=0;
+  page.on("request",request=>{if(request.method()==="POST" && request.url().endsWith("/api/recommend"))recommendations++;});
+  await page.route("**/api/runtime?*",route=>{
+    runtimeCalls++;
+    return route.fulfill(runtimeCalls===1 ? {status:503,json:{code:"DATA_SOURCE_UNAVAILABLE",message:"station history is unavailable",details:null}} : {json:{
+      clock_mode:"mock",scenario:"normal",data_type:"mock",observed_at:"2026-10-13T16:00:00+07:00",
+      history_start:null,history_end:null,max_horizon_minutes:60,places_available:false,available:true,
+      message:"Fixture data",allocation_backend:"memory",
+    }});
+  });
+  await page.route("**/api/stations",route=>{
+    stationCalls++;
+    return stationCalls===1 ? route.fulfill({status:503,json:{code:"DATA_SOURCE_UNAVAILABLE",message:"unavailable",details:null}}) : route.continue();
+  });
+  await page.goto("/driver");
+  const submit=page.getByRole("button",{name:"Tìm kế hoạch sạc",exact:true});
+  await expect(submit).toBeDisabled();
+  await page.getByRole("button",{name:"Thử kết nối lại",exact:true}).click();
+  await expect(submit).toBeEnabled();
+  expect(runtimeCalls).toBe(2);
+  expect(stationCalls).toBe(2);
+  expect(recommendations).toBe(0);
+  await expect(page.getByText(/Chưa kết nối được dữ liệu trạm/)).toHaveCount(0);
+});

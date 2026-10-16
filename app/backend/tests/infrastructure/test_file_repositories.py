@@ -338,3 +338,19 @@ def test_parquet_status_repository_rejects_directory_with_invalid_fragment_schem
 
     with pytest.raises(ValueError, match="invalid schema types"):
         files.ParquetStatusRepository(dataset_dir, stations, Scenario.NORMAL)
+
+
+def test_disappeared_history_bounds_raise_typed_unavailable(tmp_path: Path) -> None:
+    files = _files_module()
+    stations = files.FileStationRepository(
+        _write_stations(tmp_path / "stations.json", [_station("S001")])
+    )
+    history = _write_statuses(
+        tmp_path / "status.parquet",
+        [_status_row("S001", datetime(2026, 10, 12, 10, tzinfo=UTC_PLUS_7))],
+    )
+    repository = files.ParquetStatusRepository(history, stations, Scenario.NORMAL)
+    assert repository.bounds()[0] is not None
+    history.unlink()
+    with pytest.raises(DataSourceUnavailableError, match="history is unavailable"):
+        repository.bounds()

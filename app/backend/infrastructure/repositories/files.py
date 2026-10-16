@@ -89,10 +89,13 @@ class ParquetStatusRepository:
         self._validate_schema_types()
 
     def bounds(self) -> tuple[datetime | None, datetime | None]:
-        frame = self._dataset.to_table(
-            filter=(ds.field("scenario") == self._scenario.value),
-            columns=["station_id", "ts"],
-        ).to_pandas()
+        try:
+            frame = self._dataset.to_table(
+                filter=(ds.field("scenario") == self._scenario.value),
+                columns=["station_id", "ts"],
+            ).to_pandas()
+        except Exception as exc:  # Match window(): Arrow backends use varying exceptions.
+            raise DataSourceUnavailableError("station history is unavailable") from exc
         ids = {station.station_id for station in self._stations.list_stations()}
         frame = frame[frame.station_id.isin(ids)]
         counts = frame.groupby("ts").station_id.nunique()

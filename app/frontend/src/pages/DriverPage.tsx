@@ -33,6 +33,7 @@ export function DriverPage() {
   const [runtimeLoading, setRuntimeLoading] = useState(true);
   const lastTime = useRef<string | null>(null);
   const [runtimeError, setRuntimeError] = useState("");
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [resolvedOrigin, setResolvedOrigin] = useState<
     TripLocation | undefined
   >(DEFAULT_ORIGIN);
@@ -59,7 +60,7 @@ export function DriverPage() {
           if (!controller.signal.aborted) {
             setRuntimeLoading(false);
             setRuntimeError(
-              "Không lấy được thời gian/dữ liệu từ backend. Hãy tải lại trang.",
+              "Chưa kết nối được dữ liệu trạm. Vui lòng thử kết nối lại.",
             );
           }
         });
@@ -71,7 +72,7 @@ export function DriverPage() {
       controller.abort();
       clearInterval(timer);
     };
-  }, [client, scenario, clear]);
+  }, [client, scenario, clear, connectionAttempt]);
   const [stations, setStations] = useState<Station[]>([]);
   const [directoryFailed, setDirectoryFailed] = useState(false);
   const [directoryDataType, setDirectoryDataType] = useState<DataType | null>(
@@ -99,7 +100,7 @@ export function DriverPage() {
         }
       });
     return () => controller.abort();
-  }, [client]);
+  }, [client, connectionAttempt]);
 
   const stationNames = useMemo(() => {
     return Object.fromEntries(
@@ -213,6 +214,11 @@ export function DriverPage() {
         runtime={runtime}
         runtimeError={runtimeError}
         runtimeLoading={runtimeLoading}
+        onRetryRuntime={() => {
+          setRuntimeError("");
+          setRuntimeLoading(true);
+          setConnectionAttempt((value) => value + 1);
+        }}
         resolvedOrigin={resolvedOrigin}
         resolvedDestination={resolvedDestination}
         onResolveLocation={(field, location) => {

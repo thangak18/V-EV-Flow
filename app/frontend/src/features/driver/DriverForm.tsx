@@ -24,6 +24,7 @@ type Props = {
   runtime?: RuntimeContext;
   runtimeError?: string;
   runtimeLoading?: boolean;
+  onRetryRuntime?: () => void;
   onScenarioChange?: (scenario: Scenario) => void;
   onResolveLocation?: (
     field: "origin" | "destination",
@@ -59,6 +60,7 @@ export function DriverForm({
   runtime,
   runtimeError,
   runtimeLoading,
+  onRetryRuntime,
   onScenarioChange,
   onResolveLocation,
   resolvedOrigin,
@@ -350,10 +352,23 @@ export function DriverForm({
           ? ` ${runtime.clock_mode === "replay" ? "Đang xem dữ liệu mô phỏng, không phải trạng thái trực tiếp." : runtime.clock_mode === "live" ? "Trạng thái từ nguồn trạm." : "Dữ liệu minh họa."} Dự báo tối đa ${runtime.max_horizon_minutes} phút.`
           : ""}
       </p>
-      {runtimeError ? (
-        <p className="field-error" role="alert">
-          {runtimeError}
+      {runtimeLoading ? (
+        <p className="connection-state" role="status">
+          Đang kết nối dữ liệu trạm…
         </p>
+      ) : runtimeError ? (
+        <div className="connection-state connection-state--error" role="alert">
+          <span>{runtimeError}</span>
+          {onRetryRuntime ? (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onRetryRuntime}
+            >
+              Thử kết nối lại
+            </button>
+          ) : null}
+        </div>
       ) : null}
       {invalid ? (
         <p className="field-error driver-toolbar__error" role="alert">

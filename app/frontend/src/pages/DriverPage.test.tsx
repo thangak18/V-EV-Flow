@@ -390,3 +390,42 @@ describe("DriverPage", () => {
     ).toBeInTheDocument();
   });
 });
+
+test("a failed bootstrap can retry runtime and station data without reloading or recommending", async () => {
+  const original = createMockApiClient();
+  const context = await original.runtime("normal");
+  const directory = await original.listStations();
+  const runtime = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("unavailable"))
+    .mockResolvedValue(context);
+  const listStations = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("unavailable"))
+    .mockResolvedValue(directory);
+  const client = createMockApiClient({ runtime, listStations });
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <DriverPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  expect(
+    screen.getByRole("button", { name: "Tìm kế hoạch sạc" }),
+  ).toBeDisabled();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Thử kết nối lại" }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Tìm kế hoạch sạc" }),
+    ).toBeEnabled(),
+  );
+  expect(runtime).toHaveBeenCalledTimes(2);
+  expect(listStations).toHaveBeenCalledTimes(2);
+  expect(client.recommend).not.toHaveBeenCalled();
+  expect(
+    screen.queryByText(/Chưa kết nối được dữ liệu trạm/),
+  ).not.toBeInTheDocument();
+});

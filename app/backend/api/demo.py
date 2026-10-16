@@ -16,6 +16,12 @@ def main() -> None:
     parser.add_argument("--release-dir", required=True, type=Path)
     parser.add_argument("--capacity-models-dir", type=Path)
     parser.add_argument("--allocation-db", type=Path)
+    parser.add_argument(
+        "--runtime-dir",
+        type=Path,
+        default=Path("app/backend/modules/prediction/artifacts/runtime"),
+        help="Persistent workspace directory for process-owned status snapshots",
+    )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--route-backend", choices=("fake", "goong"), default="fake")
@@ -32,7 +38,11 @@ def main() -> None:
             parser.error(f"release is missing {relative}")
     # DATA_DIR's canonical layout is generated/, whereas a release uses data/.
     # Copy small simulated fixtures to a process-owned directory; leave the release immutable.
-    with TemporaryDirectory(prefix="v-ev-flow-demo-") as temporary:
+    # A lazy Parquet reader needs its files for the entire server lifetime.
+    # OS temporary directories may be purged while a long-running demo is active.
+    runtime_dir = args.runtime_dir.resolve()
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(prefix="session-", dir=runtime_dir) as temporary:
         data_dir = Path(temporary)
         shutil.copytree(release / "data", data_dir / "generated")
         settings = Settings(

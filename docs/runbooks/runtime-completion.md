@@ -119,3 +119,16 @@ Quay lại release V1 và `ALLOCATION_BACKEND=memory`, tắt Places/variant nế
 Giữ DB cũ riêng, không xóa lịch sử để rollback source. Optional contract fields
 cho capacity retraining chỉ xuất hiện khi có variant, client phải cập nhật cùng
 backend trước khi bật mode đó. Không thay binary trong release đang chạy.
+
+## Persistent runtime snapshots
+
+The release launcher copies its process-owned `generated/` snapshots under
+`app/backend/modules/prediction/artifacts/runtime/session-*` by default, outside
+OS temporary storage. Use `--runtime-dir /path/persistent-runtime` to select a
+writable workspace parent. Keep allocation SQLite under a persistent directory
+as well. Process-owned snapshot copies are removed on graceful shutdown; the
+trusted release stays unchanged. Do not use system `/tmp` for a long-lived
+server's history or allocation database. A missing history now returns the typed
+unavailable response rather than an unhandled runtime error. The Driver offers
+**Thử kết nối lại**, reloading both clock/capabilities and station metadata while
+preserving the user's journey and never automatically submitting a plan.
