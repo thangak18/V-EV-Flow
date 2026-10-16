@@ -2190,3 +2190,58 @@ dd {
 .connection-state button {
   font-size: 0.78rem;
 }
+.map-stage {
+  position: relative;
+  min-width: 0;
+}
+.map-focus-card {
+  position: absolute;
+  z-index: 4;
+  top: 1rem;
+  left: 1rem;
+  width: min(290px, calc(100% - 5rem));
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0.75rem;
+  background: white;
+  box-shadow: var(--shadow);
+}
+.map-focus-card strong {
+  display: block;
+  font-size: 1.05rem;
+  margin: 0.4rem 0;
+}
+.map-focus-card p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  margin: 0.5rem 0;
+}
+.map-focus-card button {
+  min-height: 32px;
+  padding: 0.3rem 0.6rem;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 0.75rem;
+}
+.map-marker--focused {
+  z-index: 3;
+}
+.map-marker--focused svg {
+  filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 8px #0b4f3a);
+  transform: scale(1.2);
+  transform-origin: bottom center;
+}
+@media (max-width: 560px) {
+  .map-focus-card {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    margin-top: 0.65rem;
+  }
+}
+.map-focus-card {
+  overflow-wrap: anywhere;
+}

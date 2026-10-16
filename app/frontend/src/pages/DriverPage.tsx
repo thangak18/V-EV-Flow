@@ -28,6 +28,12 @@ import type {
 export function DriverPage() {
   const client = useApiClient();
   const { status, result, error, submit, retry, clear } = useRecommendation();
+  const [mapFocus, setMapFocus] = useState<{
+    result: NonNullable<typeof result>;
+    id: string;
+    role: "primary" | "backup";
+    sequence: number;
+  }>();
   const [scenario, setScenario] = useState<Scenario>("normal");
   const [runtime, setRuntime] = useState<RuntimeContext>();
   const [runtimeLoading, setRuntimeLoading] = useState(true);
@@ -137,6 +143,16 @@ export function DriverPage() {
     ): void => {
       const meta = index.get(stationId);
       const label = meta?.name ?? stationId;
+      const plan = result?.[role];
+      const probability = plan?.p_available;
+      const probabilityLabel =
+        probability == null
+          ? ""
+          : probability > 0.99 && probability < 1
+            ? ">99%"
+            : probability > 0 && probability < 0.01
+              ? "<1%"
+              : `${Math.round(probability * 100)}%`;
       if (meta) {
         points.push({
           id: stationId,
@@ -144,6 +160,9 @@ export function DriverPage() {
           lng: meta.lng,
           label,
           role,
+          description: result?.[role]
+            ? `Khả năng còn cổng ${probabilityLabel} · Đến lúc ${new Date(result[role]!.eta).toLocaleTimeString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" })} · Pin khi đến ${result[role]!.arrival_soc_pct.toFixed(1)}%. Dự báo tham khảo, chưa giữ chỗ.`
+            : undefined,
         });
         return;
       }
@@ -157,7 +176,19 @@ export function DriverPage() {
     if (result?.primary) placeStation(result.primary.station_id, "primary");
     if (result?.backup) placeStation(result.backup.station_id, "backup");
 
-    return { points, unlocated, fitBounds: true };
+    return {
+      points,
+      unlocated,
+      fitBounds: true,
+      focus:
+        mapFocus && mapFocus.result === result
+          ? {
+              id: mapFocus.id,
+              role: mapFocus.role,
+              sequence: mapFocus.sequence,
+            }
+          : undefined,
+    };
   }, [
     origin,
     destination,
@@ -166,6 +197,7 @@ export function DriverPage() {
     stations,
     resolvedOrigin,
     resolvedDestination,
+    mapFocus,
   ]);
 
   function handleLocationChange(
@@ -182,7 +214,22 @@ export function DriverPage() {
     clear();
   }
 
-  function focusMap() {
+  function focusMap(role: "primary" | "backup") {
+    const plan = result?.[role];
+    if (
+      !result ||
+      !plan ||
+      !mapModel.points.some(
+        (point) => point.id === plan.station_id && point.role === role,
+      )
+    )
+      return;
+    setMapFocus((previous) => ({
+      result,
+      id: plan.station_id,
+      role,
+      sequence: (previous?.sequence ?? 0) + 1,
+    }));
     document
       .querySelector<HTMLElement>('[data-testid="map-canvas"]')
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -268,6 +315,12 @@ export function DriverPage() {
                   result={result}
                   stationNames={stationNames}
                   onFocusMap={focusMap}
+                  canFocusPrimary={mapModel.points.some(
+                    (point) => point.role === "primary",
+                  )}
+                  canFocusBackup={mapModel.points.some(
+                    (point) => point.role === "backup",
+                  )}
                 />
               ) : null}
             </AsyncState>

@@ -98,6 +98,51 @@ describe("GoongMapAdapter", () => {
     delete window.goongjs;
   });
 
+  test("zooms to the requested primary or backup instead of the trip origin", async () => {
+    const { maps } = installGoongMocks();
+    const adapter = new GoongMapAdapter();
+    const primary = {
+      id: "A",
+      role: "primary" as const,
+      label: "Primary",
+      lat: 10.8,
+      lng: 106.8,
+    };
+    const backup = {
+      id: "B",
+      role: "backup" as const,
+      label: "Backup",
+      lat: 11,
+      lng: 107,
+    };
+    const points = [...model.points, primary, backup];
+    const mounting = adapter.mount(document.createElement("div"), { points });
+    await vi.advanceTimersByTimeAsync(0);
+    await mounting;
+    await adapter.update({
+      points,
+      focus: { id: "A", role: "primary", sequence: 1 },
+    });
+    expect(maps[0]!.flyTo).toHaveBeenLastCalledWith({
+      center: [106.8, 10.8],
+      zoom: 14,
+    });
+    await adapter.update({
+      points,
+      focus: { id: "B", role: "backup", sequence: 2 },
+    });
+    expect(maps[0]!.flyTo).toHaveBeenLastCalledWith({
+      center: [107, 11],
+      zoom: 14,
+    });
+    await adapter.update({
+      points,
+      focus: { id: "B", role: "backup", sequence: 3 },
+    });
+    expect(maps[0]!.flyTo).toHaveBeenCalledTimes(3);
+    adapter.destroy();
+  });
+
   test("does not construct a map after destroy during SDK load", async () => {
     const { Map } = installGoongMocks({ delayMs: 100 });
     const container = document.createElement("div");

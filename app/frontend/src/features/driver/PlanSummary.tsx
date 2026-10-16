@@ -7,7 +7,9 @@ import { displayDistance, displayReason } from "./presentation";
 type Props = {
   result: RecommendationResult;
   stationNames?: Record<string, string>;
-  onFocusMap?: () => void;
+  onFocusMap?: (role: "primary" | "backup") => void;
+  canFocusPrimary?: boolean;
+  canFocusBackup?: boolean;
 };
 
 function formatPct(value: number): string {
@@ -34,7 +36,13 @@ export function formatEtaTime(value: string): string {
   return `${clock} · ${day}`;
 }
 
-export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
+export function PlanSummary({
+  result,
+  stationNames = {},
+  onFocusMap,
+  canFocusPrimary = true,
+  canFocusBackup = true,
+}: Props) {
   const hasPlan = result.primary != null || result.backup != null;
   const primary = result.primary;
   const primaryName = primary
@@ -106,9 +114,15 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
               <button
                 type="button"
                 className="btn-primary plan-hero__cta"
-                onClick={onFocusMap}
+                onClick={() => onFocusMap?.("primary")}
+                disabled={!canFocusPrimary}
+                title={
+                  !canFocusPrimary
+                    ? "Trạm chưa có tọa độ để định vị"
+                    : undefined
+                }
               >
-                Xem trạm trên bản đồ
+                Định vị trạm chính
               </button>
             </div>
           ) : null}
@@ -149,9 +163,13 @@ export function PlanSummary({ result, stationNames = {}, onFocusMap }: Props) {
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={onFocusMap}
+                onClick={() => onFocusMap?.("backup")}
+                disabled={!canFocusBackup}
+                title={
+                  !canFocusBackup ? "Trạm chưa có tọa độ để định vị" : undefined
+                }
               >
-                Xem trạm dự phòng trên bản đồ
+                Định vị trạm dự phòng
               </button>
             </article>
           ) : (

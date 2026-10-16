@@ -109,3 +109,14 @@ and what-if retain their explicitly stated complete-network scope. Unknown areas
 produce no-data states rather than fabricated stations or metrics. Detailed
 calculation metadata, reproducibility controls and comparison tables are exposed
 on demand. No shared API or generated type changes are part of this redesign.
+
+## Station focus actions
+
+The Driver's primary/backup location buttons emit a role-specific focus request
+with a fresh sequence on every click. Goong centers the requested station at
+zoom 14, highlights its marker and opens a station information card. Repeated
+clicks re-center and reopen the card; changing/clearing a recommendation hides
+stale focus details. Closing the card retains the current camera. Missing station
+coordinates disable location actions rather than guessing a position. The
+schematic adapter highlights and zooms the chosen diagram point, retaining its
+non-navigation label. These actions do not call recommend or add allocations.

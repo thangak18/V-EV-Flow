@@ -83,6 +83,7 @@ test.describe("driver pipeline-shaped recommend (route inject)", () => {
     await expect(page.getByText(/chưa có tọa độ/i)).toBeVisible();
     const list = page.getByLabel("Station text list");
     await expect(list).toContainText("S999");
+    await expect(page.getByRole("button",{name:"Định vị trạm chính",exact:true})).toBeDisabled();
     await expect(list).not.toContainText("10.5500");
     const hero = page.getByTestId("plan-hero");
     await expect(hero).toContainText("Khả năng kế hoạch có chỗ: 85%");

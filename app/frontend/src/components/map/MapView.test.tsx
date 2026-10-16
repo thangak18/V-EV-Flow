@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
 import { FakeMapAdapter } from "./FakeMapAdapter";
@@ -94,4 +94,48 @@ describe("MapView", () => {
       "LATEST",
     );
   });
+});
+
+test("station information switches roles, closes, and reopens on a repeated focus", async () => {
+  const adapter = new FakeMapAdapter();
+  const factory = () => adapter;
+  const { rerender } = render(
+    <MapView
+      model={{ ...model, focus: { id: "S012", role: "primary", sequence: 1 } }}
+      adapterFactory={factory}
+    />,
+  );
+  expect(await screen.findByTestId("station-map-info")).toHaveTextContent(
+    "S012",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Đóng thông tin trạm" }));
+  expect(screen.queryByTestId("station-map-info")).not.toBeInTheDocument();
+  rerender(
+    <MapView
+      model={{ ...model, focus: { id: "S012", role: "primary", sequence: 2 } }}
+      adapterFactory={factory}
+    />,
+  );
+  expect(screen.getByTestId("station-map-info")).toHaveTextContent("S012");
+  rerender(
+    <MapView
+      model={{ ...model, focus: { id: "S015", role: "backup", sequence: 3 } }}
+      adapterFactory={factory}
+    />,
+  );
+  expect(screen.getByTestId("station-map-info")).toHaveTextContent("S015");
+  expect(screen.getByTestId("station-map-info")).toHaveTextContent(
+    "TRẠM DỰ PHÒNG",
+  );
+  rerender(
+    <MapView
+      model={{
+        ...model,
+        points: [],
+        focus: { id: "S015", role: "backup", sequence: 4 },
+      }}
+      adapterFactory={factory}
+    />,
+  );
+  expect(screen.queryByTestId("station-map-info")).not.toBeInTheDocument();
 });

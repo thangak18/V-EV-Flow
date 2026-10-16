@@ -33,6 +33,13 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
   const latestModelRef = useRef(model);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [dismissedFocus, setDismissedFocus] = useState<number>();
+  const focusedPoint =
+    model.focus &&
+    model.points.find(
+      (point) =>
+        point.id === model.focus!.id && point.role === model.focus!.role,
+    );
   const usingGoong = useMemo(
     () => !preferFake && hasGoongKey() && !adapterFactory,
     [preferFake, adapterFactory],
@@ -98,12 +105,36 @@ export function MapView({ model, adapterFactory, preferFake = false }: Props) {
           Bản đồ Goong · tiles © Goong
         </p>
       )}
-      <div
-        ref={containerRef}
-        className="map-canvas"
-        data-testid="map-canvas"
-        aria-label="Bản đồ sạc"
-      />
+      <div className="map-stage">
+        <div
+          ref={containerRef}
+          className="map-canvas"
+          data-testid="map-canvas"
+          aria-label="Bản đồ sạc"
+        />
+        {focusedPoint && model.focus?.sequence !== dismissedFocus ? (
+          <aside
+            className="map-focus-card"
+            aria-live="polite"
+            data-testid="station-map-info"
+          >
+            <span className="eyebrow">
+              {focusedPoint.role === "backup" ? "TRẠM DỰ PHÒNG" : "TRẠM CHÍNH"}
+            </span>
+            <strong>{focusedPoint.label}</strong>
+            {focusedPoint.description ? (
+              <p>{focusedPoint.description}</p>
+            ) : null}
+            <button
+              type="button"
+              aria-label="Đóng thông tin trạm"
+              onClick={() => setDismissedFocus(model.focus?.sequence)}
+            >
+              Đóng
+            </button>
+          </aside>
+        ) : null}
+      </div>
       {mapError ? (
         <p className="status-message error" role="alert">
           Bản đồ lỗi: {mapError}. Vẫn xem được danh sách điểm bên dưới.

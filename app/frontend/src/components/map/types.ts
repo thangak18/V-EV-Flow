@@ -5,6 +5,7 @@ export type MapPoint = {
   label: string;
   role: "origin" | "destination" | "primary" | "backup" | "pressure";
   color?: string;
+  description?: string;
 };
 
 /** Station known to the UI but missing directory coordinates — text only. */
@@ -18,6 +19,7 @@ export type MapModel = {
   points: MapPoint[];
   unlocated?: UnlocatedMapPoint[];
   fitBounds?: boolean;
+  focus?: { id: string; role: MapPoint["role"]; sequence: number };
 };
 
 export interface MapAdapter {

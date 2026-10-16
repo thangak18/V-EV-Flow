@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
 
 import type { RecommendationResult } from "../../services/api";
 import { formatEtaTime, PlanEmptyState, PlanSummary } from "./PlanSummary";
@@ -59,7 +59,7 @@ describe("PlanSummary", () => {
     expect(screen.getByTestId("plan-hero")).toBeInTheDocument();
     expect(screen.getByText("Trạm Long Thành")).toBeInTheDocument();
     expect(screen.getAllByText("85%").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Xem trạm trên bản đồ/i)).toBeInTheDocument();
+    expect(screen.getByText(/Định vị trạm chính/i)).toBeInTheDocument();
     expect(screen.getByText("Trạm dự phòng")).toBeInTheDocument();
     expect(screen.getByText(/15,5%/)).toBeInTheDocument();
     expect(screen.getByText("Đủ pin để tới trạm chính")).toBeInTheDocument();
@@ -130,4 +130,27 @@ test("displays a non-binding time-shift estimate without changing the current pl
   expect(screen.getByTestId("plan-hero")).toContainHTML(
     'data-probability="0.854"',
   );
+});
+
+test("location actions select the correct station role and reject missing coordinates", () => {
+  const onFocusMap = vi.fn();
+  const { rerender } = render(
+    <PlanSummary result={base} onFocusMap={onFocusMap} />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Định vị trạm chính" }));
+  expect(onFocusMap).toHaveBeenLastCalledWith("primary");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Định vị trạm dự phòng" }),
+  );
+  expect(onFocusMap).toHaveBeenLastCalledWith("backup");
+  rerender(
+    <PlanSummary
+      result={base}
+      onFocusMap={onFocusMap}
+      canFocusPrimary={false}
+    />,
+  );
+  expect(
+    screen.getByRole("button", { name: "Định vị trạm chính" }),
+  ).toBeDisabled();
 });

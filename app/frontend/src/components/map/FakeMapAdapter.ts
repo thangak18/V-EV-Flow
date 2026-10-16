@@ -101,6 +101,13 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
   const height = Math.max(container.clientHeight || 280, 220);
   const projected = project(model.points, width, height);
   const labeled = placeLabels(projected, width, height);
+  const focused =
+    model.focus &&
+    projected.find(
+      (item) =>
+        item.point.id === model.focus!.id &&
+        item.point.role === model.focus!.role,
+    );
 
   container.dataset.mapAdapter = "schematic";
   container.replaceChildren();
@@ -115,7 +122,9 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
   wrapper.appendChild(badge);
 
   const svg = el("svg", {
-    viewBox: `0 0 ${width} ${height}`,
+    viewBox: focused
+      ? `${focused.x - width / 4} ${focused.y - height / 4} ${width / 2} ${height / 2}`
+      : `0 0 ${width} ${height}`,
     width: "100%",
     height: "100%",
     role: "img",
@@ -170,6 +179,9 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
 
   for (const { point, x, y, labelX, labelY, text } of labeled) {
     const group = el("g");
+    const selected =
+      model.focus?.id === point.id && model.focus.role === point.role;
+    if (selected) group.setAttribute("data-focused", "true");
     const title = el("title");
     title.textContent = point.label;
     group.appendChild(title);
@@ -177,7 +189,7 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
       el("circle", {
         cx: x,
         cy: y,
-        r: 8,
+        r: selected ? 12 : 8,
         fill: point.color ?? ROLE_COLOR[point.role],
         stroke: "#fff",
         "stroke-width": 2,

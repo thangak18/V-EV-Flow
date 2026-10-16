@@ -177,9 +177,15 @@ export class GoongMapAdapter implements MapAdapter {
     if (!this.map || !window.goongjs || this.destroyed) return;
     this.clearMarkers();
     this.renderMarkers(window.goongjs, model);
-    if (model.points[0]) {
-      this.map.flyTo({ center: toLngLat(model.points[0]), zoom: 8 });
-    }
+    const focused =
+      model.focus &&
+      model.points.find(
+        (point) =>
+          point.id === model.focus!.id && point.role === model.focus!.role,
+      );
+    const target = focused || model.points[0];
+    if (target)
+      this.map.flyTo({ center: toLngLat(target), zoom: focused ? 14 : 8 });
   }
 
   destroy(): void {
@@ -211,7 +217,12 @@ export class GoongMapAdapter implements MapAdapter {
       const marker = new goongjs.Marker({ color })
         .setLngLat(toLngLat(point))
         .addTo(this.map);
-      marker.getElement().title = `${point.role}: ${point.label}`;
+      const element = marker.getElement();
+      element.title = `${point.role}: ${point.label}`;
+      if (model.focus?.id === point.id && model.focus.role === point.role) {
+        element.classList.add("map-marker--focused");
+        element.setAttribute("aria-current", "location");
+      }
       this.markers.push(marker);
     }
   }
