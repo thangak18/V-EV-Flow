@@ -281,7 +281,9 @@ test("reselecting the active scenario keeps Apply enabled", async () => {
   expect(runtime).toHaveBeenCalledTimes(1);
 });
 
-function renderAreaForecast(getPressure: ReturnType<typeof vi.fn>) {
+function renderAreaForecast(
+  getPressure: import("../services/api").ApiClient["getPressure"],
+) {
   const client = createMockApiClient({ getPressure });
   render(
     <ApiProvider client={client}>
