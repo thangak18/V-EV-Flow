@@ -141,3 +141,12 @@ KPI cards distinguish not-yet-loaded, loading, failed and no-data states rather
 than displaying unexplained dashes or treating missing forecasts as zero risk.
 Failed requests support explicit retry. The radius requires a resolved centre;
 a nearby hint explains this prerequisite.
+
+## Operator information hierarchy
+
+The first block groups scenario/time and area/radius before the KPI cards and
+map. A visible context line distinguishes the selected scenario from a loaded
+forecast. Vehicle count and run settings live beside strategy comparison in the
+second block; scenario selection is not duplicated there. Capacity what-if stays
+in the third block. Monitoring filters retain local scope; simulation retains
+its explicitly labelled complete-network scope.

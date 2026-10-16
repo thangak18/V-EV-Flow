@@ -10,10 +10,12 @@ export function AreaFilter({
   placesAvailable,
   onApply,
   ready = true,
+  embedded = false,
 }: {
   stations: Station[];
   placesAvailable: boolean;
   ready?: boolean;
+  embedded?: boolean;
   onApply: (area: MonitoredArea | null) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -31,17 +33,22 @@ export function AreaFilter({
         ? locations.find((s) => s.label === query)
         : undefined;
   return (
-    <section className="area-filter" aria-label="Chọn khu vực theo dõi">
-      <div className="section-step">
-        <span>01</span>
-        <div>
-          <h3>Chọn khu vực theo dõi</h3>
-          <p>
-            Tìm địa điểm hoặc chọn một trạm, sau đó lọc các trạm có dữ liệu xung
-            quanh.
-          </p>
+    <section
+      className={`area-filter ${embedded ? "area-filter--embedded" : ""}`}
+      aria-label="Chọn khu vực theo dõi"
+    >
+      {embedded ? null : (
+        <div className="section-step">
+          <span>01</span>
+          <div>
+            <h3>Chọn khu vực theo dõi</h3>
+            <p>
+              Tìm địa điểm hoặc chọn một trạm, sau đó lọc các trạm có dữ liệu
+              xung quanh.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
       <div className="area-filter__fields">
         <PlaceSearch
           label="Khu vực theo dõi"

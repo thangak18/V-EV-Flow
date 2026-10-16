@@ -208,12 +208,64 @@ export function OperatorPage() {
           {runtimeNotice}
         </p>
       ) : null}
-      <AreaFilter
-        stations={stations}
-        placesAvailable={placesAvailable}
-        onApply={applyArea}
-        ready={forecastReady}
-      />
+      <section
+        className="operator-monitoring-controls"
+        aria-label="Thiết lập theo dõi"
+      >
+        <div className="section-step">
+          <span>01</span>
+          <div>
+            <h3>Thiết lập theo dõi</h3>
+            <p>
+              Chọn kịch bản và thời điểm, sau đó chọn phạm vi để xem dự báo trên
+              bản đồ.
+            </p>
+          </div>
+        </div>
+        <ScenarioSelector
+          scenario={scenario}
+          time={time}
+          onScenarioChange={(next) => {
+            if (next === scenario) return;
+            setRuntimeReady(false);
+            setScenario(next);
+          }}
+          onTimeChange={setTime}
+          onApply={() => void pressure.load(scenario, time)}
+          pending={pressure.status === "loading" || !runtimeReady}
+        />
+        <AreaFilter
+          embedded
+          stations={stations}
+          placesAvailable={placesAvailable}
+          onApply={applyArea}
+          ready={forecastReady}
+        />
+      </section>
+      <p className="operator-forecast-context" role="status">
+        <strong>
+          {forecast ? "Đang xem" : "Đã chọn"}:{" "}
+          {scenario === "tet"
+            ? "Tết"
+            : scenario === "holiday_30_4"
+              ? "Lễ 30/4"
+              : "Ngày thường"}
+        </strong>
+        <span>
+          {area
+            ? `${area.center.label} · bán kính ${area.radiusKm} km`
+            : "Toàn bộ mạng lưới"}
+        </span>
+        {!forecast ? (
+          <span>
+            {loadingForecast
+              ? "Đang tải dự báo…"
+              : failedForecast
+                ? "Không tải được dự báo"
+                : "Chưa tải dự báo cho lựa chọn này"}
+          </span>
+        ) : null}
+      </p>
       <div className="network-kpis" aria-label="Tổng quan khu vực">
         <article>
           <span>Trạm trong khu vực</span>
@@ -281,42 +333,6 @@ export function OperatorPage() {
             : "Bộ lọc chỉ áp dụng cho bản đồ và tổng quan khu vực."}
         </p>
       ) : null}
-      <div className="section-step">
-        <span>02</span>
-        <div>
-          <h3>Đánh giá nhu cầu &amp; điều phối</h3>
-          <p>
-            Chọn điều kiện nhu cầu và số xe. Bản đồ cập nhật theo kịch bản; so
-            sánh chiến lược sử dụng toàn bộ {stations.length} trạm trong mạng
-            lưới.
-          </p>
-        </div>
-      </div>
-      <div className="operator-toolbar">
-        <ScenarioSelector
-          scenario={scenario}
-          time={time}
-          onScenarioChange={(next) => {
-            if (next === scenario) return;
-            setRuntimeReady(false);
-            setScenario(next);
-          }}
-          onTimeChange={setTime}
-          onApply={() => void pressure.load(scenario, time)}
-          pending={pressure.status === "loading" || !runtimeReady}
-        />
-        <SimulationControls
-          seed={seed}
-          vehicleCount={vehicleCount}
-          onSeedChange={setSeed}
-          onVehicleCountChange={setVehicleCount}
-          onRun={(nextSeed, nextVehicles) =>
-            void simulation.run(scenario, nextSeed, nextVehicles)
-          }
-          pending={simulation.pending}
-          onDraftChange={onDraftChange}
-        />
-      </div>
 
       {directoryFailed ? (
         <p className="status-message" role="status">
@@ -364,6 +380,35 @@ export function OperatorPage() {
         </section>
 
         <section className="operator-results-card">
+          <div className="operator-simulation-setup">
+            <div className="section-step">
+              <span>02</span>
+              <div>
+                <h3>Đánh giá nhu cầu &amp; điều phối</h3>
+                <p>
+                  So sánh cách phục vụ nhóm xe trong kịch bản{" "}
+                  {scenario === "tet"
+                    ? "Tết"
+                    : scenario === "holiday_30_4"
+                      ? "Lễ 30/4"
+                      : "Ngày thường"}
+                  , trên toàn bộ {stations.length} trạm. Bộ lọc khu vực chỉ áp
+                  dụng cho phần theo dõi.
+                </p>
+              </div>
+            </div>
+            <SimulationControls
+              seed={seed}
+              vehicleCount={vehicleCount}
+              onSeedChange={setSeed}
+              onVehicleCountChange={setVehicleCount}
+              onRun={(nextSeed, nextVehicles) =>
+                void simulation.run(scenario, nextSeed, nextVehicles)
+              }
+              pending={simulation.pending}
+              onDraftChange={onDraftChange}
+            />
+          </div>
           <StrategyComparison rows={simulation.rows} meta={simulation.config} />
         </section>
       </div>

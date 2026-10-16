@@ -2277,3 +2277,47 @@ dd {
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
+
+.operator-monitoring-controls,
+.operator-simulation-setup {
+  padding: 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--panel);
+}
+.operator-monitoring-controls > .section-step,
+.operator-simulation-setup .section-step {
+  margin: 0 0 1rem;
+}
+.operator-monitoring-controls > .scenario-selector {
+  padding: 0 0 1rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+.area-filter--embedded {
+  margin: 0;
+  padding: 1rem 0 0;
+  border: 0;
+}
+.operator-forecast-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.operator-forecast-context strong {
+  color: var(--accent);
+}
+.operator-simulation-setup {
+  margin-bottom: 1rem;
+}
+.operator-simulation-setup .simulation-controls {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
