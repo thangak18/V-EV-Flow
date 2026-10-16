@@ -27,7 +27,8 @@ import type { Scenario, Station } from "../services/api";
 export function OperatorPage() {
   const client = useApiClient();
   const [scenario, setScenario] = useState<Scenario>("normal");
-  const [time, setTime] = useState("2026-10-13T16:00:00+07:00");
+  const [time, setTime] = useState("");
+  const [systemTime, setSystemTime] = useState("");
   const [runtimeNotice, setRuntimeNotice] = useState("");
   const [runtimeReady, setRuntimeReady] = useState(false);
   const [placesAvailable, setPlacesAvailable] = useState(false);
@@ -38,7 +39,9 @@ export function OperatorPage() {
       .runtime(scenario, controller.signal)
       .then((context) => {
         if (controller.signal.aborted) return;
-        if (context.observed_at) setTime(context.observed_at);
+        const observedAt = context.observed_at ?? "";
+        setTime(observedAt);
+        setSystemTime(observedAt);
         setRuntimeNotice(
           !context.available
             ? "Chưa có dữ liệu phù hợp cho thời điểm đã chọn."
@@ -46,7 +49,9 @@ export function OperatorPage() {
               ? `Dữ liệu mô phỏng · Mốc quan sát ${context.observed_at ? new Date(context.observed_at).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "chưa xác định"}`
               : context.message,
         );
-        setRuntimeReady(context.available);
+        setRuntimeReady(
+          context.available && isPlus07FiveMinuteBucket(observedAt),
+        );
         setPlacesAvailable(context.places_available);
       })
       .catch(() => {
@@ -217,14 +222,15 @@ export function OperatorPage() {
           <div>
             <h3>Thiết lập theo dõi</h3>
             <p>
-              Chọn kịch bản và thời điểm, sau đó chọn phạm vi để xem dự báo trên
-              bản đồ.
+              Chọn kịch bản và khu vực để xem dự báo. Thời điểm dữ liệu được hệ
+              thống cung cấp tự động.
             </p>
           </div>
         </div>
         <ScenarioSelector
           scenario={scenario}
           time={time}
+          systemTime={systemTime}
           onScenarioChange={(next) => {
             if (next === scenario) return;
             setRuntimeReady(false);

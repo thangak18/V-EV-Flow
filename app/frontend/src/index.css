@@ -2321,3 +2321,37 @@ dd {
   border: 0;
   box-shadow: none;
 }
+
+.operator-data-clock {
+  display: grid;
+  flex: 1 1 16rem;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.operator-data-clock time {
+  color: var(--ink);
+  font-weight: 650;
+  font-size: 1rem;
+}
+.operator-data-clock small {
+  font-size: 0.72rem;
+}
+.operator-time-settings {
+  flex: 1 1 100%;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.operator-time-settings summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 0.5rem 0;
+  color: var(--accent);
+}
+.operator-time-settings p {
+  line-height: 1.6;
+}
+.operator-time-settings .field-chip {
+  max-width: 24rem;
+  margin-bottom: 0.75rem;
+}

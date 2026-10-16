@@ -402,3 +402,33 @@ test("an empty forecast is shown as no data rather than zero risk", async () => 
   );
   expect(kpis.queryByText("0", { selector: "strong" })).not.toBeInTheDocument();
 });
+
+test("operator uses the backend clock and converts optional history selection to Vietnam time", async () => {
+  const getPressure = vi.fn().mockResolvedValue(areaResponse);
+  renderAreaForecast(getPressure);
+  const apply = await screen.findByRole("button", { name: "Áp dụng kịch bản" });
+  await waitFor(() => expect(apply).toBeEnabled());
+  const clock = document.querySelector(".operator-data-clock time");
+  expect(clock).toHaveAttribute("datetime", areaResponse.time);
+  expect(document.querySelector(".operator-time-settings")).not.toHaveAttribute(
+    "open",
+  );
+  fireEvent.click(screen.getByText("Thiết lập nâng cao", { exact: true }));
+  fireEvent.change(screen.getByLabelText("Xem dữ liệu tại"), {
+    target: { value: "2026-10-13T18:00" },
+  });
+  expect(screen.getByText("Đang xem lịch sử lúc")).toBeInTheDocument();
+  fireEvent.click(apply);
+  await waitFor(() =>
+    expect(getPressure).toHaveBeenCalledWith(
+      { scenario: "normal", time: "2026-10-13T18:00:00+07:00" },
+      expect.any(AbortSignal),
+    ),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Dùng mốc hệ thống" }));
+  expect(screen.getByText("Dữ liệu lúc")).toBeInTheDocument();
+  expect(document.querySelector(".operator-data-clock time")).toHaveAttribute(
+    "datetime",
+    areaResponse.time,
+  );
+});

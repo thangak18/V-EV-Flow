@@ -150,3 +150,12 @@ forecast. Vehicle count and run settings live beside strategy comparison in the
 second block; scenario selection is not duplicated there. Capacity what-if stays
 in the third block. Monitoring filters retain local scope; simulation retains
 its explicitly labelled complete-network scope.
+
+## Operator data clock
+
+The selected scenario uses the timestamp supplied by runtime, shown read-only
+in Vietnamese local date/time. No fixed date is used before runtime responds.
+Optional history selection lives in a collapsed advanced disclosure with a
+native datetime-local picker, five-minute validation and explicit +07:00 request
+conversion. A reset action restores the backend-supplied timestamp. History
+selection does not trigger prediction until the user applies the scenario/filter.
