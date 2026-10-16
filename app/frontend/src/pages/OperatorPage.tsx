@@ -228,15 +228,34 @@ export function OperatorPage() {
           </p>
         </article>
         <article>
-          <span>Trạm có nguy cơ thiếu chỗ</span>
+          <span>Trạm có nguy cơ hết chỗ</span>
           <strong className={knownPressure.length ? undefined : "kpi-status"}>
-            {forecast && knownPressure.length ? highRisk : forecastPlaceholder}
+            {forecast && knownPressure.length ? (
+              <>
+                {highRisk}
+                <small> trạm</small>
+              </>
+            ) : (
+              forecastPlaceholder
+            )}
           </strong>
           <p>
             {knownPressure.length
-              ? "Nguy cơ từ 66% tại giờ dự báo"
+              ? `Dự báo sau 30 phút · trong ${knownPressure.length} trạm có dự báo`
               : forecastHint}
           </p>
+          <details className="kpi-explanation">
+            <summary>Cách xác định</summary>
+            <p>
+              Đếm các trạm được dự báo có nguy cơ hết chỗ từ 66% trở lên, tại
+              thời điểm 30 phút sau mốc dữ liệu đang xem. Đây là ngưỡng cảnh báo
+              do nhóm lựa chọn.
+            </p>
+            <p>
+              0 trạm nghĩa là chưa có trạm nào chạm ngưỡng cảnh báo; không đảm
+              bảo mọi trạm đều còn chỗ.
+            </p>
+          </details>
         </article>
         <article>
           <span>Khả năng còn chỗ trung bình</span>
@@ -249,7 +268,7 @@ export function OperatorPage() {
           </strong>
           <p>
             {knownPressure.length
-              ? `Từ ${knownPressure.length} trạm có dự báo`
+              ? `Dự báo sau 30 phút · trung bình ${knownPressure.length} trạm`
               : forecastHint}
           </p>
         </article>

@@ -325,7 +325,7 @@ test("area filter loads forecasts and repeated radius changes reuse the network 
   const kpis = within(screen.getByLabelText("Tổng quan khu vực"));
   expect(await kpis.findByText("20%")).toBeInTheDocument();
   expect(
-    screen.getByText("Trạm có nguy cơ thiếu chỗ").closest("article"),
+    screen.getByText("Trạm có nguy cơ hết chỗ").closest("article"),
   ).toHaveTextContent("1");
   for (const radius of ["10", "50", "100", "25"]) {
     fireEvent.change(screen.getByLabelText("Bán kính theo dõi"), {

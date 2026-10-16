@@ -2260,3 +2260,20 @@ dd {
   font-size: clamp(1.1rem, 2vw, 1.5rem);
   line-height: 1.4;
 }
+
+.kpi-explanation {
+  margin-top: 0.65rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+.kpi-explanation summary {
+  cursor: pointer;
+  color: var(--accent);
+  width: fit-content;
+  padding: 0.35rem 0;
+}
+.kpi-explanation summary:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
