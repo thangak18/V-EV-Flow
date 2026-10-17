@@ -52,7 +52,7 @@ test("operator displays real 100-vehicle runs for all three scenarios", async ({
   await page.goto("/operator");
   const pressures: string[] = [];
   for (const scenario of ["normal", "holiday_30_4", "tet"]) {
-    await page.getByLabel("Kịch bản").selectOption(scenario);
+    await page.getByLabel("Kịch bản nhu cầu sạc").selectOption(scenario);
     const pressurePromise = page.waitForResponse(
       (response) =>
         response.url().includes("/api/pressure?") &&

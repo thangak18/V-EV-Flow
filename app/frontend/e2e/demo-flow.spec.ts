@@ -67,7 +67,7 @@ test("operator demo: pressure then an actual same-fixture comparison", async ({
   test.setTimeout(120_000);
   await page.goto("/operator");
   await page
-    .getByRole("combobox", { name: "Kịch bản", exact: true })
+    .getByRole("combobox", { name: "Kịch bản nhu cầu sạc", exact: true })
     .selectOption("tet");
   await page
     .getByRole("button", { name: "Áp dụng kịch bản", exact: true })

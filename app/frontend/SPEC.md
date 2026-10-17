@@ -194,3 +194,23 @@ switch. Network outcome metrics remain in the comparison above.
 Forecast loading locks only the selected scenario/time. Changing either while
 an older request is pending allows applying the new valid selection; starting
 that request aborts the old one. Late responses cannot overwrite the new KPIs.
+
+## Explicit Driver departure
+
+Driver exposes a Vietnam-time datetime-local departure picker. Replay defaults
+to the source timestamp. Selecting a custom time within runtime history bounds
+uses the actual historical snapshot at that time (floor to the previous five-
+minute bucket). The selectable history is not restricted to three hours after
+the default clock. Observations serialize without fractional seconds. Out-of-
+history times are blocked rather than invented or interpolated.
+
+Live mode preserves the latest observed_at and defaults to click-time departure;
+custom live departures remain independent of that observation. In every mode,
+model horizon still applies from the real selected observation to candidate ETA.
+No extrapolation beyond the model capability is introduced.
+
+Editing/resetting departure clears the previous plan without recommending again.
+Scenario changes restore the data-clock default. The demand scenario label is
+“Kịch bản nhu cầu sạc” in both workspaces; it does not claim holiday traffic
+forecasts. No backend contracts change: RecommendationRequest.depart_time was
+already supported and is now editable in the product UI.

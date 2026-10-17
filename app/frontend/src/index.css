@@ -327,10 +327,7 @@ input[aria-invalid="true"] {
 
 .driver-toolbar__fields {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.4fr) repeat(
-      3,
-      minmax(0, 1fr)
-    );
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
   flex: 1 1 50rem;
   min-width: 0;
@@ -2538,4 +2535,58 @@ dd {
 .camera-badge--weak {
   background: #fef3c7;
   color: #92400e;
+}
+
+.driver-departure small {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+.driver-departure input {
+  width: 100%;
+  min-width: 0;
+}
+.driver-departure-note .departure-reset {
+  width: fit-content;
+  padding: 0.25rem 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.75rem;
+  text-decoration: underline;
+}
+
+.driver-toolbar__fields {
+  align-items: start;
+}
+
+.driver-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.driver-toolbar__fields {
+  width: 100%;
+}
+.driver-toolbar__actions {
+  width: 100%;
+  margin-left: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+.driver-departure-note {
+  display: flex;
+  flex: 1 1 17rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.driver-departure-note small {
+  font-size: inherit;
+}
+.driver-scenario-note,
+.driver-history-range {
+  display: block;
+  margin-top: 0.35rem;
 }

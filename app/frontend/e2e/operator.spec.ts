@@ -4,7 +4,7 @@ test("operator loads pressure and compares three strategies", async ({
   page,
 }) => {
   await page.goto("/operator");
-  await page.getByLabel("Kịch bản").selectOption("tet");
+  await page.getByLabel("Kịch bản nhu cầu sạc").selectOption("tet");
   await page.getByRole("button", { name: /Áp dụng kịch bản/i }).click();
   await expect(page.getByLabel("Chú thích áp lực")).toBeVisible();
   await expect(page.getByText(/Danh sách điểm trên bản đồ/i)).toBeVisible({

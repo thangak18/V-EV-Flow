@@ -430,6 +430,50 @@ test("a failed bootstrap can retry runtime and station data without reloading or
   ).not.toBeInTheDocument();
 });
 
+test("editing departure clears the old plan and submits a new departure explicitly", async () => {
+  const recommend = vi.fn().mockResolvedValue(planResult);
+  render(
+    <ApiProvider client={createMockApiClient({ recommend })}>
+      <MemoryRouter>
+        <DriverPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  const find = screen.getByRole("button", { name: "Tìm kế hoạch sạc" });
+  await waitFor(() => expect(find).toBeEnabled());
+  fireEvent.click(find);
+  expect(await screen.findByTestId("plan-hero")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Giờ khởi hành"), {
+    target: { value: "2026-10-13T16:15" },
+  });
+  expect(screen.queryByTestId("plan-hero")).not.toBeInTheDocument();
+  expect(recommend).toHaveBeenCalledTimes(1);
+  fireEvent.click(find);
+  await waitFor(() => expect(recommend).toHaveBeenCalledTimes(2));
+  expect(recommend.mock.calls[1]?.[0]).toMatchObject({
+    observed_at: "2026-10-13T16:00:00+07:00",
+    depart_time: "2026-10-13T16:15:00+07:00",
+  });
+});
+
+test("reselecting the active demand scenario does not strand runtime loading", async () => {
+  const client = createMockApiClient();
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <DriverPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  const find = screen.getByRole("button", { name: "Tìm kế hoạch sạc" });
+  await waitFor(() => expect(find).toBeEnabled());
+  fireEvent.change(screen.getByLabelText("Kịch bản nhu cầu sạc"), {
+    target: { value: "normal" },
+  });
+  expect(find).toBeEnabled();
+  expect(client.runtime).toHaveBeenCalledTimes(1);
+});
+
 test("shows the camera icon and queue on a recommended station that has a camera", async () => {
   const getStationQueues = vi.fn().mockResolvedValue({
     observed_at: "2026-10-13T16:00:00+07:00",
@@ -497,4 +541,54 @@ test("still shows the plan when the camera feed fails", async () => {
   fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
   expect(await screen.findByTestId("plan-hero")).toBeInTheDocument();
   expect(screen.queryByLabelText(/Có camera/)).not.toBeInTheDocument();
+});
+
+test("camera views follow the observation time the recommendation was requested with", async () => {
+  const getStationQueues = vi.fn().mockResolvedValue({
+    observed_at: "2026-10-12T09:15:00+07:00",
+    scenario: "normal",
+    observations: [],
+    data_type: "mock",
+    source_notes: [],
+  });
+  const recommend = vi.fn().mockResolvedValue(planResult);
+  const client = createMockApiClient({
+    getStationQueues,
+    recommend,
+    runtime: vi.fn().mockResolvedValue({
+      clock_mode: "replay",
+      scenario: "normal",
+      data_type: "simulated",
+      observed_at: "2026-10-13T16:00:00+07:00",
+      history_start: "2026-09-30T00:00:00+07:00",
+      history_end: "2026-10-13T23:55:00+07:00",
+      max_horizon_minutes: 180,
+      places_available: false,
+      available: true,
+      message: "Historical fixture",
+      allocation_backend: "memory",
+    }),
+  });
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <DriverPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  const find = screen.getByRole("button", { name: "Tìm kế hoạch sạc" });
+  await waitFor(() => expect(find).toBeEnabled());
+  fireEvent.change(screen.getByLabelText("Giờ khởi hành"), {
+    target: { value: "2026-10-12T09:15" },
+  });
+  fireEvent.click(find);
+  await waitFor(() => expect(recommend).toHaveBeenCalledTimes(1));
+  const requested = recommend.mock.calls[0]?.[0].observed_at;
+  expect(requested).toBe("2026-10-12T09:15:00+07:00");
+  await waitFor(() =>
+    expect(getStationQueues).toHaveBeenLastCalledWith(
+      expect.objectContaining({ observed_at: requested }),
+      expect.anything(),
+    ),
+  );
 });

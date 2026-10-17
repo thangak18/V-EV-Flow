@@ -5,7 +5,7 @@ test("operator live simulate: 100 vehicles, three strategies, no hardcoded winne
   page,
 }) => {
   await page.goto("/operator");
-  await page.getByLabel("Kịch bản").selectOption("tet");
+  await page.getByLabel("Kịch bản nhu cầu sạc").selectOption("tet");
   await page.getByRole("button", { name: /Áp dụng kịch bản/i }).click();
   await expect(page.getByLabel("Chú thích áp lực")).toBeVisible({
     timeout: 15_000,
@@ -109,7 +109,7 @@ test("operator pressure badge follows simulated station data_type", async ({
   });
 
   await page.goto("/operator");
-  await page.getByLabel("Kịch bản").selectOption("tet");
+  await page.getByLabel("Kịch bản nhu cầu sạc").selectOption("tet");
   await page.getByRole("button", { name: /Áp dụng kịch bản/i }).click();
   await expect(page.getByText("Dữ liệu mô phỏng").first()).toBeVisible({
     timeout: 15_000,

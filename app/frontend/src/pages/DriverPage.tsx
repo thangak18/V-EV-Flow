@@ -32,6 +32,10 @@ export function DriverPage() {
   const client = useApiClient();
   const { status, result, error, submit, retry, clear } = useRecommendation();
   const [routeDeparture, setRouteDeparture] = useState("");
+  // Camera views must describe the same snapshot the recommendation was ranked on.
+  const [requestedObservation, setRequestedObservation] = useState<
+    string | undefined
+  >();
   const [mapFocus, setMapFocus] = useState<{
     result: NonNullable<typeof result>;
     id: string;
@@ -118,7 +122,10 @@ export function DriverPage() {
     );
   }, [stations]);
 
-  const queues = useStationQueues(scenario, runtime?.observed_at).byStation;
+  const queues = useStationQueues(
+    scenario,
+    requestedObservation ?? runtime?.observed_at,
+  ).byStation;
 
   const mapModel = useMemo<MapModel>(() => {
     const selectedOrigin =
@@ -337,13 +344,16 @@ export function DriverPage() {
           clear();
         }}
         onScenarioChange={(next) => {
+          if (next === scenario) return;
           setScenario(next);
           setRuntime(undefined);
           setRuntimeLoading(true);
           clear();
         }}
+        onDepartureChange={clear}
         onSubmit={(request) => {
           setRouteDeparture(request.depart_time);
+          setRequestedObservation(request.observed_at);
           void submit(request);
         }}
       />
