@@ -40,6 +40,9 @@ class RankingConfig:
     travel_reference_minutes: float = 30.0
     min_arrival_soc_pct: float = 10.0
     soc_risk_band_pct: float = 20.0
+    mean_service_minutes: float = 30.0
+    camera_trust: float = 0.8
+    max_observation_age_minutes: float = 15.0
 
     def __post_init__(self) -> None:
         _validate_config(self)
@@ -52,6 +55,9 @@ class RankingInput:
     candidate: FeasibleCandidate
     travel_minutes: float
     working_ports: int
+    queue_waiting: int | None = None
+    queue_confidence: float | None = None
+    queue_age_minutes: float | None = None
 
 
 @dataclass(frozen=True)
@@ -61,6 +67,8 @@ class RankingBreakdown:
     normalized_soc_risk: float
     normalized_virtual_load: float
     score: float
+    wait_minutes: float = 0.0
+    camera_weight: float = 0.0
 
 
 def _nonnegative_number(value: object, name: str) -> float:
@@ -113,6 +121,10 @@ def _validate_config(config: RankingConfig) -> None:
     _positive_number(config.travel_reference_minutes, "travel_reference_minutes")
     _percentage(config.min_arrival_soc_pct, "min_arrival_soc_pct")
     _positive_number(config.soc_risk_band_pct, "soc_risk_band_pct")
+    _positive_number(config.mean_service_minutes, "mean_service_minutes")
+    if _nonnegative_number(config.camera_trust, "camera_trust") > 1:
+        raise ValueError("camera_trust must be between 0 and 1")
+    _nonnegative_number(config.max_observation_age_minutes, "max_observation_age_minutes")
 
 
 def _bounded_ratio(value: float, reference: float) -> float:
@@ -178,18 +190,56 @@ def _validated_input(item: RankingInput, config: RankingConfig) -> RankingInput:
     travel = _nonnegative_number(item.travel_minutes, "travel_minutes")
     capacity = _capacity(item.working_ports)
     snapshot = FeasibleCandidate.model_validate(candidate.model_dump())
-    return RankingInput(snapshot, travel, capacity)
+    waiting, confidence, age = _validated_queue(item)
+    return RankingInput(snapshot, travel, capacity, waiting, confidence, age)
+
+
+def _validated_queue(item: RankingInput) -> tuple[int | None, float | None, float | None]:
+    """A camera observation is all three fields or none of them."""
+    waiting, confidence, age = item.queue_waiting, item.queue_confidence, item.queue_age_minutes
+    if waiting is None and confidence is None and age is None:
+        return None, None, None
+    if waiting is None or confidence is None or age is None:
+        raise ValueError("queue observation needs waiting, confidence and age together")
+    if isinstance(waiting, bool) or not isinstance(waiting, int) or waiting < 0:
+        raise ValueError("queue_waiting must be a nonnegative integer")
+    if _nonnegative_number(confidence, "queue_confidence") > 1:
+        raise ValueError("queue_confidence must be between 0 and 1")
+    return waiting, float(confidence), _nonnegative_number(age, "queue_age_minutes")
+
+
+def blend_wait_minutes(
+    *, virtual_load: float, working_ports: int, item: RankingInput, config: RankingConfig
+) -> tuple[float, float]:
+    """Expected wait and the camera weight used, from a camera view and the load estimate.
+
+    The estimate treats expected allocations as vehicles that will queue. A fresh
+    camera view replaces part of it by ``camera_trust * confidence``; a missing,
+    zero-confidence or stale view leaves the estimate untouched.
+    """
+    per_port = config.mean_service_minutes / working_ports
+    estimate = virtual_load * per_port
+    waiting, confidence, age = item.queue_waiting, item.queue_confidence, item.queue_age_minutes
+    if waiting is None or confidence is None or age is None:
+        return estimate, 0.0
+    if age > config.max_observation_age_minutes:
+        return estimate, 0.0
+    weight = config.camera_trust * confidence
+    return weight * waiting * per_port + (1 - weight) * estimate, weight
 
 
 def _score_validated(
     item: RankingInput, config: RankingConfig, virtual_load: float
 ) -> RankingBreakdown:
     probability = item.candidate.p_available
-    travel = normalize_travel_time(item.travel_minutes, config.travel_reference_minutes)
+    load = normalize_virtual_load(virtual_load, item.working_ports)
+    wait, camera_weight = blend_wait_minutes(
+        virtual_load=float(virtual_load), working_ports=item.working_ports, item=item, config=config
+    )
+    travel = normalize_travel_time(item.travel_minutes + wait, config.travel_reference_minutes)
     risk = normalize_soc_risk(
         item.candidate.arrival_soc_pct, config.min_arrival_soc_pct, config.soc_risk_band_pct
     )
-    load = normalize_virtual_load(virtual_load, item.working_ports)
     score = (
         config.weight_probability * probability
         - config.weight_travel * travel
@@ -198,7 +248,7 @@ def _score_validated(
     )
     if not isfinite(score):
         raise ValueError("ranking score must be finite")
-    return RankingBreakdown(probability, travel, risk, load, score)
+    return RankingBreakdown(probability, travel, risk, load, score, wait, camera_weight)
 
 
 def score_candidate(

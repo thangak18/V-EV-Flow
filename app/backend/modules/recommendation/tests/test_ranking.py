@@ -145,10 +145,13 @@ def test_score_breakdown_uses_hand_calculated_four_component_formula() -> None:
     chosen = config(weight_travel=0.2, weight_soc_risk=0.2, weight_virtual_load=0.3)
     breakdown = ranking.score_candidate(item(arrival_soc=20), chosen, 2)
     assert breakdown.probability == 0.8
-    assert breakdown.normalized_travel_time == 0.5
+    # Load 2 on 2 ports adds a 30 minute estimated wait (30 minute service), so the
+    # time term is (30 + 30) / (60 + 30) rather than travel alone.
+    assert breakdown.wait_minutes == pytest.approx(30.0)
+    assert breakdown.normalized_travel_time == pytest.approx(2 / 3)
     assert breakdown.normalized_soc_risk == 0.5
     assert breakdown.normalized_virtual_load == 0.5
-    assert breakdown.score == pytest.approx(0.45)
+    assert breakdown.score == pytest.approx(0.8 - 0.2 * 2 / 3 - 0.2 * 0.5 - 0.3 * 0.5)
     ranked = ranking.rank_candidates([item(arrival_soc=20)], chosen, {"S001": 2})
     assert ranked[0].score == breakdown.score
     with pytest.raises(FrozenInstanceError):
@@ -171,13 +174,15 @@ def test_changing_one_input_only_changes_its_breakdown_component(dimension: str)
         "soc": "normalized_soc_risk",
         "load": "normalized_virtual_load",
     }[dimension]
+    # Load also feeds the estimated wait, so it moves the time term as well.
+    changing = {component} | ({"normalized_travel_time"} if dimension == "load" else set())
     for name in (
         "probability",
         "normalized_travel_time",
         "normalized_soc_risk",
         "normalized_virtual_load",
     ):
-        assert (getattr(before, name) != getattr(after, name)) is (name == component)
+        assert (getattr(before, name) != getattr(after, name)) is (name in changing)
 
 
 def test_higher_probability_and_boundaries_rank_first() -> None:
@@ -474,3 +479,120 @@ def test_matching_custom_minimum_soc_is_required_for_ranking() -> None:
     assert result[0].p_available == selected.candidate.p_available
     with pytest.raises(ValueError, match="arrival_soc_pct must meet min_arrival_soc_pct"):
         ranking.rank_candidates([selected], ranking.RankingConfig(), {})
+
+
+# --- camera queue blending -------------------------------------------------
+
+
+def wait_config(**overrides: object) -> ranking.RankingConfig:
+    values: dict[str, Any] = dict(
+        weight_probability=0.0,
+        weight_travel=1.0,
+        mean_service_minutes=30.0,
+        camera_trust=0.8,
+        max_observation_age_minutes=15.0,
+    )
+    values.update(overrides)
+    return config(**values)
+
+
+def camera_item(
+    waiting: int | None,
+    confidence: float | None = 1.0,
+    age: float | None = 0.0,
+    station_id: str = "S001",
+) -> ranking.RankingInput:
+    return replace(
+        item(station_id, travel=10, ports=3),
+        queue_waiting=waiting,
+        queue_confidence=confidence,
+        queue_age_minutes=age,
+    )
+
+
+def total_minutes(breakdown: ranking.RankingBreakdown, reference: float = 30.0) -> float:
+    ratio = breakdown.normalized_travel_time
+    return ratio * reference / (1 - ratio)
+
+
+def test_without_camera_wait_is_virtual_load_estimate() -> None:
+    result = ranking.score_candidate(camera_item(None, None, None), wait_config(), 3.0)
+    assert result.wait_minutes == pytest.approx(3.0 * 30.0 / 3)
+    assert result.camera_weight == 0.0
+    assert total_minutes(result) == pytest.approx(10 + 30)
+
+
+def test_zero_confidence_matches_no_camera() -> None:
+    cfg = wait_config()
+    blind = ranking.score_candidate(camera_item(None, None, None), cfg, 1.0)
+    unsure = ranking.score_candidate(camera_item(9, 0.0, 0.0), cfg, 1.0)
+    assert unsure.score == blind.score
+    assert unsure.camera_weight == 0.0
+
+
+def test_stale_observation_matches_no_camera() -> None:
+    cfg = wait_config()
+    blind = ranking.score_candidate(camera_item(None, None, None), cfg, 1.0)
+    stale = ranking.score_candidate(camera_item(9, 1.0, 15.5), cfg, 1.0)
+    assert stale.score == blind.score
+    assert stale.camera_weight == 0.0
+
+
+def test_full_confidence_uses_camera_trust_cap() -> None:
+    result = ranking.score_candidate(camera_item(6, 1.0, 0.0), wait_config(), 3.0)
+    camera_wait = 6 * 30.0 / 3
+    estimate = 3.0 * 30.0 / 3
+    assert result.camera_weight == pytest.approx(0.8)
+    assert result.wait_minutes == pytest.approx(0.8 * camera_wait + 0.2 * estimate)
+
+
+def test_partial_confidence_blends_proportionally() -> None:
+    result = ranking.score_candidate(camera_item(6, 0.5, 5.0), wait_config(), 0.0)
+    assert result.camera_weight == pytest.approx(0.4)
+    assert result.wait_minutes == pytest.approx(0.4 * 6 * 30.0 / 3)
+
+
+def test_more_waiting_vehicles_lower_the_score() -> None:
+    cfg = wait_config()
+    scores = [ranking.score_candidate(camera_item(n), cfg).score for n in (0, 2, 5, 9)]
+    assert scores == sorted(scores, reverse=True)
+    assert len(set(scores)) == len(scores)
+
+
+def test_crowded_camera_station_ranks_below_empty_one() -> None:
+    ranked = ranking.rank_candidates(
+        [camera_item(8, station_id="S001"), camera_item(0, station_id="S002")],
+        wait_config(),
+        {},
+    )
+    assert [candidate.station_id for candidate in ranked] == ["S002", "S001"]
+
+
+@pytest.mark.parametrize(
+    "field", ["mean_service_minutes", "camera_trust", "max_observation_age_minutes"]
+)
+@pytest.mark.parametrize("value", [-1, float("nan"), float("inf"), True, "1", None])
+def test_camera_config_rejects_invalid_numbers(field: str, value: object) -> None:
+    with pytest.raises(ValueError, match=field):
+        wait_config(**{field: value})
+
+
+def test_camera_trust_above_one_is_rejected_and_service_minutes_positive() -> None:
+    with pytest.raises(ValueError, match="camera_trust"):
+        wait_config(camera_trust=1.5)
+    with pytest.raises(ValueError, match="mean_service_minutes"):
+        wait_config(mean_service_minutes=0)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"queue_waiting": -1, "queue_confidence": 1.0, "queue_age_minutes": 0.0},
+        {"queue_waiting": 1, "queue_confidence": 1.2, "queue_age_minutes": 0.0},
+        {"queue_waiting": 1, "queue_confidence": 1.0, "queue_age_minutes": -1.0},
+        {"queue_waiting": 1, "queue_confidence": None, "queue_age_minutes": 0.0},
+    ],
+)
+def test_invalid_queue_observation_is_rejected(bad: dict[str, Any]) -> None:
+    with pytest.raises(ValueError):
+        ranking.score_candidate(replace(item(), **bad), wait_config())
