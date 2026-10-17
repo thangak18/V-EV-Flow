@@ -365,6 +365,7 @@ Bảng ký hiệu và hai nút bản đồ **Trước thay đổi / Sau thay đ�
 | **Calibrator** | Bước hiệu chỉnh đầu ra model thành xác suất phù hợp hơn với dữ liệu đánh giá. Không đảm bảo xác suất đúng tuyệt đối ngoài thực tế. |
 | **SHAP** | Cách giải thích đóng góp của đặc trưng vào điểm model, không phải chứng minh quan hệ nhân quả. |
 | **What-if** | Thử thay đổi giả định để so sánh trước/sau. |
+| **Icon camera 📹** | Trạm có camera đếm xe đang chờ. Hiện là dữ liệu camera giả lập, hiển thị số xe chờ, giờ cập nhật và độ tin cậy; viền vàng nghĩa là hình ảnh kém. Trạm không có icon thì thời gian chờ được ước lượng. |
 | **Mock / Simulated / Real** | Minh họa / mô phỏng / dữ liệu thật đã xác lập nguồn. Không đánh đồng ba loại này. |
 
 ---
