@@ -1,10 +1,11 @@
 import json
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from app.backend.contracts.simulation import DataManifest, FixtureBundle
-from app.backend.modules.station_data.cli import main
+from app.backend.modules.station_data.cli import main, parse_history_end
 from app.backend.modules.station_data.manifests import fixture_hash
 
 
@@ -59,3 +60,11 @@ def test_generate_is_reproducible_across_processes(tmp_path: Path) -> None:
 def test_invalid_history_days_returns_nonzero(tmp_path: Path, capsys) -> None:  # noqa: ANN001
     assert main(["generate", "--history-days", "0", "--output", str(tmp_path)]) == 2
     assert "error" in capsys.readouterr().err
+
+
+def test_history_end_today_is_last_bucket_of_current_vietnam_day() -> None:
+    end = parse_history_end("today")
+    now = datetime.now(timezone(timedelta(hours=7)))
+    assert end.date() == now.date() or end.date() == (now - timedelta(minutes=1)).date()
+    assert (end.hour, end.minute, end.utcoffset()) == (23, 55, timedelta(hours=7))
+    assert parse_history_end("2026-10-13T23:55:00+07:00").day == 13

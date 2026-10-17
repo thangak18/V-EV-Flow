@@ -34,7 +34,7 @@ Domain modules cannot import each other (architecture test), so generation is tw
 
 Step 1 (`station_data.cli generate`) writes `stations.json`, per-scenario `<scenario>/fixture_bundle.json` + `manifest.json`, and a top-level `manifest.json` (`data_version`, `data_type="simulated"`, seed, `generated_at`, and per scenario: counts, `fixture_hash`, `history_days`, window `config`). Step 2 (`simulation.cli history`) replays each bundle and writes `station_status.parquet` (columns `station_id, ts, ports_free, ports_busy, ports_broken, scenario`; unique by `(scenario, station_id, ts)`; `+07:00`), then adds `status_history` (file, rows, SHA-256) to `manifest.json`. Output is git-ignored; never commit it.
 
-- `--history-days` (default `history_days` from `scenarios.yaml`, 14) sets history length. `--history-end` (default: end of the `normal` scenario) is shared by all scenarios so one global temporal train/calibration/test split sees every scenario.
+- `--history-days` (default `history_days` from `scenarios.yaml`, 14) sets history length. `--history-end` (ISO time or `today` for 23:55 of the current +07:00 day; default: end of the `normal` scenario) is shared by all scenarios so one global temporal train/calibration/test split sees every scenario.
 - Same seed and options give identical `fixture_hash` and Parquet rows; `generated_at` is the only time-varying field.
 - `ScenarioSpec` (loaders) holds parameters absent from the shared `ScenarioConfig` and maps to it; `holiday_multiplier` is informational because holiday demand is already in `arrival_multiplier` and the day coefficients.
 - Capacity, power, demand coefficients, and fault/repair rates are synthetic assumptions.
