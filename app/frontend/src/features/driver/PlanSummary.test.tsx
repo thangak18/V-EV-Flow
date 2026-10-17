@@ -63,7 +63,6 @@ describe("PlanSummary", () => {
     expect(screen.getByText("Trạm dự phòng")).toBeInTheDocument();
     expect(screen.getByText(/15,5%/)).toBeInTheDocument();
     expect(screen.getByText("Đủ pin để tới trạm chính")).toBeInTheDocument();
-    expect(screen.getByText(/giả định hai trạm độc lập/i)).toBeInTheDocument();
     expect(screen.getByText(/16:40/)).toBeInTheDocument();
 
     const details = screen
@@ -153,4 +152,62 @@ test("location actions select the correct station role and reject missing coordi
   expect(
     screen.getByRole("button", { name: "Định vị trạm chính" }),
   ).toBeDisabled();
+});
+
+describe("PlanSummary camera badges", () => {
+  const view = (id: string, waiting: number) => ({
+    station_id: id,
+    observed_at: "2026-10-13T16:00:00+07:00",
+    vehicles_waiting: waiting,
+    vehicles_charging: 1,
+    confidence: 0.9,
+    source: "camera_mock",
+    data_type: "mock" as const,
+  });
+
+  test("shows a camera badge only on stations that have a camera", () => {
+    render(
+      <PlanSummary
+        result={base}
+        queues={new Map([["S012", view("S012", 5)]])}
+      />,
+    );
+    const badges = screen.getAllByLabelText(/Có camera/);
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveTextContent("5 xe chờ");
+    expect(screen.getByTestId("plan-hero")).toContainElement(badges[0]);
+  });
+
+  test("marks the backup station too", () => {
+    render(
+      <PlanSummary
+        result={base}
+        queues={
+          new Map([
+            ["S012", view("S012", 1)],
+            ["S015", view("S015", 7)],
+          ])
+        }
+      />,
+    );
+    expect(screen.getAllByLabelText(/Có camera/)).toHaveLength(2);
+    expect(screen.getByText("7 xe chờ")).toBeInTheDocument();
+  });
+
+  test("shows no badge without queue data", () => {
+    render(<PlanSummary result={base} />);
+    expect(screen.queryByLabelText(/Có camera/)).not.toBeInTheDocument();
+  });
+});
+
+describe("PlanSummary plan-level probability", () => {
+  test("does not show a combined plan probability or its independence note", () => {
+    render(<PlanSummary result={base} />);
+    expect(
+      screen.queryByText(/Khả năng kế hoạch có chỗ/),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/hai trạm độc lập/)).not.toBeInTheDocument();
+    // Per-station probabilities stay visible.
+    expect(screen.getAllByText("85%").length).toBeGreaterThanOrEqual(1);
+  });
 });

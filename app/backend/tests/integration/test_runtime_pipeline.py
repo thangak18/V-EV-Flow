@@ -146,7 +146,8 @@ def test_real_model_http_matches_public_predictor_and_errors(runtime_files) -> N
         assert first.status_code == 200, first.text
         assert first.json()["primary"] is not None
         assert first.json()["model_version"] == manifest.model_version
-        assert first.json()["data_type"] == "simulated"
+        # Simulated model evidence plus the mock station cameras that shaped the wait.
+        assert first.json()["data_type"] == "mixed"
         assert client.post("/api/recommend", json=request).json() == first.json()
         assert client.post("/api/reset", json={}).status_code == 200
 

@@ -310,7 +310,9 @@ export class GoongMapAdapter implements MapAdapter {
         pressure: "Trạm sạc",
       };
       element.dataset.mapRole = point.role;
-      element.title = `${roles[point.role]}: ${point.label}`;
+      element.title = point.camera
+        ? `${roles[point.role]}: ${point.label} — ${point.camera}`
+        : `${roles[point.role]}: ${point.label}`;
       element.setAttribute("aria-label", element.title);
       const badge =
         point.badge ??
@@ -321,10 +323,13 @@ export class GoongMapAdapter implements MapAdapter {
           backup: "2",
           pressure: "",
         }[point.role];
-      if (badge) {
+      if (badge || point.camera) {
         const tag = document.createElement("span");
         tag.className = "map-marker-label";
-        tag.textContent = `${badge} · ${roles[point.role]}: ${point.label}`;
+        const text = badge
+          ? `${badge} · ${roles[point.role]}: ${point.label}`
+          : `${roles[point.role]}: ${point.label}`;
+        tag.textContent = point.camera ? `📹 ${text}` : text;
         element.appendChild(tag);
       }
       if (model.focus?.id === point.id && model.focus.role === point.role) {

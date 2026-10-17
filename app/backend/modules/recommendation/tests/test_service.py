@@ -12,7 +12,9 @@ from pydantic import ValidationError
 from app.backend.contracts.common import Coordinate
 from app.backend.contracts.enums import DataType, Scenario
 from app.backend.contracts.errors import DataSourceUnavailableError, RouteUnavailableError
+from app.backend.contracts.ports import QueueObservationSource
 from app.backend.contracts.prediction import PredictionResult, PredictRequest
+from app.backend.contracts.queue import QueueObservation
 from app.backend.contracts.recommendation import (
     RecommendationRequest,
     RecommendationResult,
@@ -165,6 +167,7 @@ def service(
     max_horizon: int = 120,
     virtual_load_provider: VirtualLoadReader | None = None,
     load_weight: float = 0,
+    queue_source: QueueObservationSource | None = None,
 ) -> RecommendationService:
     repository = FakeStations(stations)
     statuses = FakeStatuses(repository, broken=broken)
@@ -184,6 +187,7 @@ def service(
         data_type=data_type,
         max_prediction_horizon_minutes={Scenario.NORMAL: max_horizon},
         virtual_load_provider=virtual_load_provider,
+        queue_source=queue_source,
     )
 
 
@@ -952,3 +956,116 @@ async def test_time_shift_probes_keep_observation_fixed_and_do_not_route_or_allo
     late = original.model_copy(update={"eta": OBSERVED + timedelta(minutes=55)})
     assert recommender._time_shift_estimate(request(), predictor, late) is None
     assert predictor.requests == []
+
+
+# --- camera queue observations ---------------------------------------------
+
+
+class FakeQueues:
+    def __init__(self, waiting: dict[str, int], *, confidence: float = 1.0, age_minutes: int = 0):
+        self.waiting = waiting
+        self.confidence = confidence
+        self.age = timedelta(minutes=age_minutes)
+        self.calls: list[tuple[str, datetime, Scenario]] = []
+
+    def observe(self, station_id: str, at: datetime, scenario: Scenario):
+        self.calls.append((station_id, at, scenario))
+        if station_id not in self.waiting:
+            return None
+        return QueueObservation(
+            station_id=station_id,
+            observed_at=at - self.age,
+            vehicles_waiting=self.waiting[station_id],
+            vehicles_charging=1,
+            confidence=self.confidence,
+            source="camera_mock",
+            data_type=DataType.MOCK,
+        )
+
+
+def twin_stations() -> tuple[tuple[Station, ...], FakeRoutes, FakePredictor]:
+    stations = (station("S1"), station("S2"))
+    routes = FakeRoutes(
+        {
+            ((10.0, 106.0), (10.5, 106.5)): (route(30, 40),),
+            ((10.0, 106.0), (stations[0].lat, stations[0].lng)): (route(10, 20),),
+            ((10.0, 106.0), (stations[1].lat, stations[1].lng)): (route(10, 20),),
+            ((stations[0].lat, stations[0].lng), (stations[1].lat, stations[1].lng)): (
+                route(5, 5),
+            ),
+            ((stations[1].lat, stations[1].lng), (stations[0].lat, stations[0].lng)): (
+                route(5, 5),
+            ),
+            **{((item.lat, item.lng), (10.5, 106.5)): (route(30, 20),) for item in stations},
+        }
+    )
+    return stations, routes, FakePredictor({"S1": 0.8, "S2": 0.8})
+
+
+def test_camera_queue_steers_away_from_crowded_station() -> None:
+    stations, routes, predictor = twin_stations()
+    queues = FakeQueues({"S1": 8, "S2": 0})
+    result = run(service(stations, routes, predictor, travel_weight=1, queue_source=queues))
+    assert result.primary is not None and result.primary.station_id == "S2"
+    assert result.backup is not None and result.backup.station_id == "S1"
+
+
+def test_without_a_queue_source_ranking_is_unchanged() -> None:
+    stations, routes, predictor = twin_stations()
+    result = run(service(stations, routes, predictor, travel_weight=1))
+    assert result.primary is not None and result.primary.station_id == "S1"
+    assert not any("camera" in reason for reason in result.reasons)
+
+
+def test_camera_is_asked_for_the_decision_time_not_the_eta() -> None:
+    stations, routes, predictor = twin_stations()
+    queues = FakeQueues({"S1": 1})
+    run(service(stations, routes, predictor, travel_weight=1, queue_source=queues))
+    assert queues.calls
+    assert {at for _, at, _ in queues.calls} == {OBSERVED}
+    assert {scenario for _, _, scenario in queues.calls} == {Scenario.NORMAL}
+
+
+def test_reason_names_the_camera_count_and_time() -> None:
+    stations, routes, predictor = twin_stations()
+    queues = FakeQueues({"S1": 0, "S2": 5})
+    result = run(service(stations, routes, predictor, travel_weight=1, queue_source=queues))
+    text = " ".join(result.reasons)
+    assert "Primary S1" in text and "0 vehicles waiting" in text
+    assert "camera (mock)" in text and "08:00" in text and "100%" in text
+    assert "Backup S2" in text and "5 vehicles waiting" in text
+
+
+def test_station_without_camera_is_explained_as_an_estimate() -> None:
+    stations, routes, predictor = twin_stations()
+    queues = FakeQueues({"S1": 8})
+    result = run(service(stations, routes, predictor, travel_weight=1, queue_source=queues))
+    assert result.primary is not None and result.primary.station_id == "S2"
+    assert any("Primary S2: no station camera" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(("confidence", "age"), [(0.0, 0), (1.0, 20)])
+def test_unusable_camera_view_is_ignored_and_says_so(confidence: float, age: int) -> None:
+    stations, routes, predictor = twin_stations()
+    queues = FakeQueues({"S1": 9}, confidence=confidence, age_minutes=age)
+    result = run(service(stations, routes, predictor, travel_weight=1, queue_source=queues))
+    assert result.primary is not None and result.primary.station_id == "S1"
+    assert any("Primary S1: camera view unusable" in reason for reason in result.reasons)
+
+
+def test_using_camera_data_adds_mock_provenance() -> None:
+    stations, routes, predictor = twin_stations()
+    predictor.transform = lambda result: result.model_copy(update={"data_type": DataType.SIMULATED})
+    plain = run(service(stations, routes, predictor, data_type=DataType.SIMULATED, travel_weight=1))
+    camera = run(
+        service(
+            stations,
+            routes,
+            predictor,
+            data_type=DataType.SIMULATED,
+            travel_weight=1,
+            queue_source=FakeQueues({"S1": 0}),
+        )
+    )
+    assert plain.data_type == DataType.SIMULATED
+    assert camera.data_type == DataType.MIXED

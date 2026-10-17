@@ -36,6 +36,16 @@ Không nhân trực tiếp `p_available` với `(1 - virtual_load / n_ports)` r�
 
 `score = w_p * p_available - w_t * normalized_travel_time - w_r * normalized_soc_risk - w_l * normalized_virtual_load`.
 
+### Hàng đợi từ camera trạm (mock)
+
+Một phần trạm có camera đếm xe đang chờ. Hiện đây là **đầu ra camera giả lập** (`MockCameraQueueSource`, nguồn `camera_mock`, `data_type=mock`), sinh theo giờ trong ngày và scenario, không xử lý video. Camera thật cắm vào cùng port `QueueObservationSource`. Với mỗi ứng viên, `L` là tải ảo, `S = mean_service_minutes` (mặc định 30), `P` là số cổng hoạt động:
+
+- `wait_est = L·S/P` (xấp xỉ: coi tải kỳ vọng như số xe sẽ chờ) và `wait_cam = vehicles_waiting·S/P`.
+- `c = camera_trust · confidence` (mặc định 0.8) nếu có quan sát không quá 15 phút tuổi; ngược lại `c = 0`.
+- `wait = c·wait_cam + (1 − c)·wait_est`, và thành phần thời gian là `norm(travel + wait)`.
+
+Trạm không có camera, camera mờ (`confidence` thấp) hoặc quan sát cũ dần quay về ước lượng cũ, không có bước nhảy. Camera được quan sát tại thời điểm quyết định (`observed_at`), vì camera không nhìn được tương lai. Lý do hiển thị nêu rõ camera hay ước lượng. Gợi ý dùng camera mock có `data_type=mixed`. `0.8`, `15 phút`, `30 phút` là giả định demo chưa hiệu chỉnh. Tải ảo được tính cả trong `wait_est` lẫn thành phần tải, nên trạm bị phạt hai lần theo thiết kế. Model dự báo và simulator **chưa** dùng hàng đợi camera. `CAMERA_QUEUE_BACKEND=off` tắt toàn bộ.
+
 SOC filter chạy trước. Trọng số và chuẩn hóa là heuristic, phải ghi trong config và kiểm tra sensitivity. Tải chia cho cổng hoạt động, xử lý capacity=0 bằng loại trạm. Xác suất model vẫn là dự báo theo snapshot đầu vào, chưa phản ánh đầy đủ tác động của chính các gợi ý; hiển thị giới hạn này và đo hệ quả bằng simulator.
 
 - Khi chấp nhận kế hoạch, thêm tải kỳ vọng cho **primary**, phủ các bucket từ ETA đến thời điểm kết thúc sạc giả định; không chỉ một mốc đến.

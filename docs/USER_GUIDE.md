@@ -101,7 +101,6 @@ Bạn có thể tìm địa điểm ngoài hành lang dữ liệu, nhưng hệ t
 | **Từ điểm xuất phát** | Quãng đường từ điểm đi đến trạm. |
 | **Pin khi đến** | SOC còn lại ước tính sau quãng đường tới trạm. Không phải lượng pin sẽ sạc thêm. |
 | **Đi thêm để ghé trạm** | Quãng đường phát sinh để ghé trạm so với hành trình tham chiếu. |
-| **Khả năng kế hoạch có chỗ** | Ước lượng cho kế hoạch có cả phương án dự phòng khi có dữ liệu; có thể dùng giả định hai trạm độc lập. Xem phần độ tin cậy trước khi diễn giải. |
 | **Định vị trạm chính** | Phóng bản đồ đến trạm, làm nổi bật marker và mở thẻ thông tin. Không tạo lại kế hoạch hoặc ghi thêm phân bổ. |
 
 ### 2.6. Đọc “Trạm dự phòng / Phương án B”
@@ -376,6 +375,7 @@ Bảng ký hiệu và hai nút bản đồ **Trước thay đổi / Sau thay đ�
 | **Calibrator** | Bước hiệu chỉnh đầu ra model thành xác suất phù hợp hơn với dữ liệu đánh giá. Không đảm bảo xác suất đúng tuyệt đối ngoài thực tế. |
 | **SHAP** | Cách giải thích đóng góp của đặc trưng vào điểm model, không phải chứng minh quan hệ nhân quả. |
 | **What-if** | Thử thay đổi giả định để so sánh trước/sau. |
+| **Icon camera 📹** | Trạm có camera đếm xe đang chờ. Hiện là dữ liệu camera giả lập, hiển thị số xe chờ, giờ cập nhật và độ tin cậy; viền vàng nghĩa là hình ảnh kém. Trạm không có icon thì thời gian chờ được ước lượng. |
 | **Mock / Simulated / Real** | Minh họa / mô phỏng / dữ liệu thật đã xác lập nguồn. Không đánh đồng ba loại này. |
 
 ---

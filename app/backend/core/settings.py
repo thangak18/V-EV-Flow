@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     assumed_charge_duration_minutes: float = 60.0
     expected_virtual_load: float = 1.0
     fake_prediction_horizon_minutes: int = 60
+    camera_queue_backend: Literal["off", "mock"] = "mock"
+    camera_queue_config_path: Path | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod

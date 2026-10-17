@@ -249,6 +249,19 @@ function StationTextListBody({
           <li key={`${point.role}-${point.id}`}>
             <strong>{ROLE_LABELS[point.role] ?? point.role}</strong>:{" "}
             {point.label}
+            {point.camera ? (
+              <>
+                {" "}
+                <span
+                  className="camera-badge"
+                  role="img"
+                  aria-label={`Có camera: ${point.camera}`}
+                  title={point.camera}
+                >
+                  📹
+                </span>
+              </>
+            ) : null}
             <span className="map-coord">
               {" "}
               ({point.lat.toFixed(4)}, {point.lng.toFixed(4)})

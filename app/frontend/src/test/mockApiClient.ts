@@ -44,6 +44,13 @@ export function createMockApiClient(
       data_type: "mock",
       source_notes: [],
     }),
+    getStationQueues: vi.fn().mockResolvedValue({
+      observed_at: "2026-10-13T16:00:00+07:00",
+      scenario: "normal",
+      observations: [],
+      data_type: "mock",
+      source_notes: [],
+    }),
     getRoutes: vi.fn().mockResolvedValue([]),
     recommend: vi.fn(),
     predict: vi.fn(),

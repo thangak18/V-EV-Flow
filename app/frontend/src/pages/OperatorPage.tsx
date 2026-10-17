@@ -1,3 +1,4 @@
+import { cameraSummary } from "../components/common/cameraSummary";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
@@ -21,6 +22,7 @@ import { WhatIfPanel } from "../features/operator/WhatIfPanel";
 import { StrategyComparison } from "../features/operator/StrategyComparison";
 import { isPlus07FiveMinuteBucket } from "../services/errors";
 import { usePressure } from "../hooks/usePressure";
+import { useStationQueues } from "../hooks/useStationQueues";
 import { useSimulationComparison } from "../hooks/useSimulationComparison";
 import type { Scenario, Station } from "../services/api";
 
@@ -82,6 +84,7 @@ export function OperatorPage() {
   const simulation = useSimulationComparison();
   const forecastKey = `${scenario}|${time}`;
   const forecastReady = runtimeReady && isPlus07FiveMinuteBucket(time);
+  const queues = useStationQueues(scenario, forecastReady ? time : undefined);
   const currentRequest = pressure.requestKey === forecastKey;
   const loadingForecast = currentRequest && pressure.status === "loading";
   const failedForecast = currentRequest && pressure.status === "error";
@@ -147,6 +150,9 @@ export function OperatorPage() {
         label,
         role: "pressure",
         color: pressureColor(station.pressure_score),
+        camera: queues.byStation.has(station.station_id)
+          ? cameraSummary(queues.byStation.get(station.station_id)!)
+          : undefined,
       });
     }
 
@@ -159,7 +165,7 @@ export function OperatorPage() {
         role: "origin",
       });
     return { points, unlocated, fitBounds: true };
-  }, [forecast, stationIndex, area]);
+  }, [forecast, stationIndex, area, queues.byStation]);
 
   const pressureDataType =
     forecast?.stations[0]?.data_type ?? ("mock" as const);
@@ -173,6 +179,9 @@ export function OperatorPage() {
   const knownPressure = (forecast?.stations ?? []).filter((station) =>
     visibleIds.has(station.station_id),
   );
+  const cameraCount = visibleStations.filter((station) =>
+    queues.byStation.has(station.station_id),
+  ).length;
   const highRisk = knownPressure.filter(
     (station) => station.pressure_score >= 0.66,
   ).length;
@@ -284,6 +293,20 @@ export function OperatorPage() {
               ? `Trong bán kính ${area.radiusKm} km`
               : "Toàn bộ mạng lưới có dữ liệu"}
           </p>
+        </article>
+        <article>
+          <span>Trạm có camera</span>
+          <strong className={cameraCount ? undefined : "kpi-status"}>
+            {cameraCount ? (
+              <>
+                {cameraCount}
+                <small> / {visibleStations.length}</small>
+              </>
+            ) : (
+              "Chưa có dữ liệu camera"
+            )}
+          </strong>
+          <p>Camera đếm xe chờ (dữ liệu minh họa), dùng để xếp hạng gợi ý.</p>
         </article>
         <article>
           <span>Trạm có nguy cơ hết chỗ</span>

@@ -577,3 +577,61 @@ test("map routes validate provider geometry and forward cancellation", async () 
     code: "INVALID_API_RESPONSE",
   });
 });
+
+test("getStationQueues sends scenario and time and parses camera views", async () => {
+  const view = {
+    station_id: "S001",
+    observed_at: "2026-10-17T18:00:00+07:00",
+    vehicles_waiting: 4,
+    vehicles_charging: 2,
+    confidence: 0.9,
+    source: "camera_mock",
+    data_type: "mock",
+  };
+  const fetcher = mockFetch(200, {
+    observed_at: "2026-10-17T18:00:00+07:00",
+    scenario: "tet",
+    observations: [view],
+    data_type: "mock",
+    source_notes: ["Mock camera output"],
+  });
+  const client = new ApiClient("http://test/api", fetcher as typeof fetch);
+
+  const response = await client.getStationQueues({
+    observed_at: "2026-10-17T18:00:00+07:00",
+    scenario: "tet",
+  });
+
+  expect(response.observations[0].vehicles_waiting).toBe(4);
+  const url = String(fetcher.mock.calls[0][0]);
+  expect(url).toContain("/stations/queue?");
+  expect(decodeURIComponent(url)).toContain(
+    "observed_at=2026-10-17T18:00:00+07:00",
+  );
+  expect(url).toContain("scenario=tet");
+});
+
+test("getStationQueues rejects a view with an out-of-range confidence", async () => {
+  const fetcher = mockFetch(200, {
+    observed_at: "2026-10-17T18:00:00+07:00",
+    scenario: "normal",
+    observations: [
+      {
+        station_id: "S001",
+        observed_at: "2026-10-17T18:00:00+07:00",
+        vehicles_waiting: 1,
+        vehicles_charging: 1,
+        confidence: 1.4,
+        source: "camera_mock",
+        data_type: "mock",
+      },
+    ],
+    data_type: "mock",
+    source_notes: [],
+  });
+  const client = new ApiClient("http://test/api", fetcher as typeof fetch);
+
+  await expect(
+    client.getStationQueues({ scenario: "normal" }),
+  ).rejects.toMatchObject({ code: "INVALID_API_RESPONSE" });
+});

@@ -2519,6 +2519,24 @@ dd {
   color: var(--accent);
 }
 
+.camera-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.camera-badge--weak {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .driver-departure small {
   color: var(--muted);
   font-size: 0.7rem;

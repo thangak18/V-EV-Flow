@@ -1,4 +1,8 @@
-import type { RecommendationResult } from "../../services/api";
+import { CameraBadge } from "../../components/common/CameraBadge";
+import type {
+  QueueObservation,
+  RecommendationResult,
+} from "../../services/api";
 
 import { ModelExplanation } from "./ModelExplanation";
 
@@ -7,6 +11,8 @@ import { displayDistance, displayReason } from "./presentation";
 type Props = {
   result: RecommendationResult;
   stationNames?: Record<string, string>;
+  /** Camera views by station id; stations without a camera are absent. */
+  queues?: ReadonlyMap<string, QueueObservation>;
   onFocusMap?: (role: "primary" | "backup") => void;
   canFocusPrimary?: boolean;
   canFocusBackup?: boolean;
@@ -39,6 +45,7 @@ export function formatEtaTime(value: string): string {
 export function PlanSummary({
   result,
   stationNames = {},
+  queues,
   onFocusMap,
   canFocusPrimary = true,
   canFocusBackup = true,
@@ -73,6 +80,7 @@ export function PlanSummary({
             <div className="plan-hero" data-testid="plan-hero">
               <p className="plan-hero__label">Trạm chính</p>
               <h3 className="plan-hero__name">{primaryName}</h3>
+              <CameraBadge observation={queues?.get(primary.station_id)} />
               <div className="plan-kpi-row">
                 <div className="plan-kpi">
                   <strong data-probability={primary.p_available}>
@@ -106,11 +114,6 @@ export function PlanSummary({
                   <dt>Đi thêm để ghé trạm</dt>
                 </div>
               </dl>
-              {result.plan_p != null ? (
-                <p className="plan-confidence">
-                  Khả năng kế hoạch có chỗ: {formatPct(result.plan_p)}
-                </p>
-              ) : null}
               <button
                 type="button"
                 className="btn-primary plan-hero__cta"
@@ -132,6 +135,7 @@ export function PlanSummary({
               <p className="plan-hero__label">Trạm dự phòng</p>
               <span className="backup-step">PHƯƠNG ÁN B</span>
               <h3>{backupName}</h3>
+              <CameraBadge observation={queues?.get(backup.station_id)} />
               <p className="backup-explainer">
                 Nếu trạm chính không còn chỗ, bạn có thể tiếp tục tới trạm này.
                 Thời gian và pin bên dưới đã tính cho hành trình qua trạm chính.
@@ -243,12 +247,6 @@ export function PlanSummary({
           Pin khi đến là lượng pin ước tính còn lại sau quãng đường di chuyển.
           Đường vòng là quãng đường đi thêm để ghé trạm.
         </p>
-        {result.plan_p_assumption === "independent_stations" ? (
-          <p>
-            Ước lượng cho cả kế hoạch dùng giả định hai trạm độc lập. Hai trạm
-            có thể cùng đông khách nên xác suất thực tế có thể khác.
-          </p>
-        ) : null}
         <p>
           Nguồn trạng thái:{" "}
           {result.data_type === "simulated"

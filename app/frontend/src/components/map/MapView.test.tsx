@@ -161,3 +161,22 @@ test("retry recreates a failed map and preserves the station list", async () => 
   expect(destroy).toHaveBeenCalled();
   expect(screen.getByLabelText("Station text list")).toBeInTheDocument();
 });
+
+test("the text list marks only the stations that have a camera", async () => {
+  const adapter = new FakeMapAdapter();
+  render(
+    <MapView
+      model={{
+        points: [{ ...model.points[0]!, camera: "6 xe chờ" }, model.points[1]!],
+      }}
+      adapterFactory={() => adapter}
+      preferFake
+    />,
+  );
+  await waitFor(() => expect(adapter.mounted).toBe(true));
+  const items = screen.getAllByRole("listitem");
+  expect(items[0]).toContainElement(
+    screen.getByLabelText(/Có camera: 6 xe chờ/),
+  );
+  expect(screen.getAllByLabelText(/Có camera/)).toHaveLength(1);
+});
