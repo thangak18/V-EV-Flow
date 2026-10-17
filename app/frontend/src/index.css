@@ -2373,6 +2373,18 @@ dd {
   font-weight: 650;
   box-shadow: var(--shadow);
 }
+.map-marker-queue {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+  box-shadow: 0 0 0 2px #fff;
+}
 .map-route-legend {
   list-style: none;
   display: flex;

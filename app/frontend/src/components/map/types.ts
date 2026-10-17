@@ -9,6 +9,8 @@ export type MapPoint = {
   badge?: string;
   /** Camera summary; its presence marks the station as having a camera. */
   camera?: string;
+  /** Vehicles waiting at a charging station, shown as a prominent marker pill. */
+  queue?: number;
 };
 
 /** Station known to the UI but missing directory coordinates — text only. */

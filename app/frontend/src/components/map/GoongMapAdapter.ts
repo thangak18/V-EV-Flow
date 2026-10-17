@@ -319,17 +319,24 @@ export class GoongMapAdapter implements MapAdapter {
         {
           origin: "A",
           destination: "B",
-          primary: "1",
-          backup: "2",
+          primary: "",
+          backup: "",
           pressure: "",
         }[point.role];
-      if (badge || point.camera) {
+      const hasQueue = point.queue !== undefined;
+      if (badge || point.camera || hasQueue) {
         const tag = document.createElement("span");
         tag.className = "map-marker-label";
         const text = badge
           ? `${badge} · ${roles[point.role]}: ${point.label}`
           : `${roles[point.role]}: ${point.label}`;
         tag.textContent = point.camera ? `📹 ${text}` : text;
+        if (hasQueue) {
+          const queue = document.createElement("span");
+          queue.className = "map-marker-queue";
+          queue.textContent = `${point.queue} xe chờ`;
+          tag.prepend(queue);
+        }
         element.appendChild(tag);
       }
       if (model.focus?.id === point.id && model.focus.role === point.role) {
