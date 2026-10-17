@@ -279,9 +279,37 @@ test("marks a camera station with an icon and its summary", async () => {
     "📹",
   );
   expect(without.title).not.toContain("xe chờ");
-  expect(without.querySelector(".map-marker-label")?.textContent).not.toContain(
-    "📹",
+  expect(without.querySelector(".map-marker-label")).toBeNull();
+  adapter.destroy();
+  vi.unstubAllEnvs();
+  delete window.goongjs;
+});
+
+test("shows the waiting-vehicle count on station markers instead of 1/2", async () => {
+  vi.stubEnv("VITE_GOONG_MAP_KEY", "test-maptiles-key");
+  const { markerElements } = installGoongMocks();
+  const adapter = new GoongMapAdapter();
+  await adapter.mount(document.createElement("div"), {
+    points: [
+      {
+        id: "S1",
+        lat: 10.7,
+        lng: 106.7,
+        label: "Trạm A",
+        role: "primary",
+        queue: 3,
+      },
+      { id: "S2", lat: 10.8, lng: 106.8, label: "Trạm B", role: "backup" },
+    ],
+  });
+  const [primary, backup] = markerElements;
+  expect(primary.querySelector(".map-marker-queue")?.textContent).toBe(
+    "3 xe chờ",
   );
+  expect(primary.querySelector(".map-marker-label")?.textContent).not.toMatch(
+    /^1/,
+  );
+  expect(backup.querySelector(".map-marker-queue")).toBeNull();
   adapter.destroy();
   vi.unstubAllEnvs();
   delete window.goongjs;

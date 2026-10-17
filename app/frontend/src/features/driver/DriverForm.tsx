@@ -161,11 +161,17 @@ export function DriverForm({
   const historyReady =
     isTimezoneAwareIso(historyStart) && isTimezoneAwareIso(historyEnd);
   const validDeparture = isTimezoneAwareIso(departureIso);
+  // Replay departures reach at most 24h past the default (current-time) snapshot.
+  const replayLatest = Math.min(
+    Date.parse(historyEnd),
+    Date.parse(observedAt) + 24 * 3_600_000,
+  );
+  const replayLatestValid = Number.isFinite(replayLatest);
   const inHistory =
     historyReady &&
     validDeparture &&
     Date.parse(departureIso) >= Date.parse(historyStart) &&
-    Date.parse(departureIso) <= Date.parse(historyEnd);
+    Date.parse(departureIso) <= replayLatest;
   // Replay reads an actual historical snapshot, not an extrapolated forecast
   // from the default 16:00 clock. Live mode keeps its latest observed snapshot.
   const selectedObservation =
@@ -337,8 +343,8 @@ export function DriverForm({
                   : undefined
             }
             max={
-              replay && historyReady
-                ? vietnamTime(Date.parse(historyEnd)).slice(0, 16)
+              replay && historyReady && replayLatestValid
+                ? vietnamTime(replayLatest).slice(0, 16)
                 : !timeInvalid
                   ? vietnamTime(forecastEnd - 60_000).slice(0, 16)
                   : undefined
