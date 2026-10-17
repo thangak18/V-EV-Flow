@@ -175,6 +175,7 @@ export function DriverPage() {
           label,
           role,
           camera: view ? cameraSummary(view) : undefined,
+          queue: view?.vehicles_waiting,
           description: result?.[role]
             ? `Khả năng còn cổng ${probabilityLabel} · Đến lúc ${new Date(result[role]!.eta).toLocaleTimeString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" })} · Pin khi đến ${result[role]!.arrival_soc_pct.toFixed(1)}%. Dự báo tham khảo, chưa giữ chỗ.`
             : undefined,
@@ -407,7 +408,10 @@ export function DriverPage() {
         <section className="driver-map">
           <div className="driver-map-heading">
             <h3>Hành trình &amp; phương án sạc</h3>
-            <p>A: Điểm đi · 1: Trạm chính · 2: Trạm dự phòng · B: Điểm đến</p>
+            <p>
+              A: Điểm đi · Trạm chính · Trạm dự phòng (số xe chờ ghi trên điểm)
+              · B: Điểm đến
+            </p>
           </div>
           {roadRoutes.loading ? (
             <p className="status-message" role="status">

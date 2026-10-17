@@ -65,6 +65,16 @@ def generate(
     return summary
 
 
+def parse_history_end(value: str) -> datetime:
+    """Accept an ISO time, ``today`` or ``tomorrow`` (23:55 of that +07:00 calendar day)."""
+    if value in ("today", "tomorrow"):
+        day = datetime.now(timezone(timedelta(hours=7)))
+        if value == "tomorrow":
+            day += timedelta(days=1)
+        return day.replace(hour=23, minute=55, second=0, microsecond=0)
+    return datetime.fromisoformat(value)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="station_data.cli")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -74,9 +84,10 @@ def build_parser() -> argparse.ArgumentParser:
     gen.add_argument("--history-days", type=int, default=None, help="default: scenarios.yaml")
     gen.add_argument(
         "--history-end",
-        type=datetime.fromisoformat,
+        type=parse_history_end,
         default=None,
-        help="ISO time with +07:00 ending every scenario's history; default: normal scenario end",
+        help="ISO time with +07:00, 'today' or 'tomorrow', ending every scenario's history; "
+        "default: normal scenario end",
     )
     gen.add_argument("--vehicles", type=int, default=100)
     gen.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
