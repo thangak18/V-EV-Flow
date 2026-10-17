@@ -12,11 +12,13 @@ from app.backend.contracts.enums import DataType, Scenario
 from app.backend.contracts.errors import DataSourceUnavailableError
 from app.backend.contracts.ports import (
     Predictor,
+    QueueObservationSource,
     RouteProvider,
     StationRepository,
     StatusRepository,
 )
 from app.backend.contracts.prediction import PredictionResult, PredictRequest
+from app.backend.contracts.queue import QueueObservation
 from app.backend.contracts.recommendation import (
     FeasibleCandidate,
     Plan,
@@ -29,7 +31,12 @@ from app.backend.contracts.recommendation import (
     Vehicle,
 )
 from app.backend.contracts.stations import Station, StationStatus
-from app.backend.modules.recommendation.ranking import RankingConfig, RankingInput, rank_candidates
+from app.backend.modules.recommendation.ranking import (
+    RankingConfig,
+    RankingInput,
+    blend_wait_minutes,
+    rank_candidates,
+)
 from app.backend.modules.recommendation.soc import (
     FeasibleRouteCandidate,
     RejectionReason,
@@ -75,6 +82,7 @@ class RecommendationService:
         max_prediction_horizon_minutes: Mapping[Scenario, int],
         allocation_method: str = "heuristic_ranking",
         virtual_load_provider: VirtualLoadReader | None = None,
+        queue_source: QueueObservationSource | None = None,
         time_shift_minutes: tuple[int, ...] = (),
     ) -> None:
         self._stations = station_repository
@@ -103,6 +111,7 @@ class RecommendationService:
         self._data_type = DataType(data_type)
         self._allocation_method = allocation_method
         self._virtual_loads = virtual_load_provider
+        self._queues = queue_source
         if any(
             isinstance(delay, bool)
             or not isinstance(delay, int)
@@ -139,6 +148,7 @@ class RecommendationService:
             return self._empty_result(request, reasons=["No direct road route was available."])
 
         primary_candidates = []
+        observations: dict[str, QueueObservation | None] = {}
         predictions: dict[str, PredictionResult] = {}
         feasible_primary: dict[str, FeasibleRouteCandidate] = {}
         station_statuses: dict[str, StationStatus] = {}
@@ -201,15 +211,19 @@ class RecommendationService:
             predicted = self._predict(request, predictor, chosen, request.scenario)
             predictions[station.station_id] = predicted
             feasible_primary[station.station_id] = chosen
+            observations[station.station_id] = self._observe(station.station_id, request)
             primary_candidates.append(
-                self._ranking_input(chosen, predicted, working_ports(station, status))
+                self._ranking_input(
+                    chosen,
+                    predicted,
+                    working_ports(station, status),
+                    observations[station.station_id],
+                    request,
+                )
             )
 
-        ranked = rank_candidates(
-            primary_candidates,
-            self._ranking,
-            await self._candidate_loads(primary_candidates, request.scenario),
-        )
+        primary_loads = await self._candidate_loads(primary_candidates, request.scenario)
+        ranked = rank_candidates(primary_candidates, self._ranking, primary_loads)
         if not ranked:
             return self._empty_result(
                 request,
@@ -289,19 +303,20 @@ class RecommendationService:
             )
             predicted = self._predict(request, predictor, chosen, request.scenario)
             predictions[station.station_id] = predicted
+            if station.station_id not in observations:
+                observations[station.station_id] = self._observe(station.station_id, request)
             backup_inputs.append(
                 self._ranking_input(
                     chosen,
                     predicted,
                     working_ports(station, station_statuses[station.station_id]),
+                    observations[station.station_id],
+                    request,
                 )
             )
 
-        ranked_backups = rank_candidates(
-            backup_inputs,
-            self._ranking,
-            await self._candidate_loads(backup_inputs, request.scenario),
-        )
+        backup_loads = await self._candidate_loads(backup_inputs, request.scenario)
+        ranked_backups = rank_candidates(backup_inputs, self._ranking, backup_loads)
         backup = ranked_backups[0] if ranked_backups else None
         primary_plan = self._plan(primary).model_copy(
             update={"explanation": predictions[primary.station_id].explanation}
@@ -334,6 +349,21 @@ class RecommendationService:
         else:
             reasons.append("No reachable/eligible backup was found.")
             reasons.extend(self._outcome_reasons(backup_outcomes))
+        camera_types: set[DataType] = set()
+        if self._queues is not None:
+            for label, picked, inputs, loads in (
+                ("Primary", primary, primary_candidates, primary_loads),
+                ("Backup", backup, backup_inputs, backup_loads),
+            ):
+                if picked is None:
+                    continue
+                item = next(i for i in inputs if i.candidate.station_id == picked.station_id)
+                reason, used = self._queue_reason(
+                    label, item, loads.get(picked.station_id, 0.0), observations[picked.station_id]
+                )
+                reasons.append(reason)
+                if used is not None:
+                    camera_types.add(used)
         model_versions = {predictions[primary.station_id].model_version}
         if backup is not None:
             model_versions.add(predictions[backup.station_id].model_version)
@@ -349,6 +379,7 @@ class RecommendationService:
                 "primary and backup predictions use incompatible data provenance"
             )
         selected_data_types.add(self._data_type)
+        selected_data_types.update(camera_types)
         result_data_type = (
             next(iter(selected_data_types)) if len(selected_data_types) == 1 else DataType.MIXED
         )
@@ -561,8 +592,20 @@ class RecommendationService:
         steps = max(1, ceil(seconds / 300))
         return observed_at + timedelta(minutes=5 * steps)
 
+    def _observe(self, station_id: str, request: RecommendationRequest) -> QueueObservation | None:
+        """Camera view at decision time; a camera cannot see the future at the ETA."""
+        if self._queues is None:
+            return None
+        return self._queues.observe(station_id, request.observed_at, request.scenario)
+
     @staticmethod
-    def _ranking_input(feasible, prediction: PredictionResult, ports: int) -> RankingInput:
+    def _ranking_input(
+        feasible,
+        prediction: PredictionResult,
+        ports: int,
+        observation: QueueObservation | None,
+        request: RecommendationRequest,
+    ) -> RankingInput:
         candidate = FeasibleCandidate(
             station_id=feasible.candidate.station.station_id,
             distance_km=feasible.candidate.route.distance_km,
@@ -571,10 +614,54 @@ class RecommendationService:
             p_available=prediction.p_available,
             eta=prediction.eta,
         )
+        if observation is None:
+            return RankingInput(
+                candidate=candidate,
+                travel_minutes=feasible.candidate.route.duration_minutes,
+                working_ports=ports,
+            )
+        age = max(0.0, (request.observed_at - observation.observed_at).total_seconds() / 60)
         return RankingInput(
             candidate=candidate,
             travel_minutes=feasible.candidate.route.duration_minutes,
             working_ports=ports,
+            queue_waiting=observation.vehicles_waiting,
+            queue_confidence=observation.confidence,
+            queue_age_minutes=age,
+        )
+
+    def _queue_reason(
+        self,
+        label: str,
+        item: RankingInput,
+        virtual_load: float,
+        observation: QueueObservation | None,
+    ) -> tuple[str, DataType | None]:
+        """Explain where a plan's expected wait came from; second value is the camera type used."""
+        station_id = item.candidate.station_id
+        wait, weight = blend_wait_minutes(
+            virtual_load=virtual_load,
+            working_ports=item.working_ports,
+            item=item,
+            config=self._ranking,
+        )
+        if observation is None:
+            return (
+                f"{label} {station_id}: no station camera; queue estimated from allocated "
+                f"load, expected wait {wait:.0f} min.",
+                None,
+            )
+        if weight == 0:
+            return (
+                f"{label} {station_id}: camera view unusable (stale or zero confidence); queue "
+                f"estimated from allocated load, expected wait {wait:.0f} min.",
+                None,
+            )
+        return (
+            f"{label} {station_id}: {observation.vehicles_waiting} vehicles waiting per station "
+            f"camera (mock) at {observation.observed_at:%H:%M}, confidence "
+            f"{observation.confidence:.0%}; expected wait {wait:.0f} min.",
+            observation.data_type,
         )
 
     @staticmethod

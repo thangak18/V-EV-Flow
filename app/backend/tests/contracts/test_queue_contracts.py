@@ -58,3 +58,36 @@ def test_queue_source_port_is_runtime_checkable() -> None:
 def test_committed_example_matches_contract() -> None:
     path = Path(__file__).parents[2] / "contracts" / "examples" / "queue.response.json"
     QueueObservation.model_validate_json(path.read_text())
+
+
+def test_snapshot_lists_only_stations_that_have_cameras() -> None:
+    from app.backend.contracts.queue import QueueSnapshotResponse
+
+    snapshot = QueueSnapshotResponse.model_validate(
+        {
+            "observed_at": "2026-10-17T14:05:00+07:00",
+            "scenario": "tet",
+            "observations": [VALID],
+            "data_type": "mock",
+            "source_notes": ["Mock cameras cover some stations."],
+        }
+    )
+    assert [o.station_id for o in snapshot.observations] == ["S001"]
+
+
+def test_snapshot_rejects_duplicate_stations_and_naive_time() -> None:
+    from app.backend.contracts.queue import QueueSnapshotResponse
+
+    base = {
+        "observed_at": "2026-10-17T14:05:00+07:00",
+        "scenario": "normal",
+        "observations": [VALID, VALID],
+        "data_type": "mock",
+        "source_notes": [],
+    }
+    with pytest.raises(ValidationError):
+        QueueSnapshotResponse.model_validate(base)
+    with pytest.raises(ValidationError):
+        QueueSnapshotResponse.model_validate(
+            {**base, "observations": [VALID], "observed_at": "2026-10-17T14:05:00"}
+        )

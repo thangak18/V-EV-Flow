@@ -434,6 +434,78 @@ components:
       - data_type
       title: PressureStation
       type: object
+    QueueObservation:
+      additionalProperties: false
+      description: Queue seen by a station camera at ``observed_at``; mock until a
+        real feed exists.
+      properties:
+        confidence:
+          maximum: 1.0
+          minimum: 0.0
+          title: Confidence
+          type: number
+        data_type:
+          $ref: '#/components/schemas/DataType'
+        observed_at:
+          format: date-time
+          title: Observed At
+          type: string
+        source:
+          minLength: 1
+          title: Source
+          type: string
+        station_id:
+          minLength: 1
+          title: Station Id
+          type: string
+        vehicles_charging:
+          minimum: 0.0
+          title: Vehicles Charging
+          type: integer
+        vehicles_waiting:
+          minimum: 0.0
+          title: Vehicles Waiting
+          type: integer
+      required:
+      - station_id
+      - observed_at
+      - vehicles_waiting
+      - vehicles_charging
+      - confidence
+      - source
+      - data_type
+      title: QueueObservation
+      type: object
+    QueueSnapshotResponse:
+      additionalProperties: false
+      description: Camera views at one moment; stations without a camera are absent.
+      properties:
+        data_type:
+          $ref: '#/components/schemas/DataType'
+        observations:
+          items:
+            $ref: '#/components/schemas/QueueObservation'
+          title: Observations
+          type: array
+        observed_at:
+          format: date-time
+          title: Observed At
+          type: string
+        scenario:
+          $ref: '#/components/schemas/Scenario'
+        source_notes:
+          items:
+            type: string
+          title: Source Notes
+          type: array
+      required:
+      - observed_at
+      - scenario
+      - observations
+      - data_type
+      - source_notes
+      title: QueueSnapshotResponse
+      type: object
     RecommendationRequest:
       additionalProperties: false
       properties:
@@ -1474,6 +1546,40 @@ paths:
                 $ref: '#/components/schemas/StationListResponse'
           description: Successful Response
       summary: List Stations
+  /api/stations/queue:
+    get:
+      description: Camera queue views; stations without a camera are left out.
+      operationId: getStationQueues
+      parameters:
+      - in: query
+        name: observed_at
+        required: false
+        schema:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Observed At
+      - in: query
+        name: scenario
+        required: false
+        schema:
+          $ref: '#/components/schemas/Scenario'
+          default: normal
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueSnapshotResponse'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Station Queues
   /api/whatif:
     post:
       operationId: whatIf

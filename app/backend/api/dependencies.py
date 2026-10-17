@@ -14,6 +14,7 @@ from app.backend.contracts.errors import DataSourceUnavailableError, RequestConf
 from app.backend.contracts.ports import (
     AllocationStrategy,
     Predictor,
+    QueueObservationSource,
     RouteProvider,
     SimulationRunner,
     StationRepository,
@@ -34,6 +35,7 @@ from app.backend.infrastructure.repositories.mock import MockStationRepository, 
 from app.backend.infrastructure.repositories.partner import PartnerHistory, PartnerStatusRepository
 from app.backend.infrastructure.routing.cache import RouteCache
 from app.backend.infrastructure.routing.goong import GoongRouteProvider
+from app.backend.infrastructure.services.camera_mock import MockCameraQueueSource
 from app.backend.infrastructure.services.fakes import (
     FakeAllocationStrategy,
     FakePredictor,
@@ -71,6 +73,7 @@ class AppContainer:
     prediction_horizons: Mapping[Scenario, int]
     virtual_load_store: VirtualLoadStore | SQLiteVirtualLoadStore
     allocation_coordinator: AllocationCoordinator
+    queue_source: QueueObservationSource | None = None
     owned_route_client: httpx.AsyncClient | None = None
     places: GoongPlaces | None = None
     owned_places_client: httpx.AsyncClient | None = None
@@ -85,6 +88,16 @@ class AppContainer:
     @property
     def ready(self) -> bool:
         return True
+
+
+def _build_queue_source(
+    settings: Settings, stations: StationRepository
+) -> QueueObservationSource | None:
+    if settings.camera_queue_backend == "off":
+        return None
+    return MockCameraQueueSource(
+        stations.list_stations(), config_path=settings.camera_queue_config_path
+    )
 
 
 def build_container(
@@ -104,6 +117,7 @@ def build_container(
         else VirtualLoadStore(ttl=ttl)
     )
     routes, owned_route_client = _build_route_provider(settings, route_client=route_client)
+    queue_source = _build_queue_source(settings, stations)
 
     def service_factory(reader: VirtualLoadReader) -> RecommendationService:
         return RecommendationService(
@@ -115,6 +129,7 @@ def build_container(
             data_type=_recommendation_data_type(settings),
             max_prediction_horizon_minutes=horizons,
             virtual_load_provider=reader,
+            queue_source=queue_source,
             time_shift_minutes=(15, 30) if settings.time_shift_suggestions else (),
         )
 
@@ -147,6 +162,7 @@ def build_container(
         prediction_horizons=horizons,
         virtual_load_store=store,
         allocation_coordinator=coordinator,
+        queue_source=queue_source,
         owned_route_client=owned_route_client,
     )
     if settings.places_backend == "goong" and settings.goong_rest_api_key:

@@ -228,6 +228,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/stations/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Station Queues
+         * @description Camera queue views; stations without a camera are left out.
+         */
+        get: operations["getStationQueues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/whatif": {
         parameters: {
             query?: never;
@@ -476,6 +496,45 @@ export interface components {
             pressure_score: number;
             /** Station Id */
             station_id: string;
+        };
+        /**
+         * QueueObservation
+         * @description Queue seen by a station camera at ``observed_at``; mock until a real feed exists.
+         */
+        QueueObservation: {
+            /** Confidence */
+            confidence: number;
+            data_type: components["schemas"]["DataType"];
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            /** Source */
+            source: string;
+            /** Station Id */
+            station_id: string;
+            /** Vehicles Charging */
+            vehicles_charging: number;
+            /** Vehicles Waiting */
+            vehicles_waiting: number;
+        };
+        /**
+         * QueueSnapshotResponse
+         * @description Camera views at one moment; stations without a camera are absent.
+         */
+        QueueSnapshotResponse: {
+            data_type: components["schemas"]["DataType"];
+            /** Observations */
+            observations: components["schemas"]["QueueObservation"][];
+            /**
+             * Observed At
+             * Format: date-time
+             */
+            observed_at: string;
+            scenario: components["schemas"]["Scenario"];
+            /** Source Notes */
+            source_notes: string[];
         };
         /** RecommendationRequest */
         RecommendationRequest: {
@@ -1258,6 +1317,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StationListResponse"];
+                };
+            };
+        };
+    };
+    getStationQueues: {
+        parameters: {
+            query?: {
+                observed_at?: string | null;
+                scenario?: components["schemas"]["Scenario"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueSnapshotResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
