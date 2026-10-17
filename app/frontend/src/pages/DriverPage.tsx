@@ -330,6 +330,7 @@ export function DriverPage() {
           clear();
         }}
         onScenarioChange={(next) => {
+          if (next === scenario) return;
           setScenario(next);
           setRuntime(undefined);
           setRuntimeLoading(true);

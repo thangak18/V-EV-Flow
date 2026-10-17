@@ -2528,7 +2528,7 @@ dd {
   width: 100%;
   min-width: 0;
 }
-.driver-departure .departure-reset {
+.driver-departure-note .departure-reset {
   width: fit-content;
   padding: 0.25rem 0;
   background: transparent;
@@ -2539,4 +2539,36 @@ dd {
 
 .driver-toolbar__fields {
   align-items: start;
+}
+
+.driver-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.driver-toolbar__fields {
+  width: 100%;
+}
+.driver-toolbar__actions {
+  width: 100%;
+  margin-left: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+.driver-departure-note {
+  display: flex;
+  flex: 1 1 17rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.8rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.driver-departure-note small {
+  font-size: inherit;
+}
+.driver-scenario-note,
+.driver-history-range {
+  display: block;
+  margin-top: 0.35rem;
 }

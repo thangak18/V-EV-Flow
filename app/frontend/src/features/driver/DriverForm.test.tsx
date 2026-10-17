@@ -10,8 +10,8 @@ function replayContext(observed_at: string | null): RuntimeContext {
     scenario: "normal",
     data_type: "simulated",
     observed_at,
-    history_start: null,
-    history_end: null,
+    history_start: "2026-09-30T00:00:00+07:00",
+    history_end: "2026-10-13T23:55:00+07:00",
     max_horizon_minutes: 180,
     places_available: false,
     available: true,
@@ -323,7 +323,7 @@ test("an unfinished destination does not mark the valid origin as invalid", () =
   ).toBeDisabled();
 });
 
-test("chosen departure stays independent from the observation and resets explicitly", () => {
+test("replay departure selects an actual snapshot and resets explicitly", () => {
   const onSubmit = vi.fn(),
     onDepartureChange = vi.fn();
   render(
@@ -339,7 +339,7 @@ test("chosen departure stays independent from the observation and resets explici
   fireEvent.change(departure, { target: { value: "2026-10-13T16:30" } });
   fireEvent.click(screen.getByRole("button", { name: "Tìm kế hoạch sạc" }));
   expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
-    observed_at: "2026-10-13T16:00:00+07:00",
+    observed_at: "2026-10-13T16:30:00+07:00",
     depart_time: "2026-10-13T16:30:00+07:00",
   });
   expect(onDepartureChange).toHaveBeenCalledTimes(1);
@@ -347,7 +347,7 @@ test("chosen departure stays independent from the observation and resets explici
   expect(departure).toHaveValue("2026-10-13T16:00");
 });
 
-test.each(["", "2026-10-13T15:59", "2026-10-13T19:00", "2026-10-17T16:00"])(
+test.each(["", "2026-09-29T23:59", "2026-10-14T00:00", "2026-10-17T16:00"])(
   "blocks unavailable departure %s without changing the snapshot",
   (value) => {
     const onSubmit = vi.fn();
@@ -387,4 +387,68 @@ test("switching demand scenario resets departure to that scenario's data clock",
   expect(screen.getByLabelText("Giờ khởi hành")).toHaveValue(
     "2026-10-13T16:00",
   );
+});
+
+test.each([
+  "2026-10-13T08:00",
+  "2026-10-13T19:00",
+  "2026-10-13T20:00",
+  "2026-10-13T20:02",
+])(
+  "replays %s from history without a three-hour departure restriction",
+  (value) => {
+    const onSubmit = vi.fn();
+    render(
+      <DriverForm
+        pending={false}
+        runtime={replayContext("2026-10-13T16:00:00+07:00")}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Giờ khởi hành"), {
+      target: { value },
+    });
+    expect(
+      screen.getByRole("button", { name: "Tìm kế hoạch sạc" }),
+    ).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kế hoạch sạc" }));
+    const request = onSubmit.mock.calls[0]?.[0];
+    expect(request.depart_time).toBe(`${value}:00+07:00`);
+    const expected = value.endsWith("20:02")
+      ? "2026-10-13T20:00:00+07:00"
+      : `${value}:00+07:00`;
+    expect(request.observed_at).toBe(expected);
+    expect(
+      screen.getByText(/Dữ liệu lúc/).querySelector("time"),
+    ).toHaveAttribute("datetime", expected);
+  },
+);
+
+test("live planned departure keeps the latest real observation", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-13T16:02:00+07:00"));
+  try {
+    const onSubmit = vi.fn();
+    render(
+      <DriverForm
+        pending={false}
+        runtime={{
+          ...replayContext("2026-10-13T16:00:00+07:00"),
+          clock_mode: "live",
+          data_type: "real",
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Giờ khởi hành"), {
+      target: { value: "2026-10-13T16:30" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kế hoạch sạc" }));
+    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
+      observed_at: "2026-10-13T16:00:00+07:00",
+      depart_time: "2026-10-13T16:30:00+07:00",
+    });
+  } finally {
+    vi.useRealTimers();
+  }
 });

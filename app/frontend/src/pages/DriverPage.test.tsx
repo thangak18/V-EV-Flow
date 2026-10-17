@@ -455,3 +455,21 @@ test("editing departure clears the old plan and submits a new departure explicit
     depart_time: "2026-10-13T16:15:00+07:00",
   });
 });
+
+test("reselecting the active demand scenario does not strand runtime loading", async () => {
+  const client = createMockApiClient();
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <DriverPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  const find = screen.getByRole("button", { name: "Tìm kế hoạch sạc" });
+  await waitFor(() => expect(find).toBeEnabled());
+  fireEvent.change(screen.getByLabelText("Kịch bản nhu cầu sạc"), {
+    target: { value: "normal" },
+  });
+  expect(find).toBeEnabled();
+  expect(client.runtime).toHaveBeenCalledTimes(1);
+});

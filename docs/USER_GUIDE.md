@@ -81,9 +81,11 @@ Bạn có thể tìm địa điểm ngoài hành lang dữ liệu, nhưng hệ t
 - Giới hạn dự báo hiển thị trên form do backend cung cấp. Release đang dùng hỗ trợ tối đa 180 phút.
 - Trạm nằm ngoài khả năng dự báo hoặc không đủ điều kiện sẽ không được suy diễn thành một phương án hợp lệ.
 
-**Giờ khởi hành và mốc dữ liệu là hai thông tin riêng.** Ví dụ snapshot lúc 16:00, bạn chọn đi lúc 16:30: hệ thống giữ dữ liệu quan sát 16:00 và dự báo tại ETA sau khi xe xuất phát 16:30. Không đổi snapshot thành 16:30 để giả vờ có dữ liệu mới.
+**Giờ khởi hành và mốc dữ liệu có cách dùng khác nhau theo chế độ:**
 
-- Giờ đi không được trước snapshot hoặc muộn tới mức không còn cửa sổ dự báo; thời gian chờ khởi hành và di chuyển đều tính vào horizon.
+- **Phát lại mô phỏng:** chọn đi lúc 20:00 thì dùng snapshot lịch sử thực sự có lúc 20:00. Chọn 20:02 thì dùng snapshot 20:00 (các mốc dữ liệu cách nhau 5 phút) và giờ đi vẫn là 20:02. Không bị giới hạn phải đi trong 3 giờ sau mốc mặc định 16:00; có thể chọn trong toàn khoảng lịch sử hiển thị.
+- **Live:** giữ snapshot mới nhất từ đối tác, giờ đi chọn riêng; không tự tạo một snapshot tương lai chưa tồn tại.
+- Giờ ngoài lịch sử mô phỏng sẽ bị chặn và có thông báo khoảng dữ liệu. Khả năng dự báo của model vẫn tính từ snapshot thực được dùng đến ETA, không được kéo dài tùy ý.
 - Trạm phải có ETA nằm trong khả năng model. Chọn được giờ đi chưa đảm bảo còn trạm đủ điều kiện.
 - Đổi giờ đi sẽ xóa kế hoạch cũ; bấm **Tìm kế hoạch sạc** để tính lại. Có nút **Dùng mốc dữ liệu / Dùng giờ hiện tại** để trở về mặc định.
 - Chọn lại kịch bản nhu cầu sẽ khôi phục giờ mặc định theo dữ liệu của kịch bản đó.

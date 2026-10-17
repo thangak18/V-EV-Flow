@@ -140,13 +140,38 @@ export function DriverForm({
         : "";
   const horizon = runtime?.max_horizon_minutes ?? 60;
   const forecastEnd = Date.parse(observedAt) + horizon * 60_000;
-  const departureError = !isTimezoneAwareIso(departureIso)
+  const replay = runtime?.clock_mode === "replay";
+  const historyStart = runtime?.history_start ?? "";
+  const historyEnd = runtime?.history_end ?? "";
+  const historyReady =
+    isTimezoneAwareIso(historyStart) && isTimezoneAwareIso(historyEnd);
+  const validDeparture = isTimezoneAwareIso(departureIso);
+  const inHistory =
+    historyReady &&
+    validDeparture &&
+    Date.parse(departureIso) >= Date.parse(historyStart) &&
+    Date.parse(departureIso) <= Date.parse(historyEnd);
+  // Replay reads an actual historical snapshot, not an extrapolated forecast
+  // from the default 16:00 clock. Live mode keeps its latest observed snapshot.
+  const selectedObservation =
+    replay && departureDraft !== null && inHistory
+      ? vietnamTime(
+          Math.floor(Date.parse(departureIso) / 300_000) * 300_000,
+        ).replace(".000+", "+")
+      : observedAt;
+  const departureError = !validDeparture
     ? "Chọn ngày và giờ khởi hành hợp lệ."
-    : Date.parse(departureIso) < Date.parse(observedAt)
-      ? "Giờ khởi hành không được sớm hơn mốc dữ liệu đang xem."
-      : Date.parse(departureIso) >= forecastEnd
-        ? `Giờ khởi hành vượt cửa sổ dự báo ${horizon} phút tính từ mốc dữ liệu. Cần chừa thêm thời gian di chuyển tới trạm.`
-        : "";
+    : replay && departureDraft !== null
+      ? !historyReady
+        ? "Chưa lấy được khoảng dữ liệu lịch sử để chọn giờ khởi hành. Hãy dùng lại mốc dữ liệu hoặc thử kết nối lại."
+        : !inHistory
+          ? "Giờ khởi hành nằm ngoài khoảng dữ liệu mô phỏng hiện có. Chọn ngày giờ trong khoảng lịch sử được hiển thị."
+          : ""
+      : Date.parse(departureIso) < Date.parse(observedAt)
+        ? "Giờ khởi hành không được sớm hơn mốc dữ liệu đang xem."
+        : Date.parse(departureIso) >= forecastEnd
+          ? "Giờ khởi hành quá xa mốc dữ liệu mới nhất. Cần dữ liệu cập nhật để dự báo chuyến đi này."
+          : "";
   const departureInvalid = !!departureError;
   const socInvalid = parsedSoc === null || parsedSoc < 0 || parsedSoc > 100;
   const batteryInvalid = parsedBattery === null || parsedBattery <= 0;
@@ -203,8 +228,8 @@ export function DriverForm({
         lat: selectedDestination.lat,
         lng: selectedDestination.lng,
       },
-      observed_at: observedAt,
-      // Keep the snapshot for features; departure is an independent user choice.
+      observed_at: selectedObservation,
+      // Use the actual replay snapshot, or the latest live observation.
       depart_time:
         departureDraft === null && live
           ? vietnamTime(Date.now())
@@ -268,9 +293,11 @@ export function DriverForm({
           <select
             value={scenario}
             onChange={(event) => {
+              const next = event.target.value as Scenario;
+              if (next === scenario) return;
               setDepartureDraft(null);
-              setScenario(event.target.value as Scenario);
-              onScenarioChange?.(event.target.value as Scenario);
+              setScenario(next);
+              onScenarioChange?.(next);
             }}
           >
             <option value="normal">Ngày thường</option>
@@ -287,11 +314,19 @@ export function DriverForm({
             type="datetime-local"
             step={60}
             value={departureValue}
-            min={!timeInvalid ? observedAt.slice(0, 16) : undefined}
+            min={
+              replay && historyReady
+                ? vietnamTime(Date.parse(historyStart)).slice(0, 16)
+                : !timeInvalid
+                  ? observedAt.slice(0, 16)
+                  : undefined
+            }
             max={
-              !timeInvalid
-                ? vietnamTime(forecastEnd - 60_000).slice(0, 16)
-                : undefined
+              replay && historyReady
+                ? vietnamTime(Date.parse(historyEnd)).slice(0, 16)
+                : !timeInvalid
+                  ? vietnamTime(forecastEnd - 60_000).slice(0, 16)
+                  : undefined
             }
             disabled={runtimeLoading || !!runtimeError || timeInvalid}
             aria-invalid={departureInvalid}
@@ -301,26 +336,6 @@ export function DriverForm({
               onDepartureChange?.();
             }}
           />
-          <small id="driver-departure-help">
-            Giờ Việt Nam ·{" "}
-            {departureDraft !== null
-              ? "Giờ khởi hành bạn chọn"
-              : live
-                ? "Khởi hành ngay"
-                : "Theo mốc dữ liệu mô phỏng"}
-          </small>
-          {departureDraft !== null ? (
-            <button
-              type="button"
-              className="departure-reset"
-              onClick={() => {
-                setDepartureDraft(null);
-                onDepartureChange?.();
-              }}
-            >
-              {live ? "Dùng giờ hiện tại" : "Dùng mốc dữ liệu"}
-            </button>
-          ) : null}
         </div>
         <label className="field-chip">
           <span className="field-chip__label">Pin hiện tại (SOC %)</span>
@@ -344,6 +359,28 @@ export function DriverForm({
       </div>
 
       <div className="driver-toolbar__actions">
+        <div className="driver-departure-note">
+          <small id="driver-departure-help">
+            Giờ Việt Nam ·{" "}
+            {departureDraft !== null
+              ? "Giờ khởi hành bạn chọn"
+              : live
+                ? "Khởi hành ngay"
+                : "Theo mốc dữ liệu mô phỏng"}
+          </small>
+          {departureDraft !== null ? (
+            <button
+              type="button"
+              className="departure-reset"
+              onClick={() => {
+                setDepartureDraft(null);
+                onDepartureChange?.();
+              }}
+            >
+              {live ? "Dùng giờ hiện tại" : "Dùng mốc dữ liệu"}
+            </button>
+          ) : null}
+        </div>
         <button
           type="submit"
           className="btn-primary"
@@ -425,13 +462,44 @@ export function DriverForm({
           : "Gõ rồi chọn địa điểm trong danh sách."}{" "}
         Chỉ các trạm có dữ liệu phù hợp mới được đề xuất.
         {runtime
-          ? ` ${runtime.clock_mode === "replay" ? "Đang xem dữ liệu mô phỏng, không phải trạng thái trực tiếp." : runtime.clock_mode === "live" ? "Trạng thái từ nguồn trạm." : "Dữ liệu minh họa."} Dự báo tối đa ${runtime.max_horizon_minutes} phút.`
+          ? ` ${runtime.clock_mode === "replay" ? "Đang xem dữ liệu mô phỏng, không phải trạng thái trực tiếp." : runtime.clock_mode === "live" ? "Trạng thái từ nguồn trạm." : "Dữ liệu minh họa."}`
           : ""}
+        <span className="driver-scenario-note">
+          {scenario === "tet"
+            ? "Tết: nhu cầu sạc mô phỏng cao."
+            : scenario === "holiday_30_4"
+              ? "Lễ 30/4: nhu cầu sạc mô phỏng tăng."
+              : "Ngày thường: nhu cầu sạc mô phỏng cơ sở."}{" "}
+          Tuyến đường có thể giống nhau; chưa mô phỏng ùn tắc theo ngày lễ.
+        </span>
+        {replay && historyReady ? (
+          <span className="driver-history-range">
+            Có dữ liệu từ{" "}
+            {new Date(historyStart).toLocaleString("vi-VN", {
+              timeZone: "Asia/Ho_Chi_Minh",
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}{" "}
+            đến{" "}
+            {new Date(historyEnd).toLocaleString("vi-VN", {
+              timeZone: "Asia/Ho_Chi_Minh",
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
+            .
+          </span>
+        ) : null}
         {runtime?.observed_at && !timeInvalid ? (
           <span className="data-snapshot-note">
             Dữ liệu lúc{" "}
-            <time dateTime={observedAt}>
-              {new Date(observedAt).toLocaleString("vi-VN", {
+            <time dateTime={selectedObservation}>
+              {new Date(selectedObservation).toLocaleString("vi-VN", {
                 timeZone: "Asia/Ho_Chi_Minh",
                 hour: "2-digit",
                 minute: "2-digit",
@@ -440,7 +508,10 @@ export function DriverForm({
                 year: "numeric",
               })}
             </time>{" "}
-            (giờ Việt Nam) · Tự động lấy từ hệ thống.
+            (giờ Việt Nam) ·{" "}
+            {replay && departureDraft !== null && inHistory
+              ? "Phát lại snapshot lịch sử theo giờ khởi hành."
+              : "Tự động lấy từ hệ thống."}
           </span>
         ) : null}
       </p>
