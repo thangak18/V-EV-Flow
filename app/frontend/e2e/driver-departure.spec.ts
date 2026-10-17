@@ -38,5 +38,5 @@ test("departure time changes the request without changing its data snapshot", as
     .getByLabel("Giờ khởi hành", { exact: true })
     .fill("2026-10-13T15:59");
   await expect(find).toBeDisabled();
-  await expect(page.getByRole("alert")).toContainText("sớm hơn");
+  await expect(page.locator(".driver-toolbar").getByRole("alert")).toContainText("sớm hơn");
 });
