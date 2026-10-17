@@ -90,7 +90,6 @@ Bạn có thể tìm địa điểm ngoài hành lang dữ liệu, nhưng hệ t
 | **Từ điểm xuất phát** | Quãng đường từ điểm đi đến trạm. |
 | **Pin khi đến** | SOC còn lại ước tính sau quãng đường tới trạm. Không phải lượng pin sẽ sạc thêm. |
 | **Đi thêm để ghé trạm** | Quãng đường phát sinh để ghé trạm so với hành trình tham chiếu. |
-| **Khả năng kế hoạch có chỗ** | Ước lượng cho kế hoạch có cả phương án dự phòng khi có dữ liệu; có thể dùng giả định hai trạm độc lập. Xem phần độ tin cậy trước khi diễn giải. |
 | **Định vị trạm chính** | Phóng bản đồ đến trạm, làm nổi bật marker và mở thẻ thông tin. Không tạo lại kế hoạch hoặc ghi thêm phân bổ. |
 
 ### 2.6. Đọc “Trạm dự phòng / Phương án B”

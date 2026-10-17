@@ -114,11 +114,6 @@ export function PlanSummary({
                   <dt>Đi thêm để ghé trạm</dt>
                 </div>
               </dl>
-              {result.plan_p != null ? (
-                <p className="plan-confidence">
-                  Khả năng kế hoạch có chỗ: {formatPct(result.plan_p)}
-                </p>
-              ) : null}
               <button
                 type="button"
                 className="btn-primary plan-hero__cta"
@@ -252,12 +247,6 @@ export function PlanSummary({
           Pin khi đến là lượng pin ước tính còn lại sau quãng đường di chuyển.
           Đường vòng là quãng đường đi thêm để ghé trạm.
         </p>
-        {result.plan_p_assumption === "independent_stations" ? (
-          <p>
-            Ước lượng cho cả kế hoạch dùng giả định hai trạm độc lập. Hai trạm
-            có thể cùng đông khách nên xác suất thực tế có thể khác.
-          </p>
-        ) : null}
         <p>
           Nguồn trạng thái:{" "}
           {result.data_type === "simulated"

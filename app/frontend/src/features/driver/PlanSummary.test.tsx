@@ -63,7 +63,6 @@ describe("PlanSummary", () => {
     expect(screen.getByText("Trạm dự phòng")).toBeInTheDocument();
     expect(screen.getByText(/15,5%/)).toBeInTheDocument();
     expect(screen.getByText("Đủ pin để tới trạm chính")).toBeInTheDocument();
-    expect(screen.getByText(/giả định hai trạm độc lập/i)).toBeInTheDocument();
     expect(screen.getByText(/16:40/)).toBeInTheDocument();
 
     const details = screen
@@ -198,5 +197,17 @@ describe("PlanSummary camera badges", () => {
   test("shows no badge without queue data", () => {
     render(<PlanSummary result={base} />);
     expect(screen.queryByLabelText(/Có camera/)).not.toBeInTheDocument();
+  });
+});
+
+describe("PlanSummary plan-level probability", () => {
+  test("does not show a combined plan probability or its independence note", () => {
+    render(<PlanSummary result={base} />);
+    expect(
+      screen.queryByText(/Khả năng kế hoạch có chỗ/),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/hai trạm độc lập/)).not.toBeInTheDocument();
+    // Per-station probabilities stay visible.
+    expect(screen.getAllByText("85%").length).toBeGreaterThanOrEqual(1);
   });
 });
