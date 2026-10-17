@@ -29,6 +29,65 @@ function renderForm(overrides: { pending?: boolean } = {}) {
 }
 
 describe("DriverForm", () => {
+  test("locks a single connector and switches to directory choices when available", () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(
+      <DriverForm
+        pending={false}
+        onSubmit={onSubmit}
+        connectorTypes={["CCS2"]}
+      />,
+    );
+    expect(screen.getByLabelText("Loại đầu cắm của xe")).toHaveAttribute(
+      "readonly",
+    );
+    rerender(
+      <DriverForm
+        pending={false}
+        onSubmit={onSubmit}
+        connectorTypes={["CCS2", "Type2", "CCS2"]}
+      />,
+    );
+    const connector = screen.getByRole("combobox", {
+      name: "Loại đầu cắm của xe",
+    });
+    expect(connector.querySelectorAll("option")).toHaveLength(2);
+    fireEvent.change(connector, { target: { value: "Type2" } });
+    fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
+    expect(onSubmit.mock.calls[0]![0].vehicle.connector_type).toBe("Type2");
+    rerender(
+      <DriverForm
+        pending={false}
+        onSubmit={onSubmit}
+        connectorTypes={["CCS2"]}
+      />,
+    );
+    expect(screen.getByLabelText("Loại đầu cắm của xe")).toHaveValue("CCS2");
+    rerender(
+      <DriverForm pending={false} onSubmit={onSubmit} connectorTypes={[]} />,
+    );
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+    ).toBeDisabled();
+  });
+
+  test.each(["0", "100", "-1", "100.1"])(
+    "validates battery percentage %s",
+    (value) => {
+      const { onSubmit } = renderForm();
+      fireEvent.change(screen.getByLabelText("Mức pin hiện tại (%)"), {
+        target: { value },
+      });
+      const submit = screen.getByRole("button", { name: /Tìm kế hoạch sạc/ });
+      if (Number(value) < 0 || Number(value) > 100) {
+        expect(submit).toBeDisabled();
+      } else {
+        fireEvent.click(submit);
+        expect(onSubmit.mock.calls[0]![0].vehicle.soc_pct).toBe(Number(value));
+      }
+    },
+  );
+
   test("live departures use click time while retaining the observed snapshot timestamp", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-13T16:02:10+07:00"));
@@ -68,10 +127,10 @@ describe("DriverForm", () => {
     const { onSubmit } = renderForm();
 
     expect(screen.getByLabelText("Điểm đi")).toBeInTheDocument();
-    expect(screen.getByLabelText(/SOC %/)).toHaveValue("20");
+    expect(screen.getByLabelText(/Mức pin hiện tại/)).toHaveValue("20");
     expect(screen.getByLabelText(/Dung lượng pin/)).toHaveValue("60");
     expect(screen.getByLabelText(/Tiêu hao/)).toHaveValue("0.18");
-    expect(screen.getByLabelText("Đầu cắm")).toHaveValue("CCS2");
+    expect(screen.getByLabelText("Loại đầu cắm của xe")).toHaveValue("CCS2");
 
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -85,7 +144,7 @@ describe("DriverForm", () => {
 
   test("keeps numeric fields empty after clear and blocks submit", () => {
     const { onSubmit } = renderForm();
-    const soc = screen.getByLabelText(/SOC %/);
+    const soc = screen.getByLabelText(/Mức pin hiện tại/);
     const battery = screen.getByLabelText(/Dung lượng pin/);
     const consumption = screen.getByLabelText(/Tiêu hao/);
 
@@ -107,7 +166,7 @@ describe("DriverForm", () => {
 
   test("allows retyping after clear without forcing a leading zero", () => {
     renderForm();
-    const soc = screen.getByLabelText(/SOC %/);
+    const soc = screen.getByLabelText(/Mức pin hiện tại/);
 
     fireEvent.change(soc, { target: { value: "" } });
     expect(soc).toHaveValue("");
@@ -120,7 +179,7 @@ describe("DriverForm", () => {
 
   test("keeps trailing decimal separators while typing with dot or comma", () => {
     renderForm();
-    const soc = screen.getByLabelText(/SOC %/);
+    const soc = screen.getByLabelText(/Mức pin hiện tại/);
     const consumption = screen.getByLabelText(/Tiêu hao/);
 
     fireEvent.change(soc, { target: { value: "30" } });
@@ -142,7 +201,7 @@ describe("DriverForm", () => {
   test("normalizes comma decimals into API numbers on submit", () => {
     const { onSubmit } = renderForm();
 
-    fireEvent.change(screen.getByLabelText(/SOC %/), {
+    fireEvent.change(screen.getByLabelText(/Mức pin hiện tại/), {
       target: { value: "30,5" },
     });
     fireEvent.change(screen.getByLabelText(/Dung lượng pin/), {
@@ -163,7 +222,7 @@ describe("DriverForm", () => {
   test("normalizes dot decimals into API numbers on submit", () => {
     const { onSubmit } = renderForm();
 
-    fireEvent.change(screen.getByLabelText(/SOC %/), {
+    fireEvent.change(screen.getByLabelText(/Mức pin hiện tại/), {
       target: { value: "40.25" },
     });
     fireEvent.change(screen.getByLabelText(/Tiêu hao/), {
@@ -183,7 +242,7 @@ describe("DriverForm", () => {
     const { rerender } = render(
       <DriverForm pending={false} onSubmit={onSubmit} />,
     );
-    fireEvent.change(screen.getByLabelText(/SOC %/), {
+    fireEvent.change(screen.getByLabelText(/Mức pin hiện tại/), {
       target: { value: "120" },
     });
     expect(
@@ -191,7 +250,7 @@ describe("DriverForm", () => {
     ).toBeDisabled();
 
     rerender(<DriverForm pending={true} onSubmit={onSubmit} />);
-    fireEvent.change(screen.getByLabelText(/SOC %/), {
+    fireEvent.change(screen.getByLabelText(/Mức pin hiện tại/), {
       target: { value: "20" },
     });
     expect(screen.getByRole("button", { name: /Đang tìm/i })).toBeDisabled();

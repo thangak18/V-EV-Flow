@@ -9,7 +9,7 @@ test("driver numeric fields keep empty draft and accept comma/dot decimals", asy
     (el as HTMLDetailsElement).open = true;
   });
 
-  const soc = page.getByLabel(/SOC %/);
+  const soc = page.getByLabel(/Mức pin hiện tại/);
   const battery = page.getByLabel(/Dung lượng pin/);
   const consumption = page.getByLabel(/Tiêu hao/);
   const submit = page.getByRole("button", { name: /Tìm kế hoạch sạc/i });

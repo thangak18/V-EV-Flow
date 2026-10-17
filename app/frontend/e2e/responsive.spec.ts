@@ -75,7 +75,9 @@ for (const width of [375, 390] as const) {
       await expect(seed).toHaveValue("");
       await expect(vehicles).toHaveValue("");
       await expect(compare).toBeDisabled();
-      await expect(page.getByText("Mã lần chạy phải là số nguyên")).toBeVisible();
+      await expect(
+        page.getByText("Mã lần chạy phải là số nguyên"),
+      ).toBeVisible();
       await expect(
         page.getByText("Số xe phải là số nguyên lớn hơn hoặc bằng 1"),
       ).toBeVisible();
@@ -84,7 +86,9 @@ for (const width of [375, 390] as const) {
       await vehicles.fill("100");
       await expect(compare).toBeEnabled();
       await compare.click();
-      await expect(page.getByText(/mã lần chạy 0/i)).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText(/mã lần chạy 0/i)).toBeVisible({
+        timeout: 30_000,
+      });
     });
 
     test("decimal seed/vehicles drafts stay visible and block Compare", async ({
@@ -102,7 +106,9 @@ for (const width of [375, 390] as const) {
       await seed.fill("");
       await seed.pressSequentially("1.5");
       await expect(seed).toHaveValue("1.5");
-      await expect(page.getByText("Mã lần chạy phải là số nguyên")).toBeVisible();
+      await expect(
+        page.getByText("Mã lần chạy phải là số nguyên"),
+      ).toBeVisible();
       await expect(compare).toBeDisabled();
 
       await vehicles.fill("");
@@ -115,7 +121,9 @@ for (const width of [375, 390] as const) {
 
       await seed.fill("15");
       await vehicles.fill("15");
-      await expect(page.getByText("Mã lần chạy phải là số nguyên")).toHaveCount(0);
+      await expect(page.getByText("Mã lần chạy phải là số nguyên")).toHaveCount(
+        0,
+      );
       await expect(
         page.getByText("Số xe phải là số nguyên lớn hơn hoặc bằng 1"),
       ).toHaveCount(0);
@@ -156,7 +164,7 @@ test.describe("driver phone shell", () => {
     await expect(
       page.getByRole("heading", { name: "V-EV Flow" }),
     ).toBeVisible();
-    await expect(page.getByLabel(/SOC %/)).toBeVisible();
+    await expect(page.getByLabel(/Mức pin hiện tại/)).toBeVisible();
     await expect(page.getByLabel("Station text list")).toBeVisible();
 
     const pageBox = await page.locator(".driver-page").boundingBox();

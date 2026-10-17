@@ -214,3 +214,11 @@ Scenario changes restore the data-clock default. The demand scenario label is
 “Kịch bản nhu cầu sạc” in both workspaces; it does not claim holiday traffic
 forecasts. No backend contracts change: RecommendationRequest.depart_time was
 already supported and is now editable in the product UI.
+
+## Driver vehicle inputs
+
+Battery level uses a decimal numeric draft bounded to 0–100%, with Vietnamese
+labels and contextual help. Comma/dot entry and empty-draft validation remain
+compatible. Connector choices come from the loaded station directory. A single
+supported type is read-only; multiple types use a select. An empty directory
+blocks submission rather than accepting a made-up connector.

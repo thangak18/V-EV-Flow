@@ -319,6 +319,11 @@ export function DriverPage() {
       </section>
       <DriverForm
         pending={status === "loading"}
+        connectorTypes={
+          directoryDataType === null
+            ? undefined
+            : stations.flatMap((station) => station.connector_types)
+        }
         locations={locations}
         origin={origin}
         destination={destination}

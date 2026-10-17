@@ -83,7 +83,15 @@ describe("DriverPage", () => {
   test("labels the directory source before submit and the prediction source afterwards", async () => {
     const client = createMockApiClient({
       listStations: vi.fn().mockResolvedValue({
-        stations: [],
+        stations: [
+          {
+            station_id: "S001",
+            name: "Trạm thử",
+            lat: 10.78,
+            lng: 106.7,
+            connector_types: ["CCS2"],
+          },
+        ],
         data_type: "simulated",
         source_notes: [],
       }),
@@ -326,7 +334,13 @@ describe("DriverPage", () => {
       recommend,
       listStations: vi.fn().mockResolvedValue({
         stations: [
-          { station_id: "S099", name: "Long Thành", lat: 10.8, lng: 107.01 },
+          {
+            station_id: "S099",
+            name: "Long Thành",
+            lat: 10.8,
+            lng: 107.01,
+            connector_types: ["CCS2"],
+          },
         ],
         data_type: "simulated",
         source_notes: [],

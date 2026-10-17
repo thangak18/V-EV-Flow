@@ -47,14 +47,14 @@ test("driver demo: plan, reset, empty battery and recovery", async ({
   await expect(page.getByText(/Đã đặt lại tải phân bổ/)).toBeVisible();
   await expect(page.getByTestId("plan-hero")).toHaveCount(0);
   expect(recommends).toBe(1);
-  await page.getByLabel("Pin hiện tại (SOC %)").fill("0");
+  await page.getByLabel("Mức pin hiện tại (%)").fill("0");
   await page.getByRole("button", { name: /Tìm kế hoạch sạc/ }).click();
   await expect(
     page.getByText("Không có trạm khả thi cho chuyến này."),
   ).toBeVisible();
   await expect(page.getByTestId("plan-hero")).toHaveCount(0);
   if (record) await page.waitForTimeout(1500);
-  await page.getByLabel("Pin hiện tại (SOC %)").fill("20");
+  await page.getByLabel("Mức pin hiện tại (%)").fill("20");
   await page.getByRole("button", { name: /Tìm kế hoạch sạc/ }).click();
   await expect(page.getByTestId("plan-hero")).toBeVisible({ timeout: 60_000 });
   expect(recommends).toBe(3);

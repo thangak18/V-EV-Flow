@@ -20,6 +20,7 @@ import { isNumericDraft, parseLocaleNumber } from "./numberField";
 
 type Props = {
   pending: boolean;
+  connectorTypes?: string[];
   locations?: TripLocation[];
   origin?: string;
   destination?: string;
@@ -63,6 +64,7 @@ function onDraftNumberChange(
 
 export function DriverForm({
   pending,
+  connectorTypes = ["CCS2"],
   locations = [DEFAULT_ORIGIN, DEFAULT_DESTINATION],
   origin = DEFAULT_ORIGIN.label,
   destination = DEFAULT_DESTINATION.label,
@@ -82,6 +84,10 @@ export function DriverForm({
   const [batteryKwh, setBatteryKwh] = useState("60");
   const [consumption, setConsumption] = useState("0.18");
   const [connector, setConnector] = useState("CCS2");
+  const connectorOptions = [...new Set(connectorTypes)].filter(Boolean).sort();
+  const selectedConnector = connectorOptions.includes(connector)
+    ? connector
+    : (connectorOptions[0] ?? "");
   const [scenario, setScenario] = useState<Scenario>("normal");
   const observedAt = runtime ? (runtime.observed_at ?? "") : DEFAULT_DEMO_TIME;
   const [liveNow, setLiveNow] = useState(() => Date.now());
@@ -177,7 +183,7 @@ export function DriverForm({
   const batteryInvalid = parsedBattery === null || parsedBattery <= 0;
   const consumptionInvalid =
     parsedConsumption === null || parsedConsumption <= 0;
-  const connectorInvalid = connector.trim().length === 0;
+  const connectorInvalid = selectedConnector.length === 0;
   const advancedInvalid = batteryInvalid || consumptionInvalid;
   const detailsOpen = advancedInvalid || advancedOpen;
 
@@ -239,7 +245,7 @@ export function DriverForm({
         soc_pct: parsedSoc,
         battery_kwh: parsedBattery,
         consumption_kwh_per_km: parsedConsumption,
-        connector_type: connector,
+        connector_type: selectedConnector,
       },
     };
 
@@ -337,25 +343,59 @@ export function DriverForm({
             }}
           />
         </div>
-        <label className="field-chip">
-          <span className="field-chip__label">Pin hiện tại (SOC %)</span>
+        <div className="field-chip">
+          <label className="field-chip__label" htmlFor="driver-soc">
+            Mức pin hiện tại (%)
+          </label>
           <input
+            id="driver-soc"
             type="text"
             inputMode="decimal"
             value={socPct}
             onChange={onDraftNumberChange(setSocPct)}
             aria-invalid={socInvalid}
+            aria-describedby="driver-soc-help"
           />
-        </label>
-        <label className="field-chip">
-          <span className="field-chip__label">Đầu cắm</span>
-          <input
-            type="text"
-            value={connector}
-            onChange={(event) => setConnector(event.target.value)}
-            aria-invalid={connectorInvalid}
-          />
-        </label>
+          <small id="driver-soc-help">
+            Nhập từ 0 đến 100% theo mức pin trên xe.
+          </small>
+        </div>
+        <div className="field-chip">
+          <label className="field-chip__label" htmlFor="driver-connector">
+            Loại đầu cắm của xe
+          </label>
+          {connectorOptions.length > 1 ? (
+            <select
+              id="driver-connector"
+              value={selectedConnector}
+              onChange={(event) => setConnector(event.target.value)}
+              aria-describedby="driver-connector-help"
+            >
+              {connectorOptions.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="driver-connector"
+              type="text"
+              value={selectedConnector}
+              readOnly
+              placeholder="Chưa có thông tin đầu cắm"
+              aria-invalid={connectorInvalid}
+              aria-describedby="driver-connector-help"
+            />
+          )}
+          <small id="driver-connector-help">
+            {connectorOptions.length > 1
+              ? "Chọn đúng loại đầu cắm của xe."
+              : selectedConnector
+                ? `Danh mục trạm hiện hỗ trợ ${selectedConnector}.`
+                : "Chưa có loại đầu cắm trong danh mục trạm."}
+          </small>
+        </div>
       </div>
 
       <div className="driver-toolbar__actions">
