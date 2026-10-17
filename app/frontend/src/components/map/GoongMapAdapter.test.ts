@@ -29,6 +29,7 @@ function installGoongMocks(options?: {
 }): {
   Map: ReturnType<typeof vi.fn>;
   maps: MockMap[];
+  markerElements: HTMLElement[];
 } {
   const maps: MockMap[] = [];
   const Map = vi.fn(function MockMap(this: MockMap) {

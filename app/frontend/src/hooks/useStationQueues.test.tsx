@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { describe, expect, test, vi } from "vitest";
 
 import { ApiProvider } from "../app/ApiContext";
-import { ApiError } from "../services/api";
+import { ApiError, type ApiClient } from "../services/api";
 import { createMockApiClient } from "../test/mockApiClient";
 import { useStationQueues } from "./useStationQueues";
 
@@ -17,7 +17,7 @@ const view = {
   data_type: "mock",
 };
 
-function wrapperFor(getStationQueues: ReturnType<typeof vi.fn>) {
+function wrapperFor(getStationQueues: ApiClient["getStationQueues"]) {
   return ({ children }: { children: ReactNode }) => (
     <ApiProvider client={createMockApiClient({ getStationQueues })}>
       {children}
