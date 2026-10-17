@@ -41,6 +41,7 @@ Thông số cần có: `seed`, thời gian, bước 5 phút, hệ số xe đến
 ## Runtime / artifacts
 
 - Cửa sổ trạng thái hiện tại + lag: file nhỏ do A cung cấp cho inference replay.
+- Quan sát hàng đợi camera (`QueueObservation`): `station_id`, `observed_at`, `vehicles_waiting`, `vehicles_charging`, `confidence` 0-1, `source`, `data_type`. Hiện là mock (`camera_mock`); trạm không có camera trả `None`. Camera thật cắm vào cùng port `QueueObservationSource`.
 - Tải ảo: dict theo trạm và bucket thời gian, giá trị tải kỳ vọng; có request_id, TTL và thời gian phiên sạc giả định.
 - `app/backend/modules/prediction/artifacts/`: model, calibrator, feature order, version, training config. Không commit binary lớn.
 - `app/backend/modules/simulation/results/`: kết quả simulation/metrics có seed, config và model version.

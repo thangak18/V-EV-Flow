@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
+from .enums import Scenario
 from .prediction import PredictionResult, PredictRequest
+from .queue import QueueObservation
 from .recommendation import (
     AllocationContext,
     RankedPlan,
@@ -27,6 +29,15 @@ class StatusRepository(Protocol):
         observed_at: datetime,
         lags: tuple[int, ...] = (15, 30, 60),
     ) -> StatusWindow: ...
+
+
+@runtime_checkable
+class QueueObservationSource(Protocol):
+    """Returns ``None`` when the station has no camera."""
+
+    def observe(
+        self, station_id: str, at: datetime, scenario: Scenario
+    ) -> QueueObservation | None: ...
 
 
 @runtime_checkable

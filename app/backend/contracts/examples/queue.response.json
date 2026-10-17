@@ -1,0 +1,9 @@
+{
+  "station_id": "S001",
+  "observed_at": "2026-10-17T14:05:00+07:00",
+  "vehicles_waiting": 4,
+  "vehicles_charging": 2,
+  "confidence": 0.9,
+  "source": "camera_mock",
+  "data_type": "mock"
+}
