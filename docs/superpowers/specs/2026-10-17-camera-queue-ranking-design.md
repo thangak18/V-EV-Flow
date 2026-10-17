@@ -22,7 +22,7 @@ Với mỗi ứng viên, `L` là tải ảo, `S` là `mean_service_minutes`, `P`
 - `wait = c × wait_cam + (1 − c) × wait_est`
 - `score = 1.0·p_available − 0.2·norm(travel + wait) − 0.2·soc_risk − 0.3·norm(L)`
 
-`norm(x) = x / (x + travel_reference_minutes)`. Trạm không có camera hoặc quan sát cũ cho `c = 0`, nên chỉ thêm thời gian chờ ước lượng vào thành phần thời gian. `S` lấy từ thời lượng sạc simulator đang dùng, không đặt con số mới.
+`norm(x) = x / (x + travel_reference_minutes)`. Trạm không có camera hoặc quan sát cũ cho `c = 0`, nên chỉ thêm thời gian chờ ước lượng vào thành phần thời gian. `S` là cấu hình, mặc định 30 phút. Simulator tính thời lượng theo từng xe (kẹp 10-120 phút) nên không có giá trị trung bình cố định để dùng lại; 30 phút là giả định demo, chưa hiệu chỉnh.
 
 ## Thành phần
 
