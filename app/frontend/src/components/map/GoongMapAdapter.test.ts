@@ -257,6 +257,7 @@ test("style readiness renders overlays even when full tile load is delayed", asy
 });
 
 test("marks a camera station with an icon and its summary", async () => {
+  vi.stubEnv("VITE_GOONG_MAP_KEY", "test-maptiles-key");
   const { markerElements } = installGoongMocks();
   const adapter = new GoongMapAdapter();
   await adapter.mount(document.createElement("div"), {
@@ -281,4 +282,7 @@ test("marks a camera station with an icon and its summary", async () => {
   expect(without.querySelector(".map-marker-label")?.textContent).not.toContain(
     "📹",
   );
+  adapter.destroy();
+  vi.unstubAllEnvs();
+  delete window.goongjs;
 });
