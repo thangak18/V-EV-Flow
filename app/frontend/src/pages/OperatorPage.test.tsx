@@ -484,3 +484,76 @@ test.each(["scenario", "time"])(
     expect(kpis.getByText("20%")).toBeInTheDocument();
   },
 );
+
+test("shows how many monitored stations have cameras and marks them", async () => {
+  const getPressure = vi.fn().mockResolvedValue({
+    time: "2026-10-13T16:00:00+07:00",
+    scenario: "normal",
+    contract_version: "0.1.0",
+    stations: [
+      {
+        station_id: "S001",
+        p_available: 0.4,
+        pressure_score: 0.6,
+        data_type: "mock",
+      },
+    ],
+  });
+  const getStationQueues = vi.fn().mockResolvedValue({
+    observed_at: "2026-10-13T16:00:00+07:00",
+    scenario: "normal",
+    observations: [
+      {
+        station_id: "S001",
+        observed_at: "2026-10-13T16:00:00+07:00",
+        vehicles_waiting: 8,
+        vehicles_charging: 4,
+        confidence: 0.95,
+        source: "camera_mock",
+        data_type: "mock",
+      },
+    ],
+    data_type: "mock",
+    source_notes: [],
+  });
+  const client = createMockApiClient({
+    getPressure,
+    pressure: getPressure,
+    getStationQueues,
+  });
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <OperatorPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Áp dụng kịch bản/i }),
+  );
+  expect(await screen.findByText(/áp lực 0\.60/i)).toBeInTheDocument();
+  const tile = screen.getByText("Trạm có camera").closest("article")!;
+  expect(within(tile).getByText(/^1/)).toBeInTheDocument();
+  expect(
+    await screen.findByLabelText(/Có camera: .*8 xe chờ/),
+  ).toBeInTheDocument();
+});
+
+test("shows zero cameras when the camera feed is unavailable", async () => {
+  const client = createMockApiClient({
+    getStationQueues: vi.fn().mockRejectedValue(new Error("down")),
+  });
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <OperatorPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  const tile = (await screen.findByText("Trạm có camera")).closest("article")!;
+  await waitFor(() =>
+    expect(
+      within(tile).getByText(/Chưa có dữ liệu camera/),
+    ).toBeInTheDocument(),
+  );
+});

@@ -7,6 +7,8 @@ export type MapPoint = {
   color?: string;
   description?: string;
   badge?: string;
+  /** Camera summary; its presence marks the station as having a camera. */
+  camera?: string;
 };
 
 /** Station known to the UI but missing directory coordinates — text only. */

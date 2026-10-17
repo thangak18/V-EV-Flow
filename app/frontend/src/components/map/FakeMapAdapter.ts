@@ -183,7 +183,9 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
       model.focus?.id === point.id && model.focus.role === point.role;
     if (selected) group.setAttribute("data-focused", "true");
     const title = el("title");
-    title.textContent = point.label;
+    title.textContent = point.camera
+      ? `${point.label} — ${point.camera}`
+      : point.label;
     group.appendChild(title);
     group.appendChild(
       el("circle", {
@@ -203,7 +205,7 @@ function renderSchematic(container: HTMLElement, model: MapModel): void {
       "font-family": "IBM Plex Sans,Segoe UI,sans-serif",
       fill: "#17221f",
     });
-    label.textContent = text;
+    label.textContent = point.camera ? `📹 ${text}` : text;
     group.appendChild(label);
     svg.appendChild(group);
   }

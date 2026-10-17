@@ -50,6 +50,7 @@ function installGoongMocks(options?: {
     return map;
   });
 
+  const markerElements: HTMLElement[] = [];
   const Marker = vi.fn(function MockMarker(this: {
     setLngLat: ReturnType<typeof vi.fn>;
     addTo: ReturnType<typeof vi.fn>;
@@ -61,6 +62,7 @@ function installGoongMocks(options?: {
     this.remove = vi.fn();
     this.getElement = vi.fn(() => {
       const el = document.createElement("div");
+      markerElements.push(el);
       return el;
     });
     return this;
@@ -83,7 +85,7 @@ function installGoongMocks(options?: {
     window.setTimeout(attach, options?.delayMs);
   }
 
-  return { Map, maps };
+  return { Map, maps, markerElements };
 }
 
 describe("GoongMapAdapter", () => {
@@ -251,4 +253,31 @@ test("style readiness renders overlays even when full tile load is delayed", asy
   adapter.destroy();
   vi.unstubAllEnvs();
   delete window.goongjs;
+});
+
+test("marks a camera station with an icon and its summary", async () => {
+  const { markerElements } = installGoongMocks();
+  const adapter = new GoongMapAdapter();
+  await adapter.mount(document.createElement("div"), {
+    points: [
+      {
+        id: "S1",
+        lat: 10.7,
+        lng: 106.7,
+        label: "Trạm A",
+        role: "primary",
+        camera: "5 xe chờ",
+      },
+      { id: "S2", lat: 10.8, lng: 106.8, label: "Trạm B", role: "backup" },
+    ],
+  });
+  const [withCamera, without] = markerElements;
+  expect(withCamera.title).toContain("5 xe chờ");
+  expect(withCamera.querySelector(".map-marker-label")?.textContent).toContain(
+    "📹",
+  );
+  expect(without.title).not.toContain("xe chờ");
+  expect(without.querySelector(".map-marker-label")?.textContent).not.toContain(
+    "📹",
+  );
 });

@@ -117,6 +117,24 @@ export const StationListResponseSchema = z.strictObject({
   source_notes: z.array(z.string()),
 });
 
+const QueueObservationSchema = z.strictObject({
+  station_id: NonEmptyString,
+  observed_at: AwareIsoDateTime,
+  vehicles_waiting: z.number().int().min(0),
+  vehicles_charging: z.number().int().min(0),
+  confidence: z.number().finite().min(0).max(1),
+  source: NonEmptyString,
+  data_type: DataTypeSchema,
+});
+
+export const QueueSnapshotResponseSchema = z.strictObject({
+  observed_at: AwareIsoDateTime,
+  scenario: ScenarioSchema,
+  observations: z.array(QueueObservationSchema),
+  data_type: DataTypeSchema,
+  source_notes: z.array(z.string()),
+});
+
 export const PredictionResultSchema = z.strictObject({
   station_id: NonEmptyString,
   eta: AwareIsoDateTime,

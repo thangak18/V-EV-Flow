@@ -429,3 +429,72 @@ test("a failed bootstrap can retry runtime and station data without reloading or
     screen.queryByText(/Chưa kết nối được dữ liệu trạm/),
   ).not.toBeInTheDocument();
 });
+
+test("shows the camera icon and queue on a recommended station that has a camera", async () => {
+  const getStationQueues = vi.fn().mockResolvedValue({
+    observed_at: "2026-10-13T16:00:00+07:00",
+    scenario: "normal",
+    observations: [
+      {
+        station_id: "S012",
+        observed_at: "2026-10-13T16:00:00+07:00",
+        vehicles_waiting: 6,
+        vehicles_charging: 2,
+        confidence: 0.9,
+        source: "camera_mock",
+        data_type: "mock",
+      },
+    ],
+    data_type: "mock",
+    source_notes: [],
+  });
+  const client = createMockApiClient({
+    getStationQueues,
+    recommend: vi.fn().mockResolvedValue(planResult),
+  });
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <DriverPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+    ).toBeEnabled(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
+  expect(await screen.findByLabelText(/Có camera/)).toHaveTextContent(
+    "6 xe chờ",
+  );
+  expect(getStationQueues).toHaveBeenCalledWith(
+    expect.objectContaining({
+      scenario: "normal",
+      observed_at: "2026-10-13T16:00:00+07:00",
+    }),
+    expect.anything(),
+  );
+});
+
+test("still shows the plan when the camera feed fails", async () => {
+  const client = createMockApiClient({
+    getStationQueues: vi.fn().mockRejectedValue(new Error("camera down")),
+    recommend: vi.fn().mockResolvedValue(planResult),
+  });
+  render(
+    <ApiProvider client={client}>
+      <MemoryRouter>
+        <DriverPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+    ).toBeEnabled(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/i }));
+  expect(await screen.findByTestId("plan-hero")).toBeInTheDocument();
+  expect(screen.queryByLabelText(/Có camera/)).not.toBeInTheDocument();
+});

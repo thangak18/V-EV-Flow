@@ -99,4 +99,30 @@ describe("schematicMarkerLabel", () => {
       }).length,
     ).toBeLessThanOrEqual(18);
   });
+
+  test("draws a camera mark and puts the summary in the title", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const adapter = new FakeMapAdapter();
+    adapter.mount(container, {
+      points: [
+        {
+          id: "S1",
+          lat: 10.5,
+          lng: 106.8,
+          label: "Trạm A",
+          role: "primary",
+          camera: "5 xe chờ",
+        },
+        { id: "S2", lat: 10.6, lng: 106.9, label: "Trạm B", role: "backup" },
+      ],
+    });
+    const groups = Array.from(container.querySelectorAll("g"));
+    const [first, second] = groups.filter((g) => g.querySelector("title"));
+    expect(first.querySelector("title")?.textContent).toContain("5 xe chờ");
+    expect(first.querySelector("text")?.textContent).toContain("📹");
+    expect(second.querySelector("text")?.textContent).not.toContain("📹");
+    adapter.destroy();
+    container.remove();
+  });
 });

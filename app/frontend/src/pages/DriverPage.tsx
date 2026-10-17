@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useApiClient } from "../app/useApiClient";
 import { AsyncState } from "../components/common/AsyncState";
+import { cameraSummary } from "../components/common/cameraSummary";
 import { DataTypeBadge } from "../components/common/DataTypeBadge";
 import { MapView } from "../components/map/MapView";
 import type {
@@ -19,6 +20,7 @@ import { DriverForm } from "../features/driver/DriverForm";
 import { PlanEmptyState, PlanSummary } from "../features/driver/PlanSummary";
 import { useDriverRoutes } from "../hooks/useDriverRoutes";
 import { useRecommendation } from "../hooks/useRecommendation";
+import { useStationQueues } from "../hooks/useStationQueues";
 import type {
   DataType,
   Station,
@@ -116,6 +118,8 @@ export function DriverPage() {
     );
   }, [stations]);
 
+  const queues = useStationQueues(scenario, runtime?.observed_at).byStation;
+
   const mapModel = useMemo<MapModel>(() => {
     const selectedOrigin =
       (resolvedOrigin?.label === origin ? resolvedOrigin : undefined) ??
@@ -156,12 +160,14 @@ export function DriverPage() {
               ? "<1%"
               : `${Math.round(probability * 100)}%`;
       if (meta) {
+        const view = queues.get(stationId);
         points.push({
           id: stationId,
           lat: meta.lat,
           lng: meta.lng,
           label,
           role,
+          camera: view ? cameraSummary(view) : undefined,
           description: result?.[role]
             ? `Khả năng còn cổng ${probabilityLabel} · Đến lúc ${new Date(result[role]!.eta).toLocaleTimeString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" })} · Pin khi đến ${result[role]!.arrival_soc_pct.toFixed(1)}%. Dự báo tham khảo, chưa giữ chỗ.`
             : undefined,
@@ -200,6 +206,7 @@ export function DriverPage() {
     resolvedOrigin,
     resolvedDestination,
     mapFocus,
+    queues,
   ]);
 
   const routeOrigin = mapModel.points.find((point) => point.role === "origin");
@@ -368,6 +375,7 @@ export function DriverPage() {
                 <PlanSummary
                   result={result}
                   stationNames={stationNames}
+                  queues={queues}
                   onFocusMap={focusMap}
                   canFocusPrimary={mapModel.points.some(
                     (point) => point.role === "primary",

@@ -9,6 +9,7 @@ import {
   RuntimeContextSchema,
   PredictionResultSchema,
   PressureResponseSchema,
+  QueueSnapshotResponseSchema,
   RecommendationResultSchema,
   ResetResponseSchema,
   RuntimeStatusSchema,
@@ -80,6 +81,24 @@ export class ApiClient {
   listStations(signal?: AbortSignal): Promise<JsonResponse<"listStations">> {
     return this.request("/stations", { signal }).then((body) =>
       parseApiResponse(StationListResponseSchema, body, "listStations"),
+    );
+  }
+
+  /** Camera queue views; stations without a camera are absent from the result. */
+  getStationQueues(
+    query: { observed_at?: string; scenario?: Scenario },
+    signal?: AbortSignal,
+  ): Promise<JsonResponse<"getStationQueues">> {
+    const params = new URLSearchParams();
+    if (query.observed_at) params.set("observed_at", query.observed_at);
+    if (query.scenario) params.set("scenario", query.scenario);
+    return this.request(`/stations/queue?${params}`, { signal }).then(
+      (response) =>
+        parseApiResponse(
+          QueueSnapshotResponseSchema,
+          response,
+          "getStationQueues",
+        ),
     );
   }
 
@@ -241,6 +260,9 @@ export class ApiClient {
 }
 
 export type Station = components["schemas"]["Station"];
+export type QueueObservation = components["schemas"]["QueueObservation"];
+export type QueueSnapshotResponse =
+  components["schemas"]["QueueSnapshotResponse"];
 export type RecommendationRequest =
   components["schemas"]["RecommendationRequest"];
 export type RecommendationResult =

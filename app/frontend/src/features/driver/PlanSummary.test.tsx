@@ -154,3 +154,49 @@ test("location actions select the correct station role and reject missing coordi
     screen.getByRole("button", { name: "Định vị trạm chính" }),
   ).toBeDisabled();
 });
+
+describe("PlanSummary camera badges", () => {
+  const view = (id: string, waiting: number) => ({
+    station_id: id,
+    observed_at: "2026-10-13T16:00:00+07:00",
+    vehicles_waiting: waiting,
+    vehicles_charging: 1,
+    confidence: 0.9,
+    source: "camera_mock",
+    data_type: "mock" as const,
+  });
+
+  test("shows a camera badge only on stations that have a camera", () => {
+    render(
+      <PlanSummary
+        result={base}
+        queues={new Map([["S012", view("S012", 5)]])}
+      />,
+    );
+    const badges = screen.getAllByLabelText(/Có camera/);
+    expect(badges).toHaveLength(1);
+    expect(badges[0]).toHaveTextContent("5 xe chờ");
+    expect(screen.getByTestId("plan-hero")).toContainElement(badges[0]);
+  });
+
+  test("marks the backup station too", () => {
+    render(
+      <PlanSummary
+        result={base}
+        queues={
+          new Map([
+            ["S012", view("S012", 1)],
+            ["S015", view("S015", 7)],
+          ])
+        }
+      />,
+    );
+    expect(screen.getAllByLabelText(/Có camera/)).toHaveLength(2);
+    expect(screen.getByText("7 xe chờ")).toBeInTheDocument();
+  });
+
+  test("shows no badge without queue data", () => {
+    render(<PlanSummary result={base} />);
+    expect(screen.queryByLabelText(/Có camera/)).not.toBeInTheDocument();
+  });
+});
