@@ -2378,12 +2378,18 @@ dd {
   margin-right: 6px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #dc2626;
+  background: #334155;
   color: #fff;
   font-size: 13px;
   font-weight: 800;
   line-height: 1.3;
   box-shadow: 0 0 0 2px #fff;
+}
+[data-map-role="primary"] .map-marker-queue {
+  background: #146c52;
+}
+[data-map-role="backup"] .map-marker-queue {
+  background: #b45309;
 }
 .map-route-legend {
   list-style: none;
