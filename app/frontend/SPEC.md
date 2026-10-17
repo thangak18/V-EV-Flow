@@ -219,6 +219,21 @@ already supported and is now editable in the product UI.
 
 Battery level uses a decimal numeric draft bounded to 0–100%, with Vietnamese
 labels and contextual help. Comma/dot entry and empty-draft validation remain
-compatible. Connector choices come from the loaded station directory. A single
-supported type is read-only; multiple types use a select. An empty directory
-blocks submission rather than accepting a made-up connector.
+compatible. The vehicle connector select offers eight common standards separately
+from station coverage: Type1, Type2, CCS1, CCS2, CHAdeMO, GBT_AC, GBT_DC and
+NACS. These are UI identifiers only, with no assumed adapters or cross-standard
+compatibility. Extra exact identifiers from the station directory remain selectable.
+Unavailable options stay visible with a “chưa có trạm” annotation and block submit
+with an explanation. Coverage changes preserve the vehicle selection instead of
+silently changing the vehicle to match a station. Changing connectors clears a
+stale recommendation without automatically creating an allocation.
+
+Sources checked 2026-10-17:
+- https://www.charin.global/faq-section/ (Type1/Type2 and CCS Combo1/Combo2)
+- https://www.charin.global/media/pages/technology/knowledge-base/993026d059-1717758226/charin_white_paper_connectors_worldwide_v1.pdf
+- https://www.chademo.com/about-us/what-is-chademo (CHAdeMO DC)
+- https://blog.phoenixcontact.com/marketing-sea/2018/08/reliable-charging-systems-for-e-mobility/ (GB/T and AC/DC)
+- https://saemobilus.sae.org/standards/j3400_202409-north-american-charging-system-nacs-electric-vehicles (NACS AC/DC)
+
+The catalogue is not an exhaustive list of global connectors, a statement of
+Vietnamese market share, or evidence that local stations support these types.

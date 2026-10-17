@@ -16,6 +16,7 @@ import {
   type TripLocation,
 } from "./corridorPresets";
 import { PlaceSearch } from "./PlaceSearch";
+import { VEHICLE_CONNECTORS } from "./connectorOptions";
 import { isNumericDraft, parseLocaleNumber } from "./numberField";
 
 type Props = {
@@ -84,10 +85,18 @@ export function DriverForm({
   const [batteryKwh, setBatteryKwh] = useState("60");
   const [consumption, setConsumption] = useState("0.18");
   const [connector, setConnector] = useState("CCS2");
-  const connectorOptions = [...new Set(connectorTypes)].filter(Boolean).sort();
-  const selectedConnector = connectorOptions.includes(connector)
-    ? connector
-    : (connectorOptions[0] ?? "");
+  const supportedConnectors = [...new Set(connectorTypes)]
+    .filter(Boolean)
+    .sort();
+  const connectorOptions = [
+    ...VEHICLE_CONNECTORS,
+    ...supportedConnectors
+      .filter(
+        (value) => !VEHICLE_CONNECTORS.some((option) => option.value === value),
+      )
+      .map((value) => ({ value, label: value })),
+  ];
+  const selectedConnector = connector;
   const [scenario, setScenario] = useState<Scenario>("normal");
   const observedAt = runtime ? (runtime.observed_at ?? "") : DEFAULT_DEMO_TIME;
   const [liveNow, setLiveNow] = useState(() => Date.now());
@@ -183,7 +192,7 @@ export function DriverForm({
   const batteryInvalid = parsedBattery === null || parsedBattery <= 0;
   const consumptionInvalid =
     parsedConsumption === null || parsedConsumption <= 0;
-  const connectorInvalid = selectedConnector.length === 0;
+  const connectorInvalid = !supportedConnectors.includes(selectedConnector);
   const advancedInvalid = batteryInvalid || consumptionInvalid;
   const detailsOpen = advancedInvalid || advancedOpen;
 
@@ -364,36 +373,27 @@ export function DriverForm({
           <label className="field-chip__label" htmlFor="driver-connector">
             Loại đầu cắm của xe
           </label>
-          {connectorOptions.length > 1 ? (
-            <select
-              id="driver-connector"
-              value={selectedConnector}
-              onChange={(event) => setConnector(event.target.value)}
-              aria-describedby="driver-connector-help"
-            >
-              {connectorOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              id="driver-connector"
-              type="text"
-              value={selectedConnector}
-              readOnly
-              placeholder="Chưa có thông tin đầu cắm"
-              aria-invalid={connectorInvalid}
-              aria-describedby="driver-connector-help"
-            />
-          )}
+          <select
+            id="driver-connector"
+            value={selectedConnector}
+            onChange={(event) => {
+              setConnector(event.target.value);
+              onDepartureChange?.();
+            }}
+            aria-invalid={connectorInvalid}
+            aria-describedby="driver-connector-help"
+          >
+            {connectorOptions.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+                {supportedConnectors.includes(value) ? "" : " (chưa có trạm)"}
+              </option>
+            ))}
+          </select>
           <small id="driver-connector-help">
-            {connectorOptions.length > 1
-              ? "Chọn đúng loại đầu cắm của xe."
-              : selectedConnector
-                ? `Danh mục trạm hiện hỗ trợ ${selectedConnector}.`
-                : "Chưa có loại đầu cắm trong danh mục trạm."}
+            {connectorInvalid
+              ? "Chưa có trạm tương thích với đầu cắm này trong dữ liệu hiện tại."
+              : "AC: sạc xoay chiều. DC: sạc một chiều. Chọn đúng cổng sạc trên xe."}
           </small>
         </div>
       </div>

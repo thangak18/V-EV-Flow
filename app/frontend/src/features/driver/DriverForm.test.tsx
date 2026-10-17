@@ -29,7 +29,7 @@ function renderForm(overrides: { pending?: boolean } = {}) {
 }
 
 describe("DriverForm", () => {
-  test("locks a single connector and switches to directory choices when available", () => {
+  test("lists vehicle standards while enforcing actual station compatibility", () => {
     const onSubmit = vi.fn();
     const { rerender } = render(
       <DriverForm
@@ -38,9 +38,9 @@ describe("DriverForm", () => {
         connectorTypes={["CCS2"]}
       />,
     );
-    expect(screen.getByLabelText("Loại đầu cắm của xe")).toHaveAttribute(
-      "readonly",
-    );
+    expect(
+      screen.getByRole("combobox", { name: "Loại đầu cắm của xe" }),
+    ).toHaveValue("CCS2");
     rerender(
       <DriverForm
         pending={false}
@@ -51,7 +51,7 @@ describe("DriverForm", () => {
     const connector = screen.getByRole("combobox", {
       name: "Loại đầu cắm của xe",
     });
-    expect(connector.querySelectorAll("option")).toHaveLength(2);
+    expect(connector.querySelectorAll("option")).toHaveLength(8);
     fireEvent.change(connector, { target: { value: "Type2" } });
     fireEvent.click(screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }));
     expect(onSubmit.mock.calls[0]![0].vehicle.connector_type).toBe("Type2");
@@ -62,7 +62,11 @@ describe("DriverForm", () => {
         connectorTypes={["CCS2"]}
       />,
     );
-    expect(screen.getByLabelText("Loại đầu cắm của xe")).toHaveValue("CCS2");
+    expect(screen.getByLabelText("Loại đầu cắm của xe")).toHaveValue("Type2");
+    expect(
+      screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
+    ).toBeDisabled();
+    expect(screen.getByText(/Chưa có trạm tương thích/)).toBeInTheDocument();
     rerender(
       <DriverForm pending={false} onSubmit={onSubmit} connectorTypes={[]} />,
     );
