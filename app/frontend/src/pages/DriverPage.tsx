@@ -335,6 +335,7 @@ export function DriverPage() {
           setRuntimeLoading(true);
           clear();
         }}
+        onDepartureChange={clear}
         onSubmit={(request) => {
           setRouteDeparture(request.depart_time);
           void submit(request);

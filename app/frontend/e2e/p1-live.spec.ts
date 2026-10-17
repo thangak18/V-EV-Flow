@@ -70,7 +70,7 @@ test("live what-if: actual 100-vehicle added capacity and twenty shifted departu
   test.setTimeout(240_000);
   await page.goto("/operator");
   await page
-    .getByRole("combobox", { name: "Kịch bản", exact: true })
+    .getByRole("combobox", { name: "Kịch bản nhu cầu sạc", exact: true })
     .selectOption("tet");
   await page
     .getByRole("button", { name: "Áp dụng kịch bản", exact: true })

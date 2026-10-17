@@ -31,7 +31,7 @@ export function ScenarioSelector({
       }}
     >
       <label className="field-chip">
-        <span className="field-chip__label">Kịch bản</span>
+        <span className="field-chip__label">Kịch bản nhu cầu sạc</span>
         <select
           value={scenario}
           onChange={(event) => onScenarioChange(event.target.value as Scenario)}

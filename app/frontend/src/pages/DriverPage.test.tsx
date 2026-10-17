@@ -429,3 +429,29 @@ test("a failed bootstrap can retry runtime and station data without reloading or
     screen.queryByText(/Chưa kết nối được dữ liệu trạm/),
   ).not.toBeInTheDocument();
 });
+
+test("editing departure clears the old plan and submits a new departure explicitly", async () => {
+  const recommend = vi.fn().mockResolvedValue(planResult);
+  render(
+    <ApiProvider client={createMockApiClient({ recommend })}>
+      <MemoryRouter>
+        <DriverPage />
+      </MemoryRouter>
+    </ApiProvider>,
+  );
+  const find = screen.getByRole("button", { name: "Tìm kế hoạch sạc" });
+  await waitFor(() => expect(find).toBeEnabled());
+  fireEvent.click(find);
+  expect(await screen.findByTestId("plan-hero")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Giờ khởi hành"), {
+    target: { value: "2026-10-13T16:15" },
+  });
+  expect(screen.queryByTestId("plan-hero")).not.toBeInTheDocument();
+  expect(recommend).toHaveBeenCalledTimes(1);
+  fireEvent.click(find);
+  await waitFor(() => expect(recommend).toHaveBeenCalledTimes(2));
+  expect(recommend.mock.calls[1]?.[0]).toMatchObject({
+    observed_at: "2026-10-13T16:00:00+07:00",
+    depart_time: "2026-10-13T16:15:00+07:00",
+  });
+});

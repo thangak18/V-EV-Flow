@@ -35,7 +35,7 @@ Nếu chạy ứng dụng ở cổng/địa chỉ khác, giữ `/driver` hoặc 
 
 1. Chờ kết nối dữ liệu trạm hoàn tất.
 2. Chọn **Điểm đi** và **Điểm đến** trong danh sách gợi ý.
-3. Chọn **Kịch bản**, nhập **Pin hiện tại**, kiểm tra **Đầu cắm**.
+3. Chọn **Kịch bản nhu cầu sạc**, **Giờ khởi hành**, nhập **Pin hiện tại** và kiểm tra **Đầu cắm**.
 4. Nếu cần, mở **Thông số xe** để chỉnh dung lượng pin và mức tiêu hao.
 5. Bấm **Tìm kế hoạch sạc**.
 6. Đọc trạm chính, trạm dự phòng, xác suất còn cổng và pin khi đến.
@@ -47,7 +47,8 @@ Nếu chạy ứng dụng ở cổng/địa chỉ khác, giữ `/driver` hoặc 
 | --- | --- | --- |
 | **Điểm đi** | Nơi bắt đầu hành trình. | Gõ tên địa điểm, chọn một gợi ý để xác nhận tọa độ. |
 | **Điểm đến** | Đích cuối hành trình. | Chọn tương tự điểm đi. Hai địa điểm phải có tọa độ khác nhau. |
-| **Kịch bản** | Chọn điều kiện nhu cầu sạc mô phỏng: Ngày thường, Lễ 30/4 hoặc Tết. | Chọn kịch bản trước khi tìm kế hoạch; đây không phải thao tác đổi ngày thực tế. |
+| **Kịch bản nhu cầu sạc** | Chọn điều kiện nhu cầu sạc mô phỏng: Ngày thường, Lễ 30/4 hoặc Tết. | Chọn kịch bản trước khi tìm kế hoạch; đây không phải thao tác đổi ngày thực tế. |
+| **Giờ khởi hành** | Thời điểm xe bắt đầu đi, khác với mốc trạng thái trạm. | Chọn ngày/giờ theo giờ Việt Nam. Mặc định theo mốc dữ liệu khi phát lại mô phỏng, hoặc khởi hành ngay trong chế độ live. |
 | **Pin hiện tại (SOC %)** | Phần trăm pin xe đang còn. Hệ thống dùng để kiểm tra có đủ pin đến trạm không. | Nhập từ 0 đến 100. Ví dụ 20 nghĩa là còn 20% pin. |
 | **Đầu cắm** | Kiểm tra trạm có hỗ trợ loại cổng của xe. | Nhập đúng tên loại cổng, ví dụ `CCS2`; không để trống. |
 | **Thông số xe** | Chứa các thông số ảnh hưởng đến ước tính pin khi đến. | Bấm để mở/đóng phần nâng cao. |
@@ -79,6 +80,14 @@ Bạn có thể tìm địa điểm ngoài hành lang dữ liệu, nhưng hệ t
 - Với chế độ phát lại lịch sử mô phỏng, hệ thống sử dụng mốc trong dữ liệu; không nhất thiết là giờ hiện tại trên máy.
 - Giới hạn dự báo hiển thị trên form do backend cung cấp. Release đang dùng hỗ trợ tối đa 180 phút.
 - Trạm nằm ngoài khả năng dự báo hoặc không đủ điều kiện sẽ không được suy diễn thành một phương án hợp lệ.
+
+**Giờ khởi hành và mốc dữ liệu là hai thông tin riêng.** Ví dụ snapshot lúc 16:00, bạn chọn đi lúc 16:30: hệ thống giữ dữ liệu quan sát 16:00 và dự báo tại ETA sau khi xe xuất phát 16:30. Không đổi snapshot thành 16:30 để giả vờ có dữ liệu mới.
+
+- Giờ đi không được trước snapshot hoặc muộn tới mức không còn cửa sổ dự báo; thời gian chờ khởi hành và di chuyển đều tính vào horizon.
+- Trạm phải có ETA nằm trong khả năng model. Chọn được giờ đi chưa đảm bảo còn trạm đủ điều kiện.
+- Đổi giờ đi sẽ xóa kế hoạch cũ; bấm **Tìm kế hoạch sạc** để tính lại. Có nút **Dùng mốc dữ liệu / Dùng giờ hiện tại** để trở về mặc định.
+- Chọn lại kịch bản nhu cầu sẽ khôi phục giờ mặc định theo dữ liệu của kịch bản đó.
+- Các kịch bản hiện thay đổi nhu cầu sạc; chưa mô phỏng ùn tắc Tết/30/4 làm đổi thời gian đi đường. Đổi giờ không bắt buộc tuyến đường địa lý phải đổi.
 
 ### 2.5. Đọc thẻ “Trạm chính”
 
@@ -151,7 +160,7 @@ Operator có ba nhóm công việc:
 
 | Thành phần | Dùng để làm gì? | Cách thao tác |
 | --- | --- | --- |
-| **Kịch bản** | Chọn Ngày thường, Lễ 30/4 hoặc Tết cho trang Operator. | Chọn rồi bấm **Áp dụng kịch bản**, hoặc lọc/xem tất cả trạm để tải dự báo tương ứng. |
+| **Kịch bản nhu cầu sạc** | Chọn Ngày thường, Lễ 30/4 hoặc Tết cho trang Operator. | Chọn rồi bấm **Áp dụng kịch bản**, hoặc lọc/xem tất cả trạm để tải dự báo tương ứng. |
 | **Dữ liệu lúc…** | Mốc trạng thái từ backend, dùng làm điểm bắt đầu dự báo. | Đọc ngày giờ và nguồn; mặc định không cần chỉnh. |
 | **Áp dụng kịch bản** | Tải dự báo cho kịch bản và thời điểm đang chọn. | Bấm khi muốn áp dụng/làm mới dự báo. Không tự chạy so sánh chiến lược hoặc what-if. |
 | **Thiết lập nâng cao** | Mở tùy chọn xem lịch sử. | Chỉ dùng khi cần đổi mốc thời gian. |

@@ -61,7 +61,7 @@ describe("OperatorPage", () => {
       </ApiProvider>,
     );
 
-    fireEvent.change(screen.getByLabelText("Kịch bản"), {
+    fireEvent.change(screen.getByLabelText("Kịch bản nhu cầu sạc"), {
       target: { value: "tet" },
     });
     fireEvent.click(
@@ -275,7 +275,7 @@ test("reselecting the active scenario keeps Apply enabled", async () => {
   );
   const apply = await screen.findByRole("button", { name: "Áp dụng kịch bản" });
   await waitFor(() => expect(apply).toBeEnabled());
-  fireEvent.change(screen.getByLabelText("Kịch bản"), {
+  fireEvent.change(screen.getByLabelText("Kịch bản nhu cầu sạc"), {
     target: { value: "normal" },
   });
   expect(apply).toBeEnabled();
@@ -375,7 +375,7 @@ test("changing scenario hides the previous forecast until the new scenario is lo
   fireEvent.click(all);
   const kpis = within(screen.getByLabelText("Tổng quan khu vực"));
   expect(await kpis.findByText("20%")).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText("Kịch bản"), {
+  fireEvent.change(screen.getByLabelText("Kịch bản nhu cầu sạc"), {
     target: { value: "tet" },
   });
   expect(kpis.queryByText("20%")).not.toBeInTheDocument();
@@ -455,7 +455,7 @@ test.each(["scenario", "time"])(
     fireEvent.click(apply);
     expect(apply).toBeDisabled();
     if (selection === "scenario") {
-      fireEvent.change(screen.getByLabelText("Kịch bản"), {
+      fireEvent.change(screen.getByLabelText("Kịch bản nhu cầu sạc"), {
         target: { value: "tet" },
       });
     } else {

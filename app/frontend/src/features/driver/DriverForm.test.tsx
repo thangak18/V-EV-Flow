@@ -322,3 +322,69 @@ test("an unfinished destination does not mark the valid origin as invalid", () =
     screen.getByRole("button", { name: /Tìm kế hoạch sạc/ }),
   ).toBeDisabled();
 });
+
+test("chosen departure stays independent from the observation and resets explicitly", () => {
+  const onSubmit = vi.fn(),
+    onDepartureChange = vi.fn();
+  render(
+    <DriverForm
+      pending={false}
+      runtime={replayContext("2026-10-13T16:00:00+07:00")}
+      onSubmit={onSubmit}
+      onDepartureChange={onDepartureChange}
+    />,
+  );
+  const departure = screen.getByLabelText("Giờ khởi hành");
+  expect(departure).toHaveValue("2026-10-13T16:00");
+  fireEvent.change(departure, { target: { value: "2026-10-13T16:30" } });
+  fireEvent.click(screen.getByRole("button", { name: "Tìm kế hoạch sạc" }));
+  expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
+    observed_at: "2026-10-13T16:00:00+07:00",
+    depart_time: "2026-10-13T16:30:00+07:00",
+  });
+  expect(onDepartureChange).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button", { name: "Dùng mốc dữ liệu" }));
+  expect(departure).toHaveValue("2026-10-13T16:00");
+});
+
+test.each(["", "2026-10-13T15:59", "2026-10-13T19:00", "2026-10-17T16:00"])(
+  "blocks unavailable departure %s without changing the snapshot",
+  (value) => {
+    const onSubmit = vi.fn();
+    render(
+      <DriverForm
+        pending={false}
+        runtime={replayContext("2026-10-13T16:00:00+07:00")}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Giờ khởi hành"), {
+      target: { value },
+    });
+    expect(
+      screen.getByRole("button", { name: "Tìm kế hoạch sạc" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/khởi hành/);
+    expect(screen.getByText(/Dữ liệu lúc/)).toHaveTextContent("16:00");
+    expect(onSubmit).not.toHaveBeenCalled();
+  },
+);
+
+test("switching demand scenario resets departure to that scenario's data clock", () => {
+  render(
+    <DriverForm
+      pending={false}
+      runtime={replayContext("2026-10-13T16:00:00+07:00")}
+      onSubmit={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("Giờ khởi hành"), {
+    target: { value: "2026-10-13T16:30" },
+  });
+  fireEvent.change(screen.getByLabelText("Kịch bản nhu cầu sạc"), {
+    target: { value: "tet" },
+  });
+  expect(screen.getByLabelText("Giờ khởi hành")).toHaveValue(
+    "2026-10-13T16:00",
+  );
+});

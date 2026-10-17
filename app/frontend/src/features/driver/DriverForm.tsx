@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type {
   RecommendationRequest,
   Scenario,
   RuntimeContext,
 } from "../../services/api";
-import { isPlus07FiveMinuteBucket } from "../../services/errors";
+import {
+  isPlus07FiveMinuteBucket,
+  isTimezoneAwareIso,
+} from "../../services/errors";
 import {
   DEFAULT_ORIGIN,
   DEFAULT_DESTINATION,
@@ -26,6 +29,7 @@ type Props = {
   runtimeLoading?: boolean;
   onRetryRuntime?: () => void;
   onScenarioChange?: (scenario: Scenario) => void;
+  onDepartureChange?: () => void;
   onResolveLocation?: (
     field: "origin" | "destination",
     location: TripLocation,
@@ -34,6 +38,12 @@ type Props = {
   resolvedDestination?: TripLocation;
   onSubmit: (request: RecommendationRequest) => void;
 };
+
+function vietnamTime(timestamp: number): string {
+  return new Date(timestamp + 7 * 60 * 60 * 1000)
+    .toISOString()
+    .replace("Z", "+07:00");
+}
 
 function samePayload(
   left: Omit<RecommendationRequest, "request_id">,
@@ -62,6 +72,7 @@ export function DriverForm({
   runtimeLoading,
   onRetryRuntime,
   onScenarioChange,
+  onDepartureChange,
   onResolveLocation,
   resolvedOrigin,
   resolvedDestination,
@@ -73,6 +84,8 @@ export function DriverForm({
   const [connector, setConnector] = useState("CCS2");
   const [scenario, setScenario] = useState<Scenario>("normal");
   const observedAt = runtime ? (runtime.observed_at ?? "") : DEFAULT_DEMO_TIME;
+  const [liveNow, setLiveNow] = useState(() => Date.now());
+  const [departureDraft, setDepartureDraft] = useState<string | null>(null);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [lastPayload, setLastPayload] = useState<Omit<
     RecommendationRequest,
@@ -102,6 +115,39 @@ export function DriverForm({
     (selectedOrigin.lat === selectedDestination.lat &&
       selectedOrigin.lng === selectedDestination.lng);
   const timeInvalid = !isPlus07FiveMinuteBucket(observedAt);
+  const live = runtime?.clock_mode === "live";
+  useEffect(() => {
+    if (!live) return;
+    const timer = setInterval(() => setLiveNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, [live]);
+  const defaultDeparture = live
+    ? vietnamTime(
+        Math.max(
+          liveNow,
+          Number.isFinite(Date.parse(observedAt))
+            ? Date.parse(observedAt)
+            : liveNow,
+        ),
+      )
+    : observedAt;
+  const departureValue = departureDraft ?? defaultDeparture.slice(0, 16);
+  const departureIso =
+    departureDraft === null
+      ? defaultDeparture
+      : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(departureDraft)
+        ? `${departureDraft}:00+07:00`
+        : "";
+  const horizon = runtime?.max_horizon_minutes ?? 60;
+  const forecastEnd = Date.parse(observedAt) + horizon * 60_000;
+  const departureError = !isTimezoneAwareIso(departureIso)
+    ? "Chọn ngày và giờ khởi hành hợp lệ."
+    : Date.parse(departureIso) < Date.parse(observedAt)
+      ? "Giờ khởi hành không được sớm hơn mốc dữ liệu đang xem."
+      : Date.parse(departureIso) >= forecastEnd
+        ? `Giờ khởi hành vượt cửa sổ dự báo ${horizon} phút tính từ mốc dữ liệu. Cần chừa thêm thời gian di chuyển tới trạm.`
+        : "";
+  const departureInvalid = !!departureError;
   const socInvalid = parsedSoc === null || parsedSoc < 0 || parsedSoc > 100;
   const batteryInvalid = parsedBattery === null || parsedBattery <= 0;
   const consumptionInvalid =
@@ -118,6 +164,7 @@ export function DriverForm({
     return (
       routeInvalid ||
       timeInvalid ||
+      departureInvalid ||
       socInvalid ||
       batteryInvalid ||
       consumptionInvalid ||
@@ -126,6 +173,7 @@ export function DriverForm({
   }, [
     routeInvalid,
     timeInvalid,
+    departureInvalid,
     socInvalid,
     batteryInvalid,
     consumptionInvalid,
@@ -156,14 +204,11 @@ export function DriverForm({
         lng: selectedDestination.lng,
       },
       observed_at: observedAt,
-      // Live observation may lag the click by a few minutes. Keep that source
-      // timestamp for features, but depart now instead of replaying a past trip.
+      // Keep the snapshot for features; departure is an independent user choice.
       depart_time:
-        runtime?.clock_mode === "live"
-          ? new Date(Date.now() + 7 * 60 * 60 * 1000)
-              .toISOString()
-              .replace("Z", "+07:00")
-          : observedAt,
+        departureDraft === null && live
+          ? vietnamTime(Date.now())
+          : departureIso,
       scenario,
       vehicle: {
         soc_pct: parsedSoc,
@@ -219,10 +264,11 @@ export function DriverForm({
           ))}
         </datalist>
         <label className="field-chip">
-          <span className="field-chip__label">Kịch bản</span>
+          <span className="field-chip__label">Kịch bản nhu cầu sạc</span>
           <select
             value={scenario}
             onChange={(event) => {
+              setDepartureDraft(null);
               setScenario(event.target.value as Scenario);
               onScenarioChange?.(event.target.value as Scenario);
             }}
@@ -232,6 +278,50 @@ export function DriverForm({
             <option value="tet">Tết</option>
           </select>
         </label>
+        <div className="field-chip driver-departure">
+          <label htmlFor="driver-departure" className="field-chip__label">
+            Giờ khởi hành
+          </label>
+          <input
+            id="driver-departure"
+            type="datetime-local"
+            step={60}
+            value={departureValue}
+            min={!timeInvalid ? observedAt.slice(0, 16) : undefined}
+            max={
+              !timeInvalid
+                ? vietnamTime(forecastEnd - 60_000).slice(0, 16)
+                : undefined
+            }
+            disabled={runtimeLoading || !!runtimeError || timeInvalid}
+            aria-invalid={departureInvalid}
+            aria-describedby="driver-departure-help"
+            onChange={(event) => {
+              setDepartureDraft(event.target.value);
+              onDepartureChange?.();
+            }}
+          />
+          <small id="driver-departure-help">
+            Giờ Việt Nam ·{" "}
+            {departureDraft !== null
+              ? "Giờ khởi hành bạn chọn"
+              : live
+                ? "Khởi hành ngay"
+                : "Theo mốc dữ liệu mô phỏng"}
+          </small>
+          {departureDraft !== null ? (
+            <button
+              type="button"
+              className="departure-reset"
+              onClick={() => {
+                setDepartureDraft(null);
+                onDepartureChange?.();
+              }}
+            >
+              {live ? "Dùng giờ hiện tại" : "Dùng mốc dữ liệu"}
+            </button>
+          ) : null}
+        </div>
         <label className="field-chip">
           <span className="field-chip__label">Pin hiện tại (SOC %)</span>
           <input
@@ -379,7 +469,9 @@ export function DriverForm({
         <p className="field-error driver-toolbar__error" role="alert">
           {routeInvalid
             ? "Chọn hai địa điểm khác nhau trong danh sách gợi ý."
-            : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
+            : departureInvalid
+              ? departureError
+              : "Kiểm tra SOC (0–100), dung lượng pin > 0, tiêu hao > 0 và đầu cắm. Không để trống số."}
         </p>
       ) : null}
     </form>
