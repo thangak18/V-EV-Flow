@@ -6,12 +6,12 @@ setup:
 	npm --prefix app/frontend ci
 	npm --prefix app/frontend exec playwright install chromium
 
-# Regenerate simulated replay history ending today so date pickers reach the system date.
+# Regenerate simulated replay history ending tomorrow so the picker covers the next 24h.
 # Restart the backend afterwards; leave REPLAY_OBSERVED_AT unset to follow the newest day.
 demo-data:
 	rm -rf $(DEMO_DATA_DIR)/generated
 	uv run python -m app.backend.modules.station_data.cli generate --scenario all --seed 42 \
-		--history-days 14 --history-end today --vehicles 100 --output $(DEMO_DATA_DIR)/generated
+		--history-days 14 --history-end tomorrow --vehicles 100 --output $(DEMO_DATA_DIR)/generated
 	uv run python -m app.backend.modules.simulation.cli history --input $(DEMO_DATA_DIR)/generated
 
 format:

@@ -66,10 +66,12 @@ def generate(
 
 
 def parse_history_end(value: str) -> datetime:
-    """Accept an ISO time or ``today`` (23:55 of the current +07:00 calendar day)."""
-    if value == "today":
-        now = datetime.now(timezone(timedelta(hours=7)))
-        return now.replace(hour=23, minute=55, second=0, microsecond=0)
+    """Accept an ISO time, ``today`` or ``tomorrow`` (23:55 of that +07:00 calendar day)."""
+    if value in ("today", "tomorrow"):
+        day = datetime.now(timezone(timedelta(hours=7)))
+        if value == "tomorrow":
+            day += timedelta(days=1)
+        return day.replace(hour=23, minute=55, second=0, microsecond=0)
     return datetime.fromisoformat(value)
 
 
@@ -84,7 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--history-end",
         type=parse_history_end,
         default=None,
-        help="ISO time with +07:00, or 'today', ending every scenario's history; "
+        help="ISO time with +07:00, 'today' or 'tomorrow', ending every scenario's history; "
         "default: normal scenario end",
     )
     gen.add_argument("--vehicles", type=int, default=100)

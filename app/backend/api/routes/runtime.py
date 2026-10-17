@@ -49,8 +49,10 @@ def runtime_context(
         if isinstance(repository, ParquetStatusRepository):
             start, end = repository.bounds()
         if start is not None and end is not None:
-            preferred = end.replace(hour=16, minute=0, second=0, microsecond=0)
-            observed = preferred if start <= preferred <= end else end
+            # Default to the current Vietnam time on the five-minute grid, kept inside history.
+            now = datetime.now(timezone(timedelta(hours=7)))
+            now = now.replace(minute=now.minute // 5 * 5, second=0, microsecond=0)
+            observed = min(max(now, start), end)
             if settings.replay_observed_at:
                 observed = settings.replay_observed_at
             available = start <= observed <= end

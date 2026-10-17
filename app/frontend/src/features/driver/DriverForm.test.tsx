@@ -452,3 +452,26 @@ test("live planned departure keeps the latest real observation", () => {
     vi.useRealTimers();
   }
 });
+
+test("replay departure picker reaches 24 hours past the default snapshot", () => {
+  render(
+    <DriverForm
+      pending={false}
+      runtime={{
+        ...replayContext("2026-10-17T12:25:00+07:00"),
+        history_end: "2026-10-18T23:55:00+07:00",
+      }}
+      onSubmit={vi.fn()}
+    />,
+  );
+  const picker = screen.getByLabelText("Giờ khởi hành");
+  expect(picker).toHaveAttribute("max", "2026-10-18T12:25");
+  fireEvent.change(picker, { target: { value: "2026-10-18T12:25" } });
+  expect(
+    screen.getByRole("button", { name: "Tìm kế hoạch sạc" }),
+  ).toBeEnabled();
+  fireEvent.change(picker, { target: { value: "2026-10-18T12:30" } });
+  expect(
+    screen.getByRole("button", { name: "Tìm kế hoạch sạc" }),
+  ).toBeDisabled();
+});

@@ -68,3 +68,7 @@ def test_history_end_today_is_last_bucket_of_current_vietnam_day() -> None:
     assert end.date() == now.date() or end.date() == (now - timedelta(minutes=1)).date()
     assert (end.hour, end.minute, end.utcoffset()) == (23, 55, timedelta(hours=7))
     assert parse_history_end("2026-10-13T23:55:00+07:00").day == 13
+
+
+def test_history_end_tomorrow_is_one_day_after_today() -> None:
+    assert parse_history_end("tomorrow") - parse_history_end("today") == timedelta(days=1)
